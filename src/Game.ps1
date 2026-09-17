@@ -9,7 +9,7 @@ $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
     A = 65; D = 68; E = 69; L = 76; M = 77; P = 80; Q = 81; S = 83; W = 87
-    F2 = 113; F3 = 114; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122
+    F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122
 }
 
 function New-GameWindow {
@@ -86,6 +86,8 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:ShowWeapon = $true
     $script:HudDirty = $true
     Show-Message "Floor $($script:LevelIndex + 1): $($script:LevelName)"
+    $script:MusicWanted = $script:LevelIndex + 1
+    Start-Music $script:MusicWanted
 }
 
 function Set-Mode([string]$Mode) {
@@ -93,6 +95,7 @@ function Set-Mode([string]$Mode) {
     $script:ModeTics = 0.0
     $script:KeyHit.Clear()
     if ($Mode -ne 'play') { Set-MouseLook $false }
+    if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0 }
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -161,7 +164,7 @@ function Show-TitleScreen {
     Write-HudText "${load}Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-6  weapon    M  map    P  pause`nF2 mouse look   F3 fps   F5 save   F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-6  weapon    M  map    P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
     Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
 
     Write-HudText 'HIGH SCORES' 'Small' '8FB0FF' 160 138 160 8
@@ -247,6 +250,8 @@ function Start-GameLoop {
         $hits = @()
         while ($script:KeyHit.Count) { $hits += $script:KeyHit.Dequeue() }
         if ($hits -contains $vk.F3) { $script:ShowFps = -not $script:ShowFps }
+        if ($hits -contains $vk.F4) { Switch-Music }
+        Update-Music
 
         if ($script:AutoQuit -gt 0) {
             # test aid: no human at the keyboard - start at once, wander about firing, then leave

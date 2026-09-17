@@ -20,7 +20,9 @@
 .PARAMETER Level
     Start the campaign on this floor.
 .PARAMETER NoSound
-    Skip sound synthesis (faster start, silent game).
+    Skip sound synthesis (faster start, no sound effects).
+.PARAMETER NoMusic
+    No background music (toggle in game with F4).
 .PARAMETER GodMode
     Cheat: no damage (toggle in game with F8).
 .PARAMETER InfiniteAmmo
@@ -42,6 +44,7 @@ param(
     [string]$Map,
     [ValidateRange(1, 99)][int]$Level = 1,
     [switch]$NoSound,
+    [switch]$NoMusic,
     [switch]$GodMode,
     [switch]$InfiniteAmmo,
     [switch]$OneHitKill,
@@ -55,10 +58,11 @@ Set-StrictMode -Off
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'POLF 3D needs Windows (Windows Forms / GDI+).' }
 
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing, PresentationCore
 
 $script:Clock = [System.Diagnostics.Stopwatch]::StartNew()
 $script:SaveDir = Join-Path $PSScriptRoot 'saves'
+$script:MusicDir = Join-Path $PSScriptRoot 'bin/music'
 $script:MapFiles = @(if ($Map) { (Resolve-Path -LiteralPath $Map).Path }
     else { Get-ChildItem (Join-Path $PSScriptRoot 'maps') -Filter 'level*.map' | Sort-Object { [int]($_.BaseName -replace '\D') } | ForEach-Object FullName })
 if (-not $script:MapFiles) { throw 'No maps found (maps/level*.map).' }
@@ -95,10 +99,11 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Actors', 'Player', 'Render', 'SaveGame', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $script:SfxEnabled = -not $NoSound -and -not $SelfTest -and -not $Screenshots
+$script:MusicEnabled = -not $NoMusic -and -not $SelfTest -and -not $Screenshots
 
 Write-Step 'compiling scaler (C#) ...';       Initialize-Scaler
 Write-Step 'building state tables ...';        Initialize-States
@@ -122,6 +127,7 @@ try {
     Start-GameLoop
 }
 finally {
+    Stop-Music
     if ($script:Form -and -not $script:Form.IsDisposed) { $script:Form.Close(); $script:Form.Dispose() }
     [System.Windows.Forms.Cursor]::Show()
 }
