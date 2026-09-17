@@ -442,6 +442,14 @@ function Invoke-SelfTest([string]$OutDir) {
     Write-Step "save slot test: saves found: $slots; slot 2 brought us back to floor $($script:LevelIndex + 1)"
     if (-not $ok -or $slots -notmatch 'auto' -or $slots -notmatch '2') { throw 'save slot test failed.' }
 
+    # ---- game pad: the XInput bridge must load and answer (with or without a pad plugged in) ----
+    if ($script:Pad) {
+        $state = $script:Pad::Read(0)
+        Update-Gamepad; $in = $idle.Clone(); Add-GamepadInput $in
+        Write-Step "game pad test: XInput bridge loaded, pad connected: $([bool]$state)"
+    }
+    else { Write-Step 'game pad test: bridge not available (skipped)' }
+
     # ---- title screen ----
     $script:HighScores = @()
     Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'screen-title.png')

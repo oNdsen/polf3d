@@ -23,6 +23,8 @@
     Show the speedrun clock (floor time, par, total run) and keep records in saves/speedrun.json.
 .PARAMETER FlatFloors
     Plain coloured floor and ceiling instead of textures (the 1992 look, a little faster).
+.PARAMETER NoGamepad
+    Do not look for an XInput game pad.
 .PARAMETER NoSound
     Skip sound synthesis (faster start, no sound effects).
 .PARAMETER NoMusic
@@ -50,6 +52,7 @@ param(
     [ValidateRange(1, 99)][int]$Level = 1,
     [switch]$Speedrun,
     [switch]$FlatFloors,
+    [switch]$NoGamepad,
     [switch]$NoSound,
     [switch]$NoMusic,
     [switch]$GodMode,
@@ -90,20 +93,21 @@ $script:SfxEnabled = -not $NoSound -and -not $SelfTest
 function Write-Step([string]$Text) { Write-Host ('[{0,6:0.0}s] {1}' -f $script:Clock.Elapsed.TotalSeconds, $Text) -ForegroundColor DarkCyan }
 
 # ---- the only C#: the pixel scalers. Compiled once and cached as a DLL next to the script. -------
-function Initialize-Scaler {
-    # The class name carries a hash of its source. A PowerShell session can never unload a type, so
-    # without this an older PolfScaler from an earlier run in the same session would shadow the new one.
-    $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'src/Scaler.cs') -Raw
+# Compiles one of the two C# files and returns its class. The class name carries a hash of its
+# source: a PowerShell session can never unload a type, so without this an older version from an
+# earlier run in the same session would shadow the new one. Compiled DLLs are cached in bin/.
+function Import-CSharpClass([string]$File, [string]$ClassName) {
+    $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot $File) -Raw
     $hash = [BitConverter]::ToString([System.Security.Cryptography.SHA1]::HashData([Text.Encoding]::UTF8.GetBytes($source))).Replace('-', '').Substring(0, 10)
-    $name = "PolfScaler_$hash"
+    $name = "${ClassName}_$hash"
     if (-not ($name -as [type])) {
-        $code = $source.Replace('class PolfScaler', "class $name")
+        $code = $source.Replace("class $ClassName", "class $name")
         $binDir = Join-Path $PSScriptRoot 'bin'
         $dll = Join-Path $binDir "$name.dll"
         try {
             if (-not (Test-Path $dll)) {
                 $null = New-Item -ItemType Directory -Path $binDir -Force
-                Get-ChildItem $binDir -Filter 'PolfScaler*.dll' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+                Get-ChildItem $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
                 Add-Type -TypeDefinition $code -OutputAssembly $dll -OutputType Library
             }
             Add-Type -Path $dll
@@ -113,8 +117,14 @@ function Initialize-Scaler {
             Add-Type -TypeDefinition $code
         }
     }
-    $script:Scaler = $name -as [type]
+    $name -as [type]
+}
+
+function Initialize-Scaler {
+    $script:Scaler = Import-CSharpClass 'src/Scaler.cs' 'PolfScaler'
     if (-not $script:Scaler) { throw 'The scaler (src/Scaler.cs) could not be compiled.' }
+    # the game pad is optional: no pad, no XInput or no compiler -> keyboard and mouse only
+    $script:Pad = if ($NoGamepad) { $null } else { try { Import-CSharpClass 'src/Gamepad.cs' 'PolfGamepad' } catch { $null } }
 }
 
 Write-Step 'POLF 3D starting ...'

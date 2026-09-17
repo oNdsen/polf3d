@@ -129,7 +129,51 @@ function Get-PlayerInput {
         if ($pos -ne $script:MouseCenter) { [System.Windows.Forms.Cursor]::Position = $script:MouseCenter }
     }
     $script:WeaponKey = -1
+    Add-GamepadInput $in
     $in
+}
+
+# ---------------------------------------------------------------------------------------------
+# Game pad (XInput):  left stick move/strafe, right stick turn, RT fire, LT run, A use, B sneak,
+# LB/RB previous/next weapon, Back automap, Start pause. In menus: D-pad and A.
+# ---------------------------------------------------------------------------------------------
+$script:PAD = @{ Up = 1; Down = 2; Start = 0x10; Back = 0x20; LB = 0x100; RB = 0x200; A = 0x1000; B = 0x2000; X = 0x4000; Y = 0x8000 }
+
+# Polls the pad once per frame. Looking for a pad that is not there is slow, so that happens only
+# every two seconds. Sets $script:PadState (or $null) and $script:PadHit (buttons pressed this frame).
+function Update-Gamepad {
+    $script:PadHit = 0
+    if (-not $script:Pad) { return }
+    $now = $script:Clock.Elapsed.TotalSeconds
+    if (-not $script:PadState -and $now -lt $script:PadRetry) { return }
+    $state = $script:Pad::Read(0)
+    if (-not $state) { $script:PadState = $null; $script:PadRetry = $now + 2.0; return }
+    $buttons = [int]$state[6]
+    $script:PadHit = $buttons -band (-bnot [int]$script:PadButtons)
+    $script:PadButtons = $buttons
+    $script:PadState = $state
+}
+
+# The next owned weapon in the given direction that can actually fire.
+function Get-NextWeapon([int]$Step) {
+    $n = $script:Weapons.Count; $i = $script:P.Weapon
+    for ($k = 0; $k -lt $n; $k++) { $i = ($i + $Step + $n) % $n; if (Test-WeaponReady $i) { return $i } }
+    -1
+}
+
+function Add-GamepadInput([hashtable]$In) {
+    $s = $script:PadState
+    if (-not $s) { return }
+    $b = $script:PadButtons; $pad = $script:PAD
+    $In.Strafe += $s[0]; $In.Forward += $s[1]
+    $In.Turn += $s[2] * 1.4
+    if ($s[5] -gt 0.3) { $In.Fire = $true }
+    if ($s[4] -gt 0.3) { $In.Run = $true }
+    if ($b -band $pad.A) { $In.Use = $true }
+    if ($b -band $pad.B) { $In.Sneak = $true }
+    if ($script:PadHit -band $pad.RB) { $In.Weapon = Get-NextWeapon 1 }
+    if ($script:PadHit -band $pad.LB) { $In.Weapon = Get-NextWeapon -1 }
+    $In.Forward = [Math]::Max(-1.0, [Math]::Min(1.0, $In.Forward)); $In.Strafe = [Math]::Max(-1.0, [Math]::Min(1.0, $In.Strafe))
 }
 
 function Update-World([double]$Tics, [hashtable]$In) {
@@ -180,8 +224,8 @@ function Show-TitleScreen {
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
-    Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    Write-HudText $help 'Small' 'C0C8D8' 4 146 156 74
 
     if ($script:Speedrun) {
         Write-HudText 'FASTEST RUNS' 'Small' '8FB0FF' 160 138 160 8
@@ -283,6 +327,19 @@ function Start-GameLoop {
         # ---- key presses (edge triggered) ----
         $hits = @()
         while ($script:KeyHit.Count) { $hits += $script:KeyHit.Dequeue() }
+        # the pad's menu buttons arrive as the keys they stand for
+        Update-Gamepad
+        if ($script:PadHit) {
+            $pad = $script:PAD
+            if ($script:PadHit -band $pad.Start) { $hits += $(if ($script:Mode -in 'play', 'paused') { $vk.P } else { $vk.Enter }) }
+            if ($script:Mode -ne 'play') {
+                if ($script:PadHit -band $pad.A) { $hits += $vk.Enter }
+                if ($script:PadHit -band $pad.Up) { $hits += $vk.Up }
+                if ($script:PadHit -band $pad.Down) { $hits += $vk.Down }
+            }
+            elseif ($script:PadHit -band $pad.Y) { $hits += $vk.N }
+        }
+        if ($script:PadState) { $script:KeyDown[$vk.M] = [bool]($script:PadButtons -band $script:PAD.Back) }
         if ($hits -contains $vk.F3) { $script:ShowFps = -not $script:ShowFps }
         if ($hits -contains $vk.F4) { Switch-Music }
         Update-Music
