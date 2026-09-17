@@ -385,6 +385,12 @@ function Invoke-SelfTest([string]$OutDir) {
     $never = @($script:States.Keys | Where-Object { $_ -notin $script:StatesSeen } | Sort-Object)
     Write-Step "states visited: $(@($script:StatesSeen | Sort-Object -Unique).Count) of $($script:States.Count); never seen: $($never -join ', ')"
 
+    # ---- reinforcements: harder difficulties put more enemies on the floor ----
+    $counts = foreach ($d in 0, 2, 3) { $script:Difficulty = $d; $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Stats.KillTotal }
+    $script:Difficulty = 1
+    Write-Step "reinforcement test: floor 1 has $($counts -join ' / ') enemies on difficulty 1 / 3 / 4"
+    if (-not ($counts[0] -lt $counts[1] -and $counts[1] -lt $counts[2])) { throw 'reinforcement test failed.' }
+
     # ---- secret exit: floor 2 -> bonus floor -> floor 3 ----
     if (Test-Path (Join-Path (Split-Path $script:MapFiles[0]) 'bonus2.map')) {
         $script:LevelIndex = 1; $script:BonusMap = $null

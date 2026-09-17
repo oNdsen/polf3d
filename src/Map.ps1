@@ -24,6 +24,8 @@
 #   +x                                       item,       see $ItemCodes
 #   *x                                       decoration, see $DecoCodes  (*e = explosive barrel)
 #
+# Header line "@spawn <min difficulty 1-4> <x> <y> <enemy code>": reinforcements for the higher difficulties.
+#
 # Unlike the 1992 format there are no hand-numbered "areas": rooms are found by flood fill.
 
 function Get-DirFromChar([char]$c) {
@@ -38,11 +40,18 @@ function Get-DirFromChar([char]$c) {
 function Read-MapFile([string]$Path) {
     $meta = @{ name = 'Untitled'; par = '120'; ceiling = '383838'; floor = '707070' }
     $rows = [System.Collections.Generic.List[string]]::new()
+    $spawns = [System.Collections.Generic.List[object]]::new()
     $inMap = $false
     foreach ($line in [System.IO.File]::ReadAllLines($Path)) {
         if ($line.StartsWith(';')) { continue }
         if ($inMap) { if ($line.Trim().Length -gt 0) { $rows.Add($line.TrimEnd()) }; continue }
         if ($line.StartsWith('@map')) { $inMap = $true; continue }
+        if ($line.StartsWith('@spawn ')) {                          # @spawn <min difficulty 1-4> <x> <y> <code>
+            $f = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if ($f.Count -ne 5 -or $f[4].Length -ne 2) { throw "Map '$Path': malformed line '$line'" }
+            $spawns.Add(@{ MinDifficulty = [int]$f[1]; X = [int]$f[2]; Y = [int]$f[3]; Code = $f[4] })
+            continue
+        }
         if ($line.StartsWith('@')) {
             $parts = $line.Substring(1).Split(' ', 2)
             $meta[$parts[0].ToLower()] = $parts[1].Trim()
@@ -51,7 +60,7 @@ function Read-MapFile([string]$Path) {
     if ($rows.Count -eq 0) { throw "Map '$Path' has no @map block." }
     $w = $rows[0].Length / 2
     foreach ($r in $rows) { if ($r.Length -ne $w * 2) { throw "Map '$Path': every row must be $($w * 2) characters long (found: $($r.Length))." } }
-    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count }
+    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns }
 }
 
 function Initialize-Level([string]$Path) {
@@ -205,6 +214,17 @@ function Initialize-Level([string]$Path) {
         }
     }
     if (-not $playerSet) { throw 'The map has no player start (P^ P> Pv P<).' }
+
+    # ---- reinforcements: extra enemies that only show up from a certain difficulty ------------------
+    foreach ($sp in $map.Spawns) {
+        if ($script:Difficulty + 1 -lt $sp.MinDifficulty) { continue }
+        $idx = $sp.Y * $w + $sp.X
+        $kind = $script:EnemyCodes[$sp.Code[0]]; $dir = Get-DirFromChar $sp.Code[1]
+        if (-not $kind -or $dir -lt 0) { throw "@spawn: '$($sp.Code)' at $($sp.X),$($sp.Y) is no enemy code" }
+        if ($script:Tiles[$idx] -ne 0 -or $script:StaticBlock[$idx] -or $null -ne $script:ActorAt[$idx]) { throw "@spawn: $($sp.X),$($sp.Y) is not free" }
+        $mode = if ('NESW'.Contains([string]$sp.Code[1])) { 'patrol' } elseif ('nesw'.Contains([string]$sp.Code[1])) { 'ambush' } else { 'stand' }
+        Add-Enemy $kind $sp.X $sp.Y $dir $mode
+    }
 }
 
 function Add-Item([string]$Name, [int]$X, [int]$Y) {

@@ -18,7 +18,7 @@ $src = Join-Path $PSScriptRoot '../src'
 . (Join-Path $src 'Defs.ps1')
 . (Join-Path $src 'Map.ps1')
 . (Join-Path $src 'Mechanics.ps1')
-$script:Spr = @{}; $script:Difficulty = 2
+$script:Spr = @{}; $script:Difficulty = 3          # hardest: every reinforcement is on the map and gets checked
 Initialize-States
 if (-not $Map) { $Map = Get-ChildItem (Join-Path $PSScriptRoot '../maps') -Filter '*.map' | Sort-Object Name | ForEach-Object FullName }
 
