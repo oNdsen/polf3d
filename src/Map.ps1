@@ -9,6 +9,7 @@
 #   GG Gv  TT Tl                             mossy rock (+ vines), tech panels (+ console)
 #   MX                                       lift switch (the exit)
 #   ?S ?s ?B ?b ?W ?w ?R ?r ?M ?G ?g ?T ?t   secret push-wall (upper case plain, lower case decorated)
+#   !S !B !W !R !M !G !T                     cracked wall: only an explosion brings it down (counts as a secret)
 #   DD DG DS DL                              door: normal / gold lock / silver lock / lift door
 #   D1..D9  X1..X9                           remote door and the wall lever (same number) that opens it for good
 #   ..                                       floor
@@ -66,6 +67,7 @@ function Initialize-Level([string]$Path) {
     $script:StaticBlock = [bool[]]::new($n)       # blocking decoration
     $script:TurnAt = [int[]]::new($n)             # patrol turning points (-1 = none)
     $script:LeverAt = [int[]]::new($n)            # channel number of a wall lever (0 = none)
+    $script:Breakable = [bool[]]::new($n)         # cracked walls that an explosion brings down
     $script:ActorAt = [object[]]::new($n)         # which enemy has reserved this tile
     $script:AreaOf = [int[]]::new($n)
     $script:Vis = [int[]]::new($n)                # frame number in which a ray last crossed the tile
@@ -94,6 +96,11 @@ function Initialize-Level([string]$Path) {
                 $script:PushTex[$idx] = $script:PushCodes[$code[1]]
                 $script:Stats.SecretTotal++
             }
+            elseif ($code[0] -ceq '!') {
+                if (-not $script:BreakCodes.ContainsKey($code[1])) { throw "Unknown breakable wall '$code' at $x,$y" }
+                $script:Tiles[$idx] = $script:BreakCodes[$code[1]]; $script:Breakable[$idx] = $true
+                $script:Stats.SecretTotal++
+            }
             elseif ($code[0] -ceq 'D' -and $script:DoorCodes.ContainsKey($code[1])) { $doorCells += , @($x, $y, $script:DoorCodes[$code[1]], 0) }
             elseif ($code[0] -ceq 'D' -and [char]::IsDigit($code[1])) { $doorCells += , @($x, $y, 4, [int][string]$code[1]) }
             elseif ($code[0] -ceq 'X' -and [char]::IsDigit($code[1])) { $script:Tiles[$idx] = $script:TEX_LEVER_OFF; $script:LeverAt[$idx] = [int][string]$code[1] }
@@ -115,14 +122,14 @@ function Initialize-Level([string]$Path) {
     $area = 0
     $stack = [System.Collections.Generic.Stack[int]]::new()
     for ($i = 0; $i -lt $n; $i++) {
-        $open = ($script:Tiles[$i] -eq 0) -or ($script:PushTex[$i] -ne 0)
+        $open = ($script:Tiles[$i] -eq 0) -or ($script:PushTex[$i] -ne 0) -or $script:Breakable[$i]
         if (-not $open -or $script:AreaOf[$i] -ge 0) { continue }
         $stack.Push($i); $script:AreaOf[$i] = $area
         while ($stack.Count) {
             $c = $stack.Pop()
             foreach ($nb in ($c - 1), ($c + 1), ($c - $w), ($c + $w)) {
                 if ($nb -lt 0 -or $nb -ge $n -or $script:AreaOf[$nb] -ge 0) { continue }
-                if (($script:Tiles[$nb] -eq 0) -or ($script:PushTex[$nb] -ne 0)) { $script:AreaOf[$nb] = $area; $stack.Push($nb) }
+                if (($script:Tiles[$nb] -eq 0) -or ($script:PushTex[$nb] -ne 0) -or $script:Breakable[$nb]) { $script:AreaOf[$nb] = $area; $stack.Push($nb) }
             }
         }
         $area++

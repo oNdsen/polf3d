@@ -58,6 +58,7 @@ function Restore-Game {
 
         $script:Tiles = [int[]]$state.Tiles
         $script:PushTex = [int[]]$state.PushTex
+        for ($i = 0; $i -lt $script:Breakable.Length; $i++) { if ($script:Breakable[$i] -and $script:Tiles[$i] -eq 0) { $script:Breakable[$i] = $false } }
         foreach ($i in $state.Seen) { $script:Vis[[int]$i] = 1 }
         if ($script:FrameNo -lt 10) { $script:FrameNo = 10 }
         foreach ($k in @($state.PushWall.Keys)) { $script:PW[$k] = $state.PushWall[$k] }

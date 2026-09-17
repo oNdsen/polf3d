@@ -204,17 +204,32 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     $script:LevelIndex = 0
 
+    # ---- cracked wall: the kitchen barrel must bring it down ----
+    $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    $crack = [Array]::IndexOf($script:Breakable, $true)
+    if ($crack -ge 0) {
+        $cx = $crack % $script:MapW; $cy = [Math]::Floor($crack / $script:MapW)
+        $barrel = $script:Actors | Where-Object { $_.Kind -eq 'barrel' -and [Math]::Abs($_.X - $cx) -lt 2 -and [Math]::Abs($_.Y - $cy) -lt 2 } | Select-Object -First 1
+        Invoke-ActorDamage $barrel 100
+        for ($f = 0; $f -lt 20; $f++) { Update-World 2.0 $idle }
+        Write-Step "cracked wall test: tile $cx,$cy is now $($script:Tiles[$crack]) (0 = open), secrets $($script:Stats.Secrets)/$($script:Stats.SecretTotal)"
+        if ($script:Tiles[$crack] -ne 0) { throw 'cracked wall test failed.' }
+    }
+    $script:LevelIndex = 0
+
     # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
     $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
     Start-Level $false $false
     $barrels = @($script:Actors | Where-Object Kind -eq 'barrel')
     if ($barrels.Count -ge 2) {
-        $victims = @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and [Math]::Abs($_.X - $barrels[0].X) -lt 4 -and [Math]::Abs($_.Y - $barrels[0].Y) -lt 4 })
-        Invoke-ActorDamage $barrels[0] 100
+        $victims = @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and [Math]::Abs($_.X - $barrels[-1].X) -lt 4 -and [Math]::Abs($_.Y - $barrels[-1].Y) -lt 4 })
+        $first = $barrels | Where-Object { $b = $_; @($barrels | Where-Object { $_ -ne $b -and [Math]::Abs($_.X - $b.X) -lt 1.6 -and [Math]::Abs($_.Y - $b.Y) -lt 1.6 }).Count } | Select-Object -First 1
+        Invoke-ActorDamage $first 100
         for ($f = 0; $f -lt 40; $f++) { Update-World 2.0 $idle }
         $left = @($script:Actors | Where-Object Kind -eq 'barrel').Count
         Write-Step "barrel test: $($barrels.Count) barrels -> $left left, bystanders hurt: $(@($victims | Where-Object { $_.HP -lt $_.Def.HP[$script:Difficulty] }).Count) of $($victims.Count)"
-        if ($left -gt $barrels.Count - 2) { throw 'barrel test: no chain reaction.' }
+        if (-not $first -or $left -gt $barrels.Count - 2) { throw 'barrel test: no chain reaction.' }
     }
     $script:LevelIndex = 0
 

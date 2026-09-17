@@ -378,6 +378,21 @@ function Invoke-Explosion([double]$X, [double]$Y, [double]$Radius, [double]$Dama
         $d = [Math]::Sqrt($ax * $ax + $ay * $ay)
         if ($d -lt $Radius) { Invoke-ActorDamage $a ([int]($Damage * (1 - $d / $Radius))) 'explosion' }
     }
+    # cracked walls within reach come down
+    $w = $script:MapW; $reach = $Radius + 0.4
+    for ($ty = [int][Math]::Floor($Y - $reach); $ty -le [int][Math]::Floor($Y + $reach); $ty++) {
+        for ($tx = [int][Math]::Floor($X - $reach); $tx -le [int][Math]::Floor($X + $reach); $tx++) {
+            if ($tx -lt 0 -or $ty -lt 0 -or $tx -ge $w -or $ty -ge $script:MapH) { continue }
+            $idx = $ty * $w + $tx
+            if (-not $script:Breakable[$idx]) { continue }
+            $bx = $tx + 0.5 - $X; $by = $ty + 0.5 - $Y
+            if ([Math]::Sqrt($bx * $bx + $by * $by) -gt $reach) { continue }
+            $script:Tiles[$idx] = 0; $script:Breakable[$idx] = $false
+            $script:Stats.Secrets++
+            foreach ($o in @(-0.25, -0.2), @(0.2, 0.1), @(0.0, 0.3)) { Add-Effect 'puff' ($tx + 0.5 + $o[0]) ($ty + 0.5 + $o[1]) }
+            Show-Message 'The wall crumbles!'
+        }
+    }
 }
 
 # The super boss launches a rocket: a separate actor that flies straight at where the player is now.

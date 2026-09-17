@@ -45,7 +45,7 @@ function Test-LevelFile([string]$Path) {
             $n = $c + $d
             if ($n -lt 0 -or $n -ge $w * $h -or $reach[$n]) { continue }
             $t = $script:Tiles[$n]
-            $passable = ($t -eq 0 -and -not $script:StaticBlock[$n]) -or ($t -ge 100)
+            $passable = ($t -eq 0 -and -not $script:StaticBlock[$n]) -or ($t -ge 100) -or $script:Breakable[$n]
             if ($script:PushTex[$n] -ne 0) {
                 $behind = $n + $d                                   # needs a free tile behind it to move at all
                 $passable = $script:Tiles[$behind] -eq 0 -and -not $script:StaticBlock[$behind]
@@ -94,7 +94,7 @@ function Test-LevelFile([string]$Path) {
     for ($y = 0; $y -lt $h; $y++) {
         $line = for ($x = 0; $x -lt $w; $x++) {
             $i = $y * $w + $x; $t = $script:Tiles[$i]
-            if ($script:PushTex[$i]) { '?' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
+            if ($script:PushTex[$i]) { '?' } elseif ($script:Breakable[$i]) { '%' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
             elseif ($script:ActorAt[$i]) { if ($script:ActorAt[$i].Def.Inert) { '*' } else { $script:ActorAt[$i].Kind[0] } } elseif ($script:StaticBlock[$i]) { 'o' }
             elseif ($reach[$i]) { '.' } else { '!' }
         }

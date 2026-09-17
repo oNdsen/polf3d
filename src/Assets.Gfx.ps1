@@ -175,6 +175,20 @@ function Add-WallArt([string]$Name) {
             if ($Name -eq 'switch_off') { Add-Box 'D02020' 27 18 10 8; Add-Box 'FF6060' 28 19 3 2; Add-Box '303030' 24 42 16 3 }
             else { Add-Box '20C040' 27 38 10 8; Add-Box '80FF90' 28 39 3 2; Add-Box '303030' 24 17 16 3 }
         }
+        { $_ -like '*_cracked' } {
+            Add-WallBase ($Name -replace '_cracked')
+            # a web of cracks radiating from a weak spot - the hint that explosives will do the rest
+            $cx = 30; $cy = 34
+            foreach ($ray in @(-26, -20), @(-8, -30), @(14, -26), @(28, -6), @(22, 20), @(2, 28), @(-18, 22), @(-28, 4)) {
+                $x = $cx; $y = $cy
+                for ($i = 1; $i -le 6; $i++) {
+                    $nx = $cx + $ray[0] * $i / 6 + $script:Rng.Next(-2, 3); $ny = $cy + $ray[1] * $i / 6 + $script:Rng.Next(-2, 3)
+                    Add-Poly '0C0C0C' @([int]$x, [int]$y, ([int]$x + 2), [int]$y, ([int]$nx + 1), [int]$ny, [int]$nx, [int]$ny)
+                    $x = $nx; $y = $ny
+                }
+            }
+            Add-Oval '0C0C0C' 26 30 9 8; Add-Oval '2A2A2A' 28 32 4 4
+        }
         { $_ -in 'lever_off', 'lever_on' } {
             Add-WallBase stone
             Add-Box '2A2A2A' 22 16 20 32; Add-Box '484848' 24 18 16 28; Add-Box '181818' 30 22 4 20
