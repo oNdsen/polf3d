@@ -432,6 +432,16 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($first -ne 0 -or $script:Result.Previous -ne 95.5 -or @($rec.Values)[0] -ne 80) { throw 'speedrun test failed.' }
     $script:Mode = 'play'
 
+    # ---- save slots and the autosave ----
+    $script:LevelIndex = 0; $script:BonusMap = $null
+    Start-Level $false $false
+    Save-Game '2'
+    $script:LevelIndex = 1; Start-Level $true $true                   # "arriving by lift" -> autosave
+    $slots = @(Get-SaveList | ForEach-Object { $_.Slot }) -join ','
+    $ok = (Restore-Game '2') -and $script:LevelIndex -eq 0
+    Write-Step "save slot test: saves found: $slots; slot 2 brought us back to floor $($script:LevelIndex + 1)"
+    if (-not $ok -or $slots -notmatch 'auto' -or $slots -notmatch '2') { throw 'save slot test failed.' }
+
     # ---- title screen ----
     $script:HighScores = @()
     Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'screen-title.png')

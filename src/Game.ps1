@@ -94,6 +94,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:Message = $null
     $script:ShowWeapon = $true
     $script:HudDirty = $true
+    if ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
     $script:MusicWanted = if ($script:BonusMap) { 9 } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
@@ -104,7 +105,8 @@ function Set-Mode([string]$Mode) {
     $script:ModeTics = 0.0
     $script:KeyHit.Clear()
     if ($Mode -ne 'play') { Set-MouseLook $false; if ($script:Recording) { Stop-DemoRecording } }
-    if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0 }
+    if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame }
+    if ($Mode -eq 'load') { $script:SaveList = @(Get-SaveList) }
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -174,7 +176,7 @@ function Show-TitleScreen {
         if ($sel) { Write-HudBar '2C54C4' 80 (76 + $i * 11) 160 10 }
         Write-HudText "$($i + 1)  $($script:Difficulties[$i].Name)" 'Mid' $(if ($sel) { 'FFFFFF' } else { '7080A0' }) 80 (76 + $i * 11) 160 10
     }
-    $load = if (Test-SaveGame) { 'L = load saved game     ' } else { '' }
+    $load = if ($script:HasSaves) { 'L = load a saved game     ' } else { '' }
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
@@ -319,7 +321,7 @@ function Start-GameLoop {
                         $script:LevelIndex = $script:StartLevelIndex; $script:BonusMap = $null; Start-Level $false $false; Set-Mode 'play'
                         if ($script:CheatAllWeapons) { Invoke-Cheat 'GiveAll' }
                     }
-                    elseif ($h -eq $vk.L) { if (Restore-Game) { Set-Mode 'play' } }
+                    elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
@@ -377,13 +379,16 @@ function Start-GameLoop {
                 foreach ($h in $hits) {
                     if ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'play'; $script:HudDirty = $true }
                     elseif ($h -eq $vk.Q) { Set-Mode 'title' }
+                    elseif ($h -ge 49 -and $h -le 51) { Save-Game "$($h - 48)" }
+                    elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'paused'; Set-Mode 'load' }
                     elseif ($h -eq $vk.F9) { if (Restore-Game) { Set-Mode 'play' } }
                 }
                 if ($script:Mode -eq 'paused') {
                     Show-PlayFrame
                     Write-HudBar 'A0000000' 0 0 320 200
                     Write-HudText 'PAUSE' 'Big' 'FFFFFF' 0 70 320 24
-                    Write-HudText 'Esc / P = resume     F9 = load     Q = main menu' 'Small' 'FFE860' 0 100 320 10
+                    Write-HudText 'Esc / P = resume     1-3 = save to slot     L = load     Q = main menu' 'Small' 'FFE860' 0 100 320 10
+                    if ($script:Message -and $script:Clock.Elapsed.TotalSeconds -lt $script:MessageUntil) { Write-HudText $script:Message 'Mid' '60FF80' 0 116 320 10 }
                 }
             }
 
@@ -410,6 +415,22 @@ function Start-GameLoop {
                         Set-Mode 'gameover'
                     }
                     else { $p.Score = $script:LevelStartScore; $p.RunTics += $script:Stats.Tics; Start-Level $true $false; Set-Mode 'play' }
+                }
+            }
+
+            'load' {
+                # pick a saved game by number; Esc goes back to where the menu was opened
+                foreach ($h in $hits) {
+                    $i = $h - 49
+                    if ($i -ge 0 -and $i -lt $script:SaveList.Count) { if (Restore-Game $script:SaveList[$i].Slot) { Set-Mode 'play' }; break }
+                    if ($h -eq $vk.Esc) { Set-Mode $script:LoadReturn; $script:HudDirty = $true; break }
+                }
+                if ($script:Mode -eq 'load') {
+                    Show-Shade 'FF0A1020'
+                    Write-HudText 'LOAD GAME' 'Big' 'FFFFFF' 0 20 320 24
+                    $y = 60
+                    for ($i = 0; $i -lt $script:SaveList.Count; $i++) { Write-HudText "$($i + 1)   $($script:SaveList[$i].Text)" 'Small' 'C0C8D8' 0 $y 320 9; $y += 12 }
+                    Write-HudText 'press the number of a saved game     Esc = back' 'Small' 'FFE860' 0 200 320 10
                 }
             }
 

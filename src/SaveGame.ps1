@@ -1,6 +1,6 @@
 # POLF 3D - Copyright (c) 2026 oNdsen. Licensed under the MIT License, see LICENSE.
 
-# SaveGame.ps1 - quick save / quick load (JSON) and the high score list.
+# SaveGame.ps1 - saved games (quick save, autosave, three slots; JSON), speedrun records, high scores.
 #
 # A save file holds only what differs from a freshly loaded map: the tile grid (push-walls,
 # the switch), doors, items, actors, the player and the statistics. Loading rebuilds the level
@@ -9,13 +9,31 @@
 $script:ActorSaveProps = 'Kind', 'State', 'Tics', 'X', 'Y', 'TX', 'TY', 'Dir', 'PathDir', 'Dist', 'WaitDoor', 'Speed', 'HP', 'Area',
                          'Active', 'Shootable', 'AttackMode', 'FirstAttack', 'Ambush', 'Corpse', 'React', 'VX', 'VY'
 
-function Get-SavePath { Join-Path $script:SaveDir 'quicksave.json' }
+# Slots: 'quick' (F5/F9), 'auto' (written whenever the lift arrives on a new floor), '1'..'3' (pause menu).
+function Get-SavePath([string]$Slot = 'quick') { Join-Path $script:SaveDir $(if ($Slot -eq 'quick') { 'quicksave.json' } else { "save-$Slot.json" }) }
 
-function Test-SaveGame { Test-Path -LiteralPath (Get-SavePath) }
+function Test-SaveGame { @(Get-SaveList).Count -gt 0 }
 
-function Save-Game {
+# Every existing save, newest first: @{ Slot; Path; Saved; Text }
+function Get-SaveList {
+    $list = foreach ($slot in 'quick', 'auto', '1', '2', '3') {
+        $path = Get-SavePath $slot
+        if (-not (Test-Path -LiteralPath $path)) { continue }
+        try {
+            $s = (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable).Summary
+            @{ Slot = $slot; Path = $path; Saved = [datetime]$s.Saved
+                Text = '{0,-6} {1,-26} health {2,3}   score {3,6}   {4:yyyy-MM-dd HH:mm}' -f $(if ($slot -match '^\d$') { "slot $slot" } else { $slot }), $s.Floor, $s.Health, $s.Score, [datetime]$s.Saved }
+        }
+        catch { }                                                  # unreadable or from before the summary existed: skip
+    }
+    @($list | Sort-Object { $_.Saved } -Descending)
+}
+
+function Save-Game([string]$Slot = 'quick') {
     $seen = for ($i = 0; $i -lt $script:Vis.Length; $i++) { if ($script:Vis[$i] -gt 0) { $i } }
+    $floor = if ($script:BonusMap) { "Bonus: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" }
     $state = [ordered]@{
+        Summary    = [ordered]@{ Saved = (Get-Date).ToString('s'); Floor = $floor; Health = $script:P.Health; Score = $script:P.Score }
         Version    = 1
         Saved      = (Get-Date).ToString('s')
         Map        = Split-Path $script:MapFile -Leaf
@@ -34,17 +52,17 @@ function Save-Game {
     }
     try {
         $null = New-Item -ItemType Directory -Path $script:SaveDir -Force
-        $state | ConvertTo-Json -Depth 6 -Compress | Set-Content -LiteralPath (Get-SavePath) -Encoding utf8
-        Show-Message 'Game saved'
+        $state | ConvertTo-Json -Depth 6 -Compress | Set-Content -LiteralPath (Get-SavePath $Slot) -Encoding utf8
+        if ($Slot -ne 'auto') { Show-Message $(if ($Slot -eq 'quick') { 'Game saved' } else { "Game saved in slot $Slot" }) }
     }
     catch { Show-Message "Saving failed: $($_.Exception.Message)" }
 }
 
 # Returns $true if a saved game is now running.
-function Restore-Game {
-    if (-not (Test-SaveGame)) { Show-Message 'No saved game found'; return $false }
+function Restore-Game([string]$Slot = 'quick') {
+    if (-not (Test-Path -LiteralPath (Get-SavePath $Slot))) { Show-Message 'No saved game found'; return $false }
     try {
-        $state = Get-Content -LiteralPath (Get-SavePath) -Raw | ConvertFrom-Json -AsHashtable
+        $state = Get-Content -LiteralPath (Get-SavePath $Slot) -Raw | ConvertFrom-Json -AsHashtable
         $index = -1; $bonus = $null
         for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { if ((Split-Path $script:MapFiles[$i] -Leaf) -eq $state.Map) { $index = $i } }
         if ($index -lt 0 -and $state.Map -match '^bonus(\d+)\.map$') {                # saved on a secret floor
