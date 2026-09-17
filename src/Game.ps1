@@ -76,7 +76,8 @@ function Reset-ScreenEffects {
 # KeepPlayer: score and lives survive (after a death).  KeepKit: weapons, ammo and health survive
 # as well (riding the lift to the next floor). Keys never leave their floor.
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
-    $script:MapFile = $script:MapFiles[$script:LevelIndex]
+    $script:MapFile = if ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
+    $script:SecretExit = $false
     Initialize-Level $script:MapFile
     if (-not $KeepPlayer) { New-Player }
     if (-not $KeepKit) { Reset-PlayerKit }
@@ -90,8 +91,8 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:Message = $null
     $script:ShowWeapon = $true
     $script:HudDirty = $true
-    Show-Message "Floor $($script:LevelIndex + 1): $($script:LevelName)"
-    $script:MusicWanted = $script:LevelIndex + 1
+    Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
+    $script:MusicWanted = if ($script:BonusMap) { 9 } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
 }
 
@@ -211,7 +212,11 @@ function Complete-Level {
     }
     $script:P.RunTics += $st.Tics
     $r.Exact = $st.Tics / $script:TICRATE
-    $r.Last = $script:LevelIndex -ge $script:MapFiles.Count - 1
+    # a secret exit leads to maps/bonus<floor>.map, if there is one; afterwards the campaign goes on
+    $bonusPath = Join-Path (Split-Path $script:MapFiles[$script:LevelIndex]) "bonus$($script:LevelIndex + 1).map"
+    $r.ToBonus = $script:SecretExit -and -not $script:BonusMap -and (Test-Path -LiteralPath $bonusPath)
+    $r.BonusPath = $bonusPath
+    $r.Last = -not $r.ToBonus -and $script:LevelIndex -ge $script:MapFiles.Count - 1
     $r.Previous = Add-SpeedrunResult $r.Exact $r.Last
     $r.TimeBonus = [Math]::Max(0, $script:ParSeconds - $seconds) * 500
     $r.Bonus = $r.TimeBonus + 10000 * (@($r.Kills, $r.Secrets, $r.Treasures) -eq 100).Count
@@ -224,7 +229,7 @@ function Complete-Level {
 function Show-DoneScreen {
     $r = $script:Result
     Show-Shade 'FF0A2030'
-    $head = if ($r.Last) { 'SHELLSTEIN HAS FALLEN!' } else { "FLOOR $($script:LevelIndex + 1) COMPLETED!" }
+    $head = if ($r.Last) { 'SHELLSTEIN HAS FALLEN!' } elseif ($script:BonusMap) { 'SECRET FLOOR COMPLETED!' } else { "FLOOR $($script:LevelIndex + 1) COMPLETED!" }
     Write-HudText $head 'Big' $(if ($r.Last) { 'F0D040' } else { 'FFFFFF' }) 0 14 320 24
     $best = if ($r.Previous -gt 0 -and $r.Exact -ge $r.Previous) { "best $(Format-Time $r.Previous -Tenths)" } elseif ($script:P.Cheated -or $script:P.RunInvalid) { 'not rated' } else { 'NEW RECORD!' }
     $rows = @(
@@ -240,7 +245,7 @@ function Show-DoneScreen {
         }
         $y += 14
     }
-    $foot = if ($r.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } else { 'Enter = take the lift to the next floor' }
+    $foot = if ($r.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
     Write-HudText $foot 'Small' 'FFE860' 0 200 320 10
 }
 
@@ -299,7 +304,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.Down) { $script:Difficulty = ($script:Difficulty + 1) % 4 }
                     elseif ($h -ge 49 -and $h -le 52) { $script:Difficulty = $h - 49 }
                     elseif ($h -eq $vk.Enter) {
-                        $script:LevelIndex = $script:StartLevelIndex; Start-Level $false $false; Set-Mode 'play'
+                        $script:LevelIndex = $script:StartLevelIndex; $script:BonusMap = $null; Start-Level $false $false; Set-Mode 'play'
                         if ($script:CheatAllWeapons) { Invoke-Cheat 'GiveAll' }
                     }
                     elseif ($h -eq $vk.L) { if (Restore-Game) { Set-Mode 'play' } }
@@ -382,7 +387,8 @@ function Start-GameLoop {
                 Show-DoneScreen
                 if ($script:ModeTics -gt 50 -and ($hits -contains $vk.Enter -or $hits -contains $vk.Esc)) {
                     if ($script:Result.Last) { Set-Mode 'title' }
-                    else { $script:LevelIndex++; Start-Level $true $true; Set-Mode 'play' }
+                    elseif ($script:Result.ToBonus) { $script:BonusMap = $script:Result.BonusPath; Start-Level $true $true; Set-Mode 'play' }
+                    else { $script:BonusMap = $null; $script:LevelIndex++; Start-Level $true $true; Set-Mode 'play' }
                 }
             }
         }

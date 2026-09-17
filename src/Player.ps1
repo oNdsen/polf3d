@@ -164,6 +164,11 @@ function Invoke-Use {
         Start-Sfx 'level_done'
         $script:LevelDone = $true
     }
+    elseif ($t -eq $script:TEX_SECRET_OFF) {
+        $script:Tiles[$idx] = $script:TEX_SECRET_ON
+        Start-Sfx 'level_done'
+        $script:LevelDone = $true; $script:SecretExit = $true         # this lift goes somewhere else ...
+    }
     elseif ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL) { Invoke-DoorUse ($t - $script:TILE_DOOR_BASE) }
 }
 

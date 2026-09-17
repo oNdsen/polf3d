@@ -8,7 +8,7 @@
     lift switch) can be reached from the start - walking through doors and through secret walls -,
     the keys for locked doors exist, and every patrol can walk its route without hitting a wall.
 .PARAMETER Map
-    One or more map files. Default: all maps/level*.map.
+    One or more map files. Default: all maps/*.map (campaign floors and bonus floors).
 #>
 [CmdletBinding()]
 param([string[]]$Map)
@@ -20,7 +20,7 @@ $src = Join-Path $PSScriptRoot '../src'
 . (Join-Path $src 'Mechanics.ps1')
 $script:Spr = @{}; $script:Difficulty = 2
 Initialize-States
-if (-not $Map) { $Map = Get-ChildItem (Join-Path $PSScriptRoot '../maps') -Filter 'level*.map' | Sort-Object { [int]($_.BaseName -replace '\D') } | ForEach-Object FullName }
+if (-not $Map) { $Map = Get-ChildItem (Join-Path $PSScriptRoot '../maps') -Filter '*.map' | Sort-Object Name | ForEach-Object FullName }
 
 function Test-LevelFile([string]$Path) {
     Initialize-Level (Resolve-Path $Path).Path
@@ -94,7 +94,7 @@ function Test-LevelFile([string]$Path) {
     for ($y = 0; $y -lt $h; $y++) {
         $line = for ($x = 0; $x -lt $w; $x++) {
             $i = $y * $w + $x; $t = $script:Tiles[$i]
-            if ($script:PushTex[$i]) { '?' } elseif ($script:Breakable[$i]) { '%' } elseif ($script:IsWindow[$i]) { '=' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
+            if ($script:PushTex[$i]) { '?' } elseif ($script:Breakable[$i]) { '%' } elseif ($script:IsWindow[$i]) { '=' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -eq $script:TEX_SECRET_OFF) { 'Y' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
             elseif ($script:ActorAt[$i]) { if ($script:ActorAt[$i].Def.Inert) { '*' } else { $script:ActorAt[$i].Kind[0] } } elseif ($script:StaticBlock[$i]) { 'o' }
             elseif ($reach[$i]) { '.' } else { '!' }
         }

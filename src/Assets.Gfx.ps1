@@ -190,6 +190,12 @@ function Add-WallArt([string]$Name) {
             }
             Add-Oval '0C0C0C' 26 30 9 8; Add-Oval '2A2A2A' 28 32 4 4
         }
+        { $_ -in 'secret_switch_off', 'secret_switch_on' } {
+            Add-WallBase steel
+            Add-Box '1A1430' 20 14 24 36; Add-Box '0C0A1C' 22 16 20 32; Add-Box '3A3460' 30 20 4 24
+            if ($Name -eq 'secret_switch_off') { Add-Box '4060F0' 27 18 10 8; Add-Box 'A0B8FF' 28 19 3 2 } else { Add-Box 'F0D040' 27 38 10 8; Add-Box 'FFF8C0' 28 39 3 2 }
+            Add-Emblem 23 26
+        }
         { $_ -in 'lever_off', 'lever_on' } {
             Add-WallBase stone
             Add-Box '2A2A2A' 22 16 20 32; Add-Box '484848' 24 18 16 28; Add-Box '181818' 30 22 4 20

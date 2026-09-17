@@ -339,10 +339,13 @@ function Invoke-SelfTest([string]$OutDir) {
 
     # ---- every floor: load, look around, let the world run for a while ----
     $script:StatesSeen = @()
-    for ($li = 0; $li -lt $script:MapFiles.Count; $li++) {
-        $script:LevelIndex = $li
+    $floors = @(for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { , @($i, $null) })
+    foreach ($b in Get-ChildItem (Split-Path $script:MapFiles[0]) -Filter 'bonus*.map') { $floors += , @(([int]($b.BaseName -replace '\D') - 1), $b.FullName) }
+    for ($fi = 0; $fi -lt $floors.Count; $fi++) {
+        $li = $floors[$fi][0]; $script:LevelIndex = $li; $script:BonusMap = $floors[$fi][1]
         Start-Level $true $true
-        Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir "floor-$($li + 1)-start.png")
+        $tag = if ($script:BonusMap) { "bonus-$($li + 1)" } else { "floor-$($li + 1)" }
+        Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir "$tag-start.png")
         # soak: every door open, constant noise - the whole floor wakes up and comes for the (immortal) player
         $seen = @{}
         for ($f = 0; $f -lt 1500; $f++) {
@@ -374,13 +377,29 @@ function Invoke-SelfTest([string]$OutDir) {
                 if ($f -gt 200 -and -not @($script:Actors | Where-Object { $_.Kind -in 'boss', 'uber', 'pilot' -and $_.Shootable -and $_.Area -eq $b.Area }).Count) { $f = [Math]::Max($f, 1400) }
             }
         }
-        Save-BackBuffer (Join-Path $OutDir "floor-$($li + 1)-soak.png")
+        Save-BackBuffer (Join-Path $OutDir "$tag-soak.png")
         $script:StatesSeen += @($seen.Keys)
-        Write-Step ("floor {0} '{1}': {2}x{3}, {4} enemies, {5} doors, {6} secrets" -f ($li + 1), $script:LevelName, $script:MapW, $script:MapH, $script:Stats.KillTotal, $script:Doors.Count, $script:Stats.SecretTotal)
+        Write-Step ("$tag '{1}': {2}x{3}, {4} enemies, {5} doors, {6} secrets" -f ($li + 1), $script:LevelName, $script:MapW, $script:MapH, $script:Stats.KillTotal, $script:Doors.Count, $script:Stats.SecretTotal)
     }
-    $script:LevelIndex = 0
+    $script:LevelIndex = 0; $script:BonusMap = $null
     $never = @($script:States.Keys | Where-Object { $_ -notin $script:StatesSeen } | Sort-Object)
     Write-Step "states visited: $(@($script:StatesSeen | Sort-Object -Unique).Count) of $($script:States.Count); never seen: $($never -join ', ')"
+
+    # ---- secret exit: floor 2 -> bonus floor -> floor 3 ----
+    if (Test-Path (Join-Path (Split-Path $script:MapFiles[0]) 'bonus2.map')) {
+        $script:LevelIndex = 1; $script:BonusMap = $null
+        Start-Level $false $false
+        $script:SecretExit = $true; Complete-Level
+        $toBonus = $script:Result.ToBonus
+        $script:BonusMap = $script:Result.BonusPath; Start-Level $true $true
+        $name = $script:LevelName
+        Save-Game; $null = Restore-Game
+        $restored = $script:BonusMap -and $script:LevelName -eq $name
+        Complete-Level
+        Write-Step "secret exit test: to bonus=$toBonus ('$name'), save/load on the bonus floor=$restored, campaign goes on afterwards=$(-not $script:Result.Last -and -not $script:Result.ToBonus)"
+        if (-not $toBonus -or -not $restored -or $script:Result.Last -or $script:Result.ToBonus) { throw 'secret exit test failed.' }
+        $script:BonusMap = $null; $script:LevelIndex = 0; $script:Mode = 'play'
+    }
 
     # ---- level completion and speedrun records ----
     $script:Speedrun = $true

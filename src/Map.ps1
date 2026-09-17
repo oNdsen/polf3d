@@ -8,6 +8,7 @@
 #   SS Sb Sp  BB Bc  WW Wp Ws  RR Rb  MM     solid walls: stone, blue stone, wood, brick, steel (+ decorated variants)
 #   GG Gv  TT Tl                             mossy rock (+ vines), tech panels (+ console)
 #   MX                                       lift switch (the exit)
+#   MY                                       hidden lift switch: leads to maps/bonus<floor>.map, then on to the next floor
 #   ?S ?s ?B ?b ?W ?w ?R ?r ?M ?G ?g ?T ?t   secret push-wall (upper case plain, lower case decorated)
 #   =S =B =W =R =M =G =T                     window: solid to walk into, open to eyes, ears and bullets
 #   !S !B !W !R !M !G !T                     cracked wall: only an explosion brings it down (counts as a secret)

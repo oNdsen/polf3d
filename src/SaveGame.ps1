@@ -45,14 +45,20 @@ function Restore-Game {
     if (-not (Test-SaveGame)) { Show-Message 'No saved game found'; return $false }
     try {
         $state = Get-Content -LiteralPath (Get-SavePath) -Raw | ConvertFrom-Json -AsHashtable
-        $index = -1
+        $index = -1; $bonus = $null
         for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { if ((Split-Path $script:MapFiles[$i] -Leaf) -eq $state.Map) { $index = $i } }
+        if ($index -lt 0 -and $state.Map -match '^bonus(\d+)\.map$') {                # saved on a secret floor
+            $bonus = Join-Path (Split-Path $script:MapFiles[0]) $state.Map
+            if (Test-Path -LiteralPath $bonus) { $index = [Math]::Min([int]$Matches[1], $script:MapFiles.Count) - 1 } else { $bonus = $null }
+        }
         if ($index -lt 0) { throw "the saved game's map '$($state.Map)' is missing" }
+        $script:BonusMap = $bonus
 
         $script:Difficulty = [int]$state.Difficulty
         $script:LevelIndex = $index
         $script:LevelStartScore = [int]$state.LevelStartScore
-        $script:MapFile = $script:MapFiles[$index]
+        $script:MapFile = if ($bonus) { $bonus } else { $script:MapFiles[$index] }
+        $script:SecretExit = $false
         Initialize-Level $script:MapFile
         $w = $script:MapW
 

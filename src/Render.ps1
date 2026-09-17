@@ -411,7 +411,7 @@ function Show-Hud {
 
     # floor, score, lives
     Write-HudPanel '80101A2C' 4 ($y + 4) 70 33
-    Write-HudText "FLOOR $($script:LevelIndex + 1)" 'Small' '40E0FF' 6 ($y + 5) 30 8
+    Write-HudText $(if ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }) 'Small' $(if ($script:BonusMap) { 'F0D040' } else { '40E0FF' }) 6 ($y + 5) 30 8
     Write-HudText ('{0:000000}' -f $p.Score) 'Mid' 'FFFFFF' 4 ($y + 13) 70 12
     Write-HudText ([string]::new([char]0x2665, [Math]::Min(9, [Math]::Max(0, $p.Lives)))) 'Small' 'FF4060' 4 ($y + 26) 70 9
 
@@ -470,7 +470,7 @@ function Get-WeaponResource {
 # second: only tiles that are new or have changed are painted.
 $script:MAP_CELL = 8
 $script:MAP_PAD = 10
-$script:MapColors = @{ 1 = '8A8A8A'; 2 = '8A8A8A'; 3 = '8A8A8A'; 4 = '3048B8'; 5 = '3048B8'; 6 = '8A5A28'; 7 = '8A5A28'; 8 = '8A5A28'; 9 = 'A43828'; 10 = 'A43828'; 11 = '7A8A9A'; 12 = 'D02020'; 13 = '20C040'; 19 = '5A7A4A'; 20 = '5A7A4A'; 21 = '4A6A80'; 22 = '4A6A80'; 23 = 'E040E0'; 24 = '20C040'; 33 = 'A0D0FF'; 34 = 'A0D0FF'; 35 = 'A0D0FF'; 36 = 'A0D0FF'; 37 = 'A0D0FF'; 38 = 'A0D0FF'; 39 = 'A0D0FF' }
+$script:MapColors = @{ 1 = '8A8A8A'; 2 = '8A8A8A'; 3 = '8A8A8A'; 4 = '3048B8'; 5 = '3048B8'; 6 = '8A5A28'; 7 = '8A5A28'; 8 = '8A5A28'; 9 = 'A43828'; 10 = 'A43828'; 11 = '7A8A9A'; 12 = 'D02020'; 13 = '20C040'; 19 = '5A7A4A'; 20 = '5A7A4A'; 21 = '4A6A80'; 22 = '4A6A80'; 23 = 'E040E0'; 24 = '20C040'; 40 = '4060F0'; 41 = 'F0D040'; 33 = 'A0D0FF'; 34 = 'A0D0FF'; 35 = 'A0D0FF'; 36 = 'A0D0FF'; 37 = 'A0D0FF'; 38 = 'A0D0FF'; 39 = 'A0D0FF' }
 
 function Update-MapBitmap {
     $now = $script:Clock.Elapsed.TotalSeconds

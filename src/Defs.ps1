@@ -99,8 +99,11 @@ $script:WallNames = @(
     'moss', 'moss_vines', 'tech', 'tech_lights',         # appended: ids of the older textures stay stable
     'lever_off', 'lever_on', 'door_remote',
     'stone_cracked', 'blue_cracked', 'wood_cracked', 'brick_cracked', 'steel_cracked', 'moss_cracked', 'tech_cracked',
-    'stone_window', 'blue_window', 'wood_window', 'brick_window', 'steel_window', 'moss_window', 'tech_window'
+    'stone_window', 'blue_window', 'wood_window', 'brick_window', 'steel_window', 'moss_window', 'tech_window',
+    'secret_switch_off', 'secret_switch_on'
 )
+$script:TEX_SECRET_OFF = 40       # the hidden lift switch that leads to a bonus floor
+$script:TEX_SECRET_ON  = 41
 # windows: '=' + texture letter. Solid to walk into, open to eyes, ears and bullets.
 $script:WindowCodes = @{ [char]'S' = 33; [char]'B' = 34; [char]'W' = 35; [char]'R' = 36; [char]'M' = 37; [char]'G' = 38; [char]'T' = 39 }
 # breakable walls: '!' + texture letter. Only explosions bring them down.
@@ -115,7 +118,7 @@ $script:TEX_DOOR       = 15      # + lock (0..3)
 
 $script:WallCodes = [hashtable]::new([StringComparer]::Ordinal)      # map codes are case sensitive
 foreach ($wc in @('SS', 1), @('Sb', 2), @('Sp', 3), @('BB', 4), @('Bc', 5), @('WW', 6), @('Wp', 7), @('Ws', 8),
-                 @('RR', 9), @('Rb', 10), @('MM', 11), @('MX', 12), @('GG', 19), @('Gv', 20), @('TT', 21), @('Tl', 22)) { $script:WallCodes[$wc[0]] = $wc[1] }
+                 @('RR', 9), @('Rb', 10), @('MM', 11), @('MX', 12), @('GG', 19), @('Gv', 20), @('TT', 21), @('Tl', 22), @('MY', 40)) { $script:WallCodes[$wc[0]] = $wc[1] }
 # secret push-walls: '?' + texture letter (lower case = decorated variant)
 $script:PushCodes = @{
     [char]'S' = 1; [char]'s' = 2; [char]'B' = 4; [char]'b' = 5
