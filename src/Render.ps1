@@ -300,7 +300,7 @@ function Show-Overlays {
 function Show-Face([double]$X, [double]$Y) {
     $p = $script:P; $g = $script:BackG; $s = $script:Scale
     $hp = $p.Health
-    Write-HudBar '10203C' $X $Y 28 34
+    Write-HudPanel '80101A2C' $X $Y 28 34
     $g.FillEllipse((Get-Brush 'E0A878'), [single](($X + 4) * $s), [single](($Y + 4) * $s), [single](20 * $s), [single](27 * $s))
     Write-HudBar '6A4420' ($X + 5) ($Y + 3) 18 7
     $look = if ($hp -le 0) { 0 } else { $p.FaceLook * 1.5 }
@@ -321,32 +321,102 @@ function Show-Face([double]$X, [double]$Y) {
     if ($hp -le 25) { Write-HudBar 'B01010' ($X + 16) ($Y + 6) 2 8; Write-HudBar 'B01010' ($X + 20) ($Y + 20) 3 3; Write-HudBar '5A2A6A' ($X + 7) ($Y + 11) 6 2 }
 }
 
-function Show-Hud {
-    $p = $script:P; $y = $script:ViewH
-    Write-HudBar '0A1428' 0 $y 320 40
-    Write-HudBar '2C4A86' 0 $y 320 1.5
-    $cells = @(
-        @(4, 40, 'FLOOR', "$($script:LevelIndex + 1)"), @(48, 68, 'SCORE', ('{0:000000}' -f $p.Score)), @(120, 30, 'LIVES', "$($p.Lives)"),
-        @(188, 46, 'HEALTH', "$($p.Health)%"), @(238, 36, 'AMMO', "$($p.Ammo)")
-    )
-    foreach ($c in $cells) {
-        Write-HudBar '1A2E5A' $c[0] ($y + 4) $c[1] 33
-        Write-HudText $c[2] 'Small' '8FB0FF' $c[0] ($y + 5) $c[1] 8
-        $col = if ($c[2] -eq 'HEALTH' -and $p.Health -le 25) { 'FF5040' } else { 'FFFFFF' }
-        Write-HudText $c[3] 'Big' $col $c[0] ($y + 14) $c[1] 22
+# Helpers for the status bar: rounded panels and gradient-filled gauges.
+function Get-RoundedPath([double]$X, [double]$Y, [double]$W, [double]$H, [double]$R) {
+    $s = $script:Scale; $d = [single](2 * $R * $s)
+    $x0 = [single]($X * $s); $y0 = [single]($Y * $s); $x1 = [single](($X + $W) * $s - $d); $y1 = [single](($Y + $H) * $s - $d)
+    $path = [System.Drawing.Drawing2D.GraphicsPath]::new()
+    $path.AddArc($x0, $y0, $d, $d, 180, 90); $path.AddArc($x1, $y0, $d, $d, 270, 90)
+    $path.AddArc($x1, $y1, $d, $d, 0, 90);   $path.AddArc($x0, $y1, $d, $d, 90, 90)
+    $path.CloseFigure()
+    $path
+}
+
+function Write-HudPanel([string]$Color, [double]$X, [double]$Y, [double]$W, [double]$H, [double]$R = 2.5) {
+    $path = Get-RoundedPath $X $Y $W $H $R
+    $script:BackG.FillPath((Get-Brush $Color), $path)
+    $path.Dispose()
+}
+
+# A gauge: dark track, a fill whose colour follows the value (red - amber - green), tick marks.
+function Write-HudGauge([double]$X, [double]$Y, [double]$W, [double]$H, [double]$Fraction, [string]$Low, [string]$High) {
+    $Fraction = [Math]::Max(0.0, [Math]::Min(1.0, $Fraction))
+    Write-HudPanel '0A1220' $X $Y $W $H 1.5
+    if ($Fraction -gt 0.01) {
+        $s = $script:Scale
+        $rect = [System.Drawing.RectangleF]::new([single]($X * $s), [single]($Y * $s), [single]($W * $s), [single]($H * $s))
+        $c1 = [System.Drawing.Color]::FromArgb([Convert]::ToInt32('FF' + $Low, 16)); $c2 = [System.Drawing.Color]::FromArgb([Convert]::ToInt32('FF' + $High, 16))
+        $brush = [System.Drawing.Drawing2D.LinearGradientBrush]::new($rect, $c1, $c2, [single]0)
+        $path = Get-RoundedPath ($X + 0.6) ($Y + 0.6) (($W - 1.2) * $Fraction) ($H - 1.2) 1.0
+        $script:BackG.FillPath($brush, $path)
+        $path.Dispose(); $brush.Dispose()
     }
-    Show-Face 155 ($y + 3)
-    # keys
-    Write-HudBar '1A2E5A' 278 ($y + 4) 12 33
-    Write-HudBar $(if ($p.KeyGold) { 'E8C020' } else { '101C38' }) 280 ($y + 8) 8 11
-    Write-HudBar $(if ($p.KeySilver) { 'D0D8E0' } else { '101C38' }) 280 ($y + 23) 8 11
-    # weapon
-    Write-HudBar '1A2E5A' 294 ($y + 4) 23 33
-    Write-HudText 'WEAPON' 'Small' '8FB0FF' 292 ($y + 5) 27 8
-    $special = $p.Weapon -ge $script:WEAPON_PIPELINE
-    Write-HudText $script:Weapons[$p.Weapon].Short 'Small' $(if ($special) { '40E0FF' } else { 'FFFFFF' }) 290 ($y + 15) 31 10
-    if ($p.Owned[$script:WEAPON_FORCE]) { Write-HudText "F x$($p.Charges)" 'Small' '40FF60' 290 ($y + 26) 31 9 }
+    for ($t = 1; $t -lt 10; $t++) { Write-HudBar '700A1220' ($X + $W * $t / 10) $Y 0.5 $H }
+}
+
+function Show-Hud {
+    $p = $script:P; $y = $script:ViewH; $g = $script:BackG; $s = $script:Scale
+    $old = $g.SmoothingMode; $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+
+    # backdrop: a dark gradient with a thin accent line towards the view
+    $rect = [System.Drawing.RectangleF]::new(0, [single]($y * $s), [single](320 * $s), [single](40 * $s))
+    $bg = [System.Drawing.Drawing2D.LinearGradientBrush]::new($rect, [System.Drawing.Color]::FromArgb(255, 22, 30, 46), [System.Drawing.Color]::FromArgb(255, 6, 9, 16), [single]90)
+    $g.FillRectangle($bg, $rect); $bg.Dispose()
+    Write-HudBar '40E0FF' 0 $y 320 0.7
+    Write-HudBar '3040E0FF' 0 ($y + 0.7) 320 1.2
+
+    # floor, score, lives
+    Write-HudPanel '80101A2C' 4 ($y + 4) 70 33
+    Write-HudText "FLOOR $($script:LevelIndex + 1)" 'Small' '40E0FF' 6 ($y + 5) 30 8
+    Write-HudText ('{0:000000}' -f $p.Score) 'Mid' 'FFFFFF' 4 ($y + 13) 70 12
+    Write-HudText ([string]::new([char]0x2665, [Math]::Min(9, [Math]::Max(0, $p.Lives)))) 'Small' 'FF4060' 4 ($y + 26) 70 9
+
+    # health
+    $hp = $p.Health
+    $hpColor = if ($hp -le 25) { 'FF5040' } elseif ($hp -le 50) { 'FFC040' } else { 'FFFFFF' }
+    Write-HudPanel '80101A2C' 78 ($y + 4) 72 33
+    Write-HudText 'HEALTH' 'Small' '8FB0FF' 80 ($y + 5) 30 8
+    Write-HudText "$hp" 'Big' $hpColor 78 ($y + 10) 72 18
+    $low, $high = if ($hp -le 25) { 'C02020', 'FF5040' } elseif ($hp -le 50) { 'C07010', 'FFC040' } else { '20A040', '60FF80' }
+    Write-HudGauge 82 ($y + 29) 64 5 ($hp / 100.0) $low $high
+
+    Show-Face 154 ($y + 3)
+
+    # ammunition - or whatever the weapon in hand consumes
+    $res = Get-WeaponResource
+    Write-HudPanel '80101A2C' 186 ($y + 4) 60 33
+    Write-HudText $res.Label 'Small' '8FB0FF' 188 ($y + 5) 34 8
+    Write-HudText $res.Text 'Big' $(if ($res.Fraction -le 0.1 -and $res.Text -ne '-') { 'FF5040' } else { 'FFFFFF' }) 186 ($y + 10) 60 18
+    Write-HudGauge 190 ($y + 29) 52 5 $res.Fraction 'B07010' 'FFD860'
+
+    # weapon slots, weapon name, keys
+    Write-HudPanel '80101A2C' 250 ($y + 4) 66 33
+    $n = $script:Weapons.Count; $bw = 62.0 / $n
+    for ($i = 0; $i -lt $n; $i++) {
+        $x = 252 + $i * $bw
+        $current = $i -eq $p.Weapon
+        $color = if ($current) { '40E0FF' } elseif ($p.Owned[$i]) { '2C4A86' } else { '141E30' }
+        Write-HudPanel $color $x ($y + 6) ($bw - 1) 9 1.2
+        Write-HudText "$($i + 1)" 'Small' $(if ($current) { '000000' } elseif ($p.Owned[$i]) { 'C0D0F0' } else { '3A4660' }) $x ($y + 6.5) ($bw - 1) 8
+    }
+    Write-HudText $script:Weapons[$p.Weapon].Name.ToUpper() 'Small' $(if ($p.Weapon -ge $script:WEAPON_PIPELINE) { '40E0FF' } else { 'FFFFFF' }) 250 ($y + 17) 66 9
+    foreach ($k in @($p.KeyGold, 'E8C020', 266), @($p.KeySilver, 'D0D8E0', 286)) {
+        $c = if ($k[0]) { $k[1] } else { '18243A' }
+        $g.FillEllipse((Get-Brush $c), [single]($k[2] * $s), [single](($y + 28) * $s), [single](6 * $s), [single](6 * $s))
+        $g.FillEllipse((Get-Brush '101A2C'), [single](($k[2] + 1.8) * $s), [single](($y + 29.8) * $s), [single](2.4 * $s), [single](2.4 * $s))
+        Write-HudBar $c ($k[2] + 5.5) ($y + 30) 8 2; Write-HudBar $c ($k[2] + 10) ($y + 32) 1.5 2.5; Write-HudBar $c ($k[2] + 12.5) ($y + 32) 1.5 2
+    }
+
+    $g.SmoothingMode = $old
     $script:HudDirty = $false
+}
+
+# What the ammo panel shows depends on the weapon in hand.
+function Get-WeaponResource {
+    $p = $script:P
+    if ($p.Weapon -eq 0) { return @{ Label = 'AMMO'; Text = '-'; Fraction = 0.0 } }
+    if ($p.Weapon -eq $script:WEAPON_FORCE) { return @{ Label = 'CHARGES'; Text = "$($p.Charges)"; Fraction = $p.Charges / 9.0 } }
+    @{ Label = 'AMMO'; Text = "$($p.Ammo)"; Fraction = $p.Ammo / [double]$script:MAX_AMMO }
 }
 
 # ---- automap and minimap ----------------------------------------------------------------------
