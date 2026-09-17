@@ -96,7 +96,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:HudDirty = $true
     if ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
-    $script:MusicWanted = if ($script:BonusMap) { 9 } else { $script:LevelIndex + 1 }
+    $script:MusicWanted = if ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
 }
 

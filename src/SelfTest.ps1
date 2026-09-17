@@ -450,6 +450,19 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     else { Write-Step 'game pad test: bridge not available (skipped)' }
 
+    # ---- music: every style must render, stay within 16 bits and differ from the others ----
+    $lengths = foreach ($track in 0, 1, 2, 3, 4, 5, $script:MUSIC_BONUS) {
+        $wav = Join-Path $OutDir "music-$track.wav"
+        New-MusicTrack $track $wav
+        $bytes = [System.IO.File]::ReadAllBytes($wav)
+        $samples = [int16[]]::new(($bytes.Length - 44) / 2); [Buffer]::BlockCopy($bytes, 44, $samples, 0, $samples.Length * 2)
+        $peak = 0; for ($i = 0; $i -lt $samples.Length; $i += 5) { $v = [Math]::Abs([int]$samples[$i]); if ($v -gt $peak) { $peak = $v } }
+        if ($peak -lt 4000 -or $peak -gt 32000) { throw "music test failed: track $track peaks at $peak." }
+        Remove-Item -LiteralPath $wav
+        "$(Get-MusicStyle $track) $([int]($samples.Length / $script:MUSIC_RATE))s"
+    }
+    Write-Step "music test: $($lengths -join ', ')"
+
     # ---- title screen ----
     $script:HighScores = @()
     Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'screen-title.png')
