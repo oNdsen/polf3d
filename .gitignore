@@ -1,0 +1,15 @@
+# id Software's original source: local reference for the analysis only,
+# deliberately NOT part of this repository
+reference/
+
+# run-time artefacts
+*.log
+selftest/
+saves/
+bin/
+
+# analysis and design notes stay local
+docs/
+
+# local tool settings
+.claude/

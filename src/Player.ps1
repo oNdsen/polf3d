@@ -1,0 +1,404 @@
+# POLF 3D - Copyright (c) 2026 oNdsen. Licensed under the MIT License, see LICENSE.
+
+# Player.ps1 - movement and collision, "use", weapons, picking things up, taking damage.
+
+$script:WALK_SPEED = 0.055        # tiles per tic
+$script:RUN_SPEED  = 0.095
+$script:BACK_FACTOR = 0.67        # walking backwards is slower
+$script:WALK_TURN  = 1.9          # degrees per tic
+$script:RUN_TURN   = 3.2
+
+function New-Player {
+    $script:P = @{
+        X = 0.0; Y = 0.0; Angle = 0.0; Area = -1
+        Health = 100; Ammo = $script:START_AMMO; Lives = 3; Score = 0; NextExtra = $script:EXTRA_LIFE_POINTS
+        KeyGold = $false; KeySilver = $false
+        Weapon = 1; ChosenWeapon = 1
+        Owned = [bool[]]($true, $true, $false, $false, $false, $false)    # knife and pistol from the start
+        Charges = 0; SudoTics = 0.0
+        AttackFrame = -1; AttackTics = 0.0; WeaponFrame = 0
+        Running = $false; UseHeld = $false; FireHeld = $false
+        FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0
+        Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
+    }
+}
+
+# ---------------------------------------------------------------------------------------------
+# Cheats.  F6 give all | F7 infinite ammo | F8 god mode | F11 one-hit kill (cuts BOTH ways)
+# ... or type the code words GIVEALL, NOLIMIT, ROOT, ONEHIT while playing.
+# ---------------------------------------------------------------------------------------------
+$script:CheatCodes = @{ GIVEALL = 'GiveAll'; NOLIMIT = 'Ammo'; ROOT = 'God'; ONEHIT = 'OneHit' }
+
+function Invoke-Cheat([string]$Name) {
+    $p = $script:P
+    $onOff = { param($flag) if ($flag) { 'ON' } else { 'OFF' } }
+    switch ($Name) {
+        'GiveAll' {
+            $p.Owned = [bool[]]($true, $true, $true, $true, $true, $true)
+            $p.Ammo = $script:MAX_AMMO; $p.Charges = [Math]::Max($p.Charges, 9); $p.Health = 100
+            $p.KeyGold = $true; $p.KeySilver = $true
+            if ($p.AttackFrame -lt 0) { $p.Weapon = 3; $p.ChosenWeapon = 3 }
+            Show-Message 'CHEAT: all weapons, ammo, charges and keys'
+        }
+        'Ammo'   { $script:InfiniteAmmo = -not $script:InfiniteAmmo; Show-Message "CHEAT: infinite ammo $(& $onOff $script:InfiniteAmmo)" }
+        'God'    { $script:GodMode = -not $script:GodMode; Show-Message "CHEAT: god mode $(& $onOff $script:GodMode)" }
+        'OneHit' { $script:OneHitKill = -not $script:OneHitKill; Show-Message "CHEAT: one-hit kill $(& $onOff $script:OneHitKill) - cuts BOTH ways!" }
+        default  { return }
+    }
+    $p.Cheated = $true
+    Start-Sfx 'sudo'
+    $script:HudDirty = $true
+}
+
+# Collects typed letters and fires a cheat when the tail of the buffer spells a code word.
+function Add-CheatKey([int]$KeyCode) {
+    if ($KeyCode -lt 65 -or $KeyCode -gt 90) { return }
+    $buf = "$($script:CheatBuffer)$([char]$KeyCode)"
+    if ($buf.Length -gt 12) { $buf = $buf.Substring($buf.Length - 12) }
+    $script:CheatBuffer = $buf
+    foreach ($code in $script:CheatCodes.Keys) {
+        if ($buf.EndsWith($code)) { $script:CheatBuffer = ''; Invoke-Cheat $script:CheatCodes[$code]; return }
+    }
+}
+
+# After death the player restarts the level with the basic kit (score and lives persist).
+function Reset-PlayerForLevel {
+    $p = $script:P
+    $p.X = $script:StartX; $p.Y = $script:StartY; $p.Angle = $script:StartAngle
+    $p.Area = $script:AreaOf[[int][Math]::Floor($p.Y) * $script:MapW + [int][Math]::Floor($p.X)]
+    $p.AttackFrame = -1; $p.WeaponFrame = 0; $p.KeyGold = $false; $p.KeySilver = $false
+    $p.UseHeld = $true; $p.FireHeld = $true
+    Update-AreaByPlayer
+}
+
+function Reset-PlayerKit {
+    $p = $script:P
+    $p.Health = 100; $p.Ammo = $script:START_AMMO
+    $p.Weapon = 1; $p.ChosenWeapon = 1
+    $p.Owned = [bool[]]($true, $true, $false, $false, $false, $false)
+    $p.Charges = 0; $p.SudoTics = 0.0
+}
+
+function Show-Message([string]$Text) {
+    $script:Message = $Text
+    $script:MessageUntil = $script:Clock.Elapsed.TotalSeconds + 2.5
+}
+
+function Add-Score([int]$Points) {
+    $p = $script:P
+    $p.Score += $Points
+    while ($p.Score -ge $p.NextExtra) {
+        $p.NextExtra += $script:EXTRA_LIFE_POINTS
+        if ($p.Lives -lt 9) { $p.Lives++ }
+        Start-Sfx 'oneup'
+    }
+    $script:HudDirty = $true
+}
+
+# ---------------------------------------------------------------------------------------------
+# Collision
+# ---------------------------------------------------------------------------------------------
+function Test-PlayerSpot([double]$X, [double]$Y) {
+    $r = $script:PLAYER_RADIUS; $w = $script:MapW
+    [int]$xl = [Math]::Floor($X - $r); [int]$xh = [Math]::Floor($X + $r)
+    [int]$yl = [Math]::Floor($Y - $r); [int]$yh = [Math]::Floor($Y + $r)
+    for ($ty = $yl; $ty -le $yh; $ty++) {
+        for ($tx = $xl; $tx -le $xh; $tx++) {
+            $idx = $ty * $w + $tx
+            $t = $script:Tiles[$idx]
+            if ($t -eq 0) { if ($script:StaticBlock[$idx]) { return $false }; continue }
+            if ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open') { continue }
+            return $false
+        }
+    }
+    if ($script:NoClipActors) { return $true }
+    $min = $script:MIN_ACTOR_DIST
+    foreach ($a in $script:Actors) {
+        if ($a.Shootable -and [Math]::Abs($X - $a.X) -lt $min -and [Math]::Abs($Y - $a.Y) -lt $min) {
+            # already overlapping (e.g. after a respawn)? then at least allow moving apart
+            if ([Math]::Abs($script:P.X - $a.X) -lt $min -and [Math]::Abs($script:P.Y - $a.Y) -lt $min) { continue }
+            return $false
+        }
+    }
+    $true
+}
+
+# Try the full move; if blocked slide along the wall on one axis.
+function Move-Player([double]$DX, [double]$DY) {
+    $p = $script:P
+    $steps = [int][Math]::Ceiling([Math]::Max([Math]::Abs($DX), [Math]::Abs($DY)) / 0.25)
+    if ($steps -lt 1) { return }
+    $sx = $DX / $steps; $sy = $DY / $steps
+    for ($i = 0; $i -lt $steps; $i++) {
+        if (Test-PlayerSpot ($p.X + $sx) ($p.Y + $sy)) { $p.X += $sx; $p.Y += $sy }
+        elseif (Test-PlayerSpot ($p.X + $sx) $p.Y) { $p.X += $sx }
+        elseif (Test-PlayerSpot $p.X ($p.Y + $sy)) { $p.Y += $sy }
+        else { break }
+    }
+    $area = $script:AreaOf[[int][Math]::Floor($p.Y) * $script:MapW + [int][Math]::Floor($p.X)]
+    if ($area -ge 0 -and $area -ne $p.Area) { $p.Area = $area; Update-AreaByPlayer }
+}
+
+# ---------------------------------------------------------------------------------------------
+# Use: doors, push-walls, the lift switch - always the tile straight ahead (N/E/S/W)
+# ---------------------------------------------------------------------------------------------
+function Invoke-Use {
+    $p = $script:P
+    $quad = [int][Math]::Floor((($p.Angle + 45.0) % 360.0) / 90.0) % 4          # 0 E, 1 N, 2 W, 3 S
+    $dx = (1, 0, -1, 0)[$quad]; $dy = (0, -1, 0, 1)[$quad]
+    $tx = [int][Math]::Floor($p.X) + $dx; $ty = [int][Math]::Floor($p.Y) + $dy
+    $idx = $ty * $script:MapW + $tx
+    $t = $script:Tiles[$idx]
+    if ($script:PushTex[$idx] -ne 0) { Start-PushWall $tx $ty $dx $dy }
+    elseif ($t -eq $script:TEX_SWITCH_OFF) {
+        $script:Tiles[$idx] = $script:TEX_SWITCH_ON
+        Start-Sfx 'level_done'
+        $script:LevelDone = $true
+    }
+    elseif ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL) { Invoke-DoorUse ($t - $script:TILE_DOOR_BASE) }
+}
+
+# ---------------------------------------------------------------------------------------------
+# Weapons
+# ---------------------------------------------------------------------------------------------
+function Get-AimedTargets {
+    # Whoever the renderer saw close to the screen centre last frame, nearest first.
+    $cx = $script:ViewW / 2; $tol = $script:ViewW / 10
+    $list = foreach ($a in $script:Actors) {
+        if ($a.Shootable -and $a.Visible -and [Math]::Abs($a.ScreenX - $cx) -lt $tol) { $a }
+    }
+    @($list | Sort-Object Depth)
+}
+
+function Invoke-GunAttack {
+    $script:MadeNoise = $true
+    Start-Sfx $script:Weapons[$script:P.Weapon].Snd
+    foreach ($a in (Get-AimedTargets)) {
+        if (-not (Test-LineToPlayer $a.X $a.Y)) { continue }
+        $dist = [Math]::Max([Math]::Abs([Math]::Floor($a.X) - [Math]::Floor($script:P.X)), [Math]::Abs([Math]::Floor($a.Y) - [Math]::Floor($script:P.Y)))
+        $r = Get-Rnd
+        if ($dist -lt 2) { $damage = $r / 4 }
+        elseif ($dist -lt 4) { $damage = $r / 6 }
+        else {
+            if (((Get-Rnd) / 12) -lt $dist) { return }          # long shots may simply miss
+            $damage = $r / 6
+        }
+        Invoke-ActorDamage $a ([int][Math]::Floor($damage))
+        return
+    }
+}
+
+function Invoke-KnifeAttack {
+    Start-Sfx 'knife'
+    $targets = Get-AimedTargets
+    if ($targets.Count -eq 0 -or $targets[0].Depth -gt 1.5) { return }
+    Invoke-ActorDamage $targets[0] ((Get-Rnd) -shr 4)
+}
+
+# Pipeline-Kanone: the beam passes through everybody standing in the line of fire.
+function Invoke-BeamAttack {
+    $script:MadeNoise = $true
+    Start-Sfx 'shot_pipe'
+    $script:BeamFlash = 10.0
+    foreach ($a in (Get-AimedTargets)) {
+        if (Test-LineToPlayer $a.X $a.Y) { Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) }
+    }
+}
+
+# Force-Blaster: Remove-Item -Recurse -Force on everything in sight.
+function Invoke-BlastAttack {
+    $script:MadeNoise = $true
+    Start-Sfx 'shot_force'
+    $script:ForceFlash = 24.0
+    foreach ($a in @($script:Actors)) {
+        if ($a.Shootable -and $a.Visible -and (Test-LineToPlayer $a.X $a.Y)) { Invoke-ActorDamage $a (150 + (Get-Rnd)) }
+    }
+}
+
+# Can the weapon fire at all right now?
+function Test-WeaponReady([int]$Index) {
+    $p = $script:P
+    if (-not $p.Owned[$Index]) { return $false }
+    if ($script:InfiniteAmmo) { return $true }
+    if ($Index -eq $script:WEAPON_FORCE) { return $p.Charges -gt 0 }
+    $p.Ammo -ge $script:Weapons[$Index].Cost
+}
+
+# Falls back to the best weapon that still has something to shoot with.
+function Select-UsableWeapon {
+    $p = $script:P
+    if (Test-WeaponReady $p.ChosenWeapon) { $p.Weapon = $p.ChosenWeapon; return }
+    foreach ($i in 3, 2, 1) { if (Test-WeaponReady $i) { $p.Weapon = $i; return } }
+    $p.Weapon = 0
+}
+
+function Update-Attack([double]$Tics, [bool]$Trigger) {
+    $p = $script:P
+    if ($p.AttackFrame -lt 0) { return }
+    $frames = $script:Weapons[$p.Weapon].Frames
+    $p.AttackTics -= $Tics
+    while ($p.AttackTics -le 0) {
+        $cur = $frames[$p.AttackFrame]
+        $action = $cur[1]
+        if ($action -eq 'end') {
+            $p.AttackFrame = -1; $p.WeaponFrame = 0
+            Select-UsableWeapon
+            $script:HudDirty = $true
+            return
+        }
+        if ($action -eq 'knife') { Invoke-KnifeAttack }
+        elseif ($action -eq 'beam') {
+            if (Test-WeaponReady $p.Weapon) { Invoke-BeamAttack; if (-not $script:InfiniteAmmo) { $p.Ammo -= $script:Weapons[$p.Weapon].Cost }; $script:HudDirty = $true }
+            else { Start-Sfx 'noway' }
+        }
+        elseif ($action -eq 'blast') {
+            if ($p.Charges -gt 0 -or $script:InfiniteAmmo) { Invoke-BlastAttack; if (-not $script:InfiniteAmmo) { $p.Charges-- }; $script:HudDirty = $true } else { Start-Sfx 'noway' }
+        }
+        elseif ($action -eq 'repeat') { if (($p.Ammo -gt 0 -or $script:InfiniteAmmo) -and $Trigger) { $p.AttackFrame -= 2 } }
+        elseif ($action -eq 'fire' -or $action -eq 'firerepeat') {
+            if ($p.Ammo -gt 0 -or $script:InfiniteAmmo) {
+                if ($action -eq 'firerepeat' -and $Trigger) { $p.AttackFrame -= 2 }
+                Invoke-GunAttack
+                if (-not $script:InfiniteAmmo) { $p.Ammo-- }
+                $script:HudDirty = $true
+            }
+        }
+        $p.AttackTics += $cur[0]
+        $p.AttackFrame++
+        $p.WeaponFrame = $frames[$p.AttackFrame][2]
+    }
+}
+
+# ---------------------------------------------------------------------------------------------
+# Items
+# ---------------------------------------------------------------------------------------------
+function Add-Health([int]$Points) { $script:P.Health = [Math]::Min(100, $script:P.Health + $Points) }
+
+function Add-Ammo([int]$Count) {
+    $p = $script:P
+    $p.Ammo = [Math]::Min($script:MAX_AMMO, $p.Ammo + $Count)
+    if ($p.AttackFrame -lt 0) { Select-UsableWeapon }           # the knife was only a stopgap
+}
+
+function Add-Weapon([int]$Index) {
+    $p = $script:P
+    if ($Index -eq $script:WEAPON_FORCE) { $p.Charges += 1 } else { Add-Ammo 6 }
+    if (-not $p.Owned[$Index]) {
+        $p.Owned[$Index] = $true
+        $p.ChosenWeapon = $Index
+        if ($p.AttackFrame -lt 0) { $p.Weapon = $Index }
+    }
+    $p.GrinTics = 100
+}
+
+# Returns $false if the player has no use for the item right now (it stays on the floor).
+function Invoke-Pickup([string]$Item) {
+    $p = $script:P
+    switch ($Item) {
+        'dogfood'    { if ($p.Health -ge 100) { return $false }; Add-Health 4;  Start-Sfx 'pickup' }
+        'food'       { if ($p.Health -ge 100) { return $false }; Add-Health 10; Start-Sfx 'pickup' }
+        'medkit'     { if ($p.Health -ge 100) { return $false }; Add-Health 25; Start-Sfx 'pickup' }
+        'clip'       { if ($p.Ammo -ge $script:MAX_AMMO) { return $false }; Add-Ammo 8; Start-Sfx 'ammo' }
+        'clip_small' { if ($p.Ammo -ge $script:MAX_AMMO) { return $false }; Add-Ammo 4; Start-Sfx 'ammo' }
+        'mgun'       { Add-Weapon 2; Start-Sfx 'weapon'; Show-Message 'Machine gun!' }
+        'chaingun'   { Add-Weapon 3; Start-Sfx 'weapon'; Show-Message 'Chain gun!' }
+        'pipeline'   { Add-Weapon 4; Start-Sfx 'weapon'; Show-Message 'PIPELINE CANNON!  Pierces everything in the line of fire' }
+        'forcegun'   { Add-Weapon 5; Start-Sfx 'weapon'; Show-Message 'FORCE-BLASTER!  Remove-Item -Recurse -Force' }
+        'charge'     { $p.Charges++; Start-Sfx 'ammo'; Show-Message 'Force charge' ; if ($p.AttackFrame -lt 0) { Select-UsableWeapon } }
+        'sudo'       { $p.SudoTics = $script:SUDO_TICS; Start-Sfx 'sudo'; Show-Message 'SUDO!  Double damage dealt, half damage taken' }
+        'key_gold'   { $p.KeyGold = $true;   Start-Sfx 'key'; Show-Message 'Gold key' }
+        'key_silver' { $p.KeySilver = $true; Start-Sfx 'key'; Show-Message 'Silver key' }
+        'coins'      { Add-Score 100;  $script:Stats.Treasures++; Start-Sfx 'treasure' }
+        'goblet'     { Add-Score 500;  $script:Stats.Treasures++; Start-Sfx 'treasure' }
+        'chest'      { Add-Score 1000; $script:Stats.Treasures++; Start-Sfx 'treasure' }
+        'crown'      { Add-Score 5000; $script:Stats.Treasures++; Start-Sfx 'treasure' }
+        'oneup'      {
+            Add-Health 99; Add-Ammo 25
+            if ($p.Lives -lt 9) { $p.Lives++ }
+            $script:Stats.Treasures++; Start-Sfx 'oneup'; Show-Message 'Extra life!'
+        }
+    }
+    $script:BonusFlash = 18.0
+    $script:HudDirty = $true
+    $true
+}
+
+function Update-Pickups {
+    $px = $script:P.X; $py = $script:P.Y
+    foreach ($s in $script:Items) {
+        if ($s.Removed) { continue }
+        if ([Math]::Abs($px - ($s.X + 0.5)) -lt 0.6 -and [Math]::Abs($py - ($s.Y + 0.5)) -lt 0.6) {
+            if (Invoke-Pickup $s.Item) { $s.Removed = $true }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------------------------
+# Damage taken
+# ---------------------------------------------------------------------------------------------
+function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
+    $p = $script:P
+    if ($p.Health -le 0) { return }                              # already dead
+    $Points = [int][Math]::Floor($Points * $script:Difficulties[$script:Difficulty].DamageScale)
+    if ($p.SudoTics -gt 0) { $Points = [int][Math]::Floor($Points / 2) }
+    if ($script:OneHitKill) { $Points = 999 }                    # the cheat cuts both ways: every hit is fatal
+    if ($Points -le 0) { return }
+    if (-not $script:GodMode) { $p.Health -= $Points }
+    $script:DamageFlash += $Points
+    $p.GrinTics = 0
+    $script:HudDirty = $true
+    if ($p.Health -le 0) {
+        $p.Health = 0
+        $script:Killer = $Attacker
+        $script:PlayerDied = $true
+        Start-Sfx 'player_die'
+    }
+    else { Start-Sfx 'pain' }
+}
+
+# ---------------------------------------------------------------------------------------------
+# Per-frame update. $In = @{ Forward; Strafe; Turn (-1..1 each); MouseTurn (degrees); Run; Fire; Use; Weapon (-1 or 0..5) }
+# ---------------------------------------------------------------------------------------------
+function Update-Player([double]$Tics, [hashtable]$In) {
+    $p = $script:P
+    $p.Running = [bool]$In.Run
+
+    if ($In.Weapon -ge 0 -and $p.AttackFrame -lt 0 -and (Test-WeaponReady $In.Weapon)) {
+        $p.Weapon = $In.Weapon; $p.ChosenWeapon = $In.Weapon; $script:HudDirty = $true
+    }
+    if ($p.SudoTics -gt 0) {
+        $before = [Math]::Ceiling($p.SudoTics / 70)
+        $p.SudoTics = [Math]::Max(0.0, $p.SudoTics - $Tics)
+        if ([Math]::Ceiling($p.SudoTics / 70) -ne $before) { $script:HudDirty = $true }
+    }
+
+    if ($In.Use) { if (-not $p.UseHeld) { $p.UseHeld = $true; Invoke-Use } } else { $p.UseHeld = $false }
+
+    if ($In.Fire) {
+        if (-not $p.FireHeld -and $p.AttackFrame -lt 0) {
+            $p.FireHeld = $true
+            $frames = $script:Weapons[$p.Weapon].Frames
+            $p.AttackFrame = 0; $p.AttackTics = $frames[0][0]; $p.WeaponFrame = $frames[0][2]
+        }
+    }
+    else { $p.FireHeld = $false }
+
+    $turn = if ($p.Running) { $script:RUN_TURN } else { $script:WALK_TURN }
+    $p.Angle = ($p.Angle - $In.Turn * $turn * $Tics - $In.MouseTurn + 720.0) % 360.0
+
+    $speed = $(if ($p.Running) { $script:RUN_SPEED } else { $script:WALK_SPEED }) * $Tics
+    $rad = $p.Angle * [Math]::PI / 180.0
+    $fx = [Math]::Cos($rad); $fy = - [Math]::Sin($rad)          # y grows southwards
+    $fwd = $In.Forward; if ($fwd -lt 0) { $fwd *= $script:BACK_FACTOR }
+    $dx = ($fx * $fwd - $fy * $In.Strafe) * $speed
+    $dy = ($fy * $fwd + $fx * $In.Strafe) * $speed
+    if ($dx -ne 0 -or $dy -ne 0) { Move-Player $dx $dy }
+
+    Update-Attack $Tics ([bool]$In.Fire)
+    Update-Pickups
+
+    # the face in the status bar glances around at random
+    $p.FaceTimer += $Tics
+    if ($p.GrinTics -gt 0) { $p.GrinTics -= $Tics; if ($p.GrinTics -le 0) { $script:HudDirty = $true } }
+    if ($p.FaceTimer -gt (Get-Rnd)) { $p.FaceTimer = 0; $p.FaceLook = $script:Rng.Next(3) - 1; $script:HudDirty = $true }
+}
