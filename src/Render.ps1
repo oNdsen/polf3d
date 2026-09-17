@@ -283,6 +283,13 @@ function Show-Overlays {
     }
     $cheats = @(if ($script:GodMode) { 'GOD' }; if ($script:InfiniteAmmo) { 'AMMO' }; if ($script:OneHitKill) { '1-HIT' })
     if ($cheats) { Write-HudText ("CHEAT: " + ($cheats -join ' + ')) 'Small' 'FF60FF' 2 ($viewH - 10) 120 8 }
+    # progress on this floor, and the clock when speedrunning
+    $st = $script:Stats
+    Write-HudText ("KILLS {0}/{1}   SECRETS {2}/{3}   TREASURE {4}/{5}" -f $st.Kills, $st.KillTotal, $st.Secrets, $st.SecretTotal, $st.Treasures, $st.TreasureTotal) 'Small' 'A0B4D0' 2 ($viewH - 19) 150 8
+    if ($script:Speedrun) {
+        $now = $st.Tics / $script:TICRATE
+        Write-HudText ("{0}   par {1}   run {2}" -f (Format-Time $now -Tenths), (Format-Time $script:ParSeconds), (Format-Time (($script:P.RunTics + $st.Tics) / $script:TICRATE))) 'Mid' $(if ($now -le $script:ParSeconds) { '40FF60' } else { 'FF8040' }) 60 14 200 10
+    }
     if ($script:ShowFps) { Write-HudText ("{0:0} fps" -f $script:Fps) 'Small' '80FF80' 2 2 40 8 }
     if ($script:Message -and $script:Clock.Elapsed.TotalSeconds -lt $script:MessageUntil) {
         Write-HudText $script:Message 'Mid' '000000' 0.6 6.6 320 10

@@ -90,6 +90,7 @@ function Restore-Game {
         }
         $script:P.Owned = [bool[]]$state.Player.Owned
         $script:P.UseHeld = $true; $script:P.FireHeld = $true
+        $script:P.RunInvalid = $true                              # a loaded game is no clean speedrun
 
         Update-AreaByPlayer
         Set-Background
@@ -105,6 +106,48 @@ function Restore-Game {
         Show-Message "Loading failed: $($_.Exception.Message)"
         return $false
     }
+}
+
+# ---- speedrun records ---------------------------------------------------------------------------
+# saves/speedrun.json: the best time per floor and difficulty, and the five fastest full runs.
+function Format-Time([double]$Seconds, [switch]$Tenths) {
+    $m = [int][Math]::Floor($Seconds / 60); $s = $Seconds - 60 * $m
+    if ($Tenths) { '{0}:{1:00.0}' -f $m, ([Math]::Floor($s * 10) / 10) } else { '{0}:{1:00}' -f $m, [int][Math]::Floor($s) }
+}
+
+function Get-SpeedrunData {
+    $path = Join-Path $script:SaveDir 'speedrun.json'
+    $data = $null
+    if (Test-Path -LiteralPath $path) { try { $data = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable } catch { $data = $null } }
+    if (-not $data) { $data = @{} }
+    if (-not $data.Floors) { $data.Floors = @{} }
+    if (-not $data.Runs) { $data.Runs = @() }
+    $data
+}
+
+function Save-SpeedrunData([hashtable]$Data) {
+    try {
+        $null = New-Item -ItemType Directory -Path $script:SaveDir -Force
+        $Data | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $script:SaveDir 'speedrun.json') -Encoding utf8
+    }
+    catch { Write-Warning "Could not save the speedrun records: $($_.Exception.Message)" }
+}
+
+# Registers a finished floor (and, after the last one, the whole run). Returns the previous best
+# time of the floor, or 0 if there was none. Cheated or loaded runs never enter the records.
+function Add-SpeedrunResult([double]$FloorSeconds, [bool]$RunComplete) {
+    $p = $script:P
+    $data = Get-SpeedrunData
+    $key = "$(Split-Path $script:MapFile -Leaf)|$($script:Difficulty)"
+    $previous = [double]$data.Floors[$key]
+    if ($p.Cheated -or $p.RunInvalid) { return $previous }
+    if ($previous -le 0 -or $FloorSeconds -lt $previous) { $data.Floors[$key] = [Math]::Round($FloorSeconds, 1) }
+    if ($RunComplete -and $script:StartLevelIndex -eq 0) {
+        $run = @{ Name = $env:USERNAME; Seconds = [Math]::Round($p.RunTics / $script:TICRATE, 1); Difficulty = $script:Difficulties[$script:Difficulty].Name; Date = (Get-Date).ToString('yyyy-MM-dd') }
+        $data.Runs = @(@($data.Runs) + $run | Sort-Object { [double]$_.Seconds } | Select-Object -First 5)
+    }
+    Save-SpeedrunData $data
+    $previous
 }
 
 # ---- high scores ------------------------------------------------------------------------------

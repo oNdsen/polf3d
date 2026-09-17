@@ -19,6 +19,8 @@
     Play just this one level file instead of the campaign (maps/level1.map, level2.map, ...).
 .PARAMETER Level
     Start the campaign on this floor.
+.PARAMETER Speedrun
+    Show the speedrun clock (floor time, par, total run) and keep records in saves/speedrun.json.
 .PARAMETER NoSound
     Skip sound synthesis (faster start, no sound effects).
 .PARAMETER NoMusic
@@ -43,6 +45,7 @@ param(
     [ValidateRange(1, 4)][int]$Difficulty = 2,
     [string]$Map,
     [ValidateRange(1, 99)][int]$Level = 1,
+    [switch]$Speedrun,
     [switch]$NoSound,
     [switch]$NoMusic,
     [switch]$GodMode,
@@ -71,6 +74,7 @@ $script:LevelIndex = $script:StartLevelIndex
 $script:MapFile = $script:MapFiles[$script:LevelIndex]
 $script:Difficulty = $Difficulty - 1
 $script:GodMode = [bool]$GodMode
+$script:Speedrun = [bool]$Speedrun
 $script:InfiniteAmmo = [bool]$InfiniteAmmo
 $script:OneHitKill = [bool]$OneHitKill
 $script:CheatAllWeapons = [bool]$AllWeapons

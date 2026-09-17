@@ -20,6 +20,7 @@ function New-Player {
         Running = $false; UseHeld = $false; FireHeld = $false
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
+        RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
     }
 }
 

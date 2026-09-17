@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; W = 87
+    A = 65; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; T = 84; W = 87
     F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122
 }
 
@@ -169,12 +169,24 @@ function Show-TitleScreen {
         Write-HudText "$($i + 1)  $($script:Difficulties[$i].Name)" 'Mid' $(if ($sel) { 'FFFFFF' } else { '7080A0' }) 80 (76 + $i * 11) 160 10
     }
     $load = if (Test-SaveGame) { 'L = load saved game     ' } else { '' }
-    Write-HudText "${load}Esc = quit" 'Small' 'FFE860' 0 123 320 8
+    Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
     $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-6  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
     Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
 
+    if ($script:Speedrun) {
+        Write-HudText 'FASTEST RUNS' 'Small' '8FB0FF' 160 138 160 8
+        $y = 148; $runs = @((Get-SpeedrunData).Runs)
+        foreach ($run in $runs) { Write-HudText ('{0,-12} {1,8}  {2}' -f $run.Name, (Format-Time $run.Seconds -Tenths), $run.Difficulty) 'Small' 'C0C8D8' 164 $y 152 8; $y += 9 }
+        if (-not $runs) { Write-HudText '- no complete run yet -' 'Small' '7080A0' 160 150 160 8 }
+    }
+    else { Show-HighScoreList }
+    Write-HudText "$($script:MapFiles.Count) floors  -  all graphics and sounds are generated procedurally at start-up." 'Small' '506080' 0 217 320 8
+    Write-HudText "POLF 3D  $($script:Copyright)" 'Small' '7080A0' 0 226 320 8
+}
+
+function Show-HighScoreList {
     Write-HudText 'HIGH SCORES' 'Small' '8FB0FF' 160 138 160 8
     $y = 148
     foreach ($h in $script:HighScores) {
@@ -182,8 +194,6 @@ function Show-TitleScreen {
         $y += 9
     }
     if (-not $script:HighScores) { Write-HudText '- empty so far -' 'Small' '7080A0' 160 150 160 8 }
-    Write-HudText "$($script:MapFiles.Count) floors  -  all graphics and sounds are generated procedurally at start-up." 'Small' '506080' 0 217 320 8
-    Write-HudText "POLF 3D  $($script:Copyright)" 'Small' '7080A0' 0 226 320 8
 }
 
 function Get-Percent([int]$Count, [int]$Total) { if ($Total -le 0) { 100 } else { [int][Math]::Floor(100 * $Count / $Total) } }
@@ -197,10 +207,13 @@ function Complete-Level {
         Secrets = Get-Percent $st.Secrets $st.SecretTotal
         Treasures = Get-Percent $st.Treasures $st.TreasureTotal
     }
+    $script:P.RunTics += $st.Tics
+    $r.Exact = $st.Tics / $script:TICRATE
+    $r.Last = $script:LevelIndex -ge $script:MapFiles.Count - 1
+    $r.Previous = Add-SpeedrunResult $r.Exact $r.Last
     $r.TimeBonus = [Math]::Max(0, $script:ParSeconds - $seconds) * 500
     $r.Bonus = $r.TimeBonus + 10000 * (@($r.Kills, $r.Secrets, $r.Treasures) -eq 100).Count
     $script:Result = $r
-    $r.Last = $script:LevelIndex -ge $script:MapFiles.Count - 1
     Add-Score $r.Bonus
     if ($r.Last) { Add-HighScore $script:P.Score "VICTORY$(if ($script:P.Cheated) { ' (cheat)' })"; $script:HighScores = Get-HighScores }
     Set-Mode 'done'
@@ -211,9 +224,9 @@ function Show-DoneScreen {
     Show-Shade 'FF0A2030'
     $head = if ($r.Last) { 'SHELLSTEIN HAS FALLEN!' } else { "FLOOR $($script:LevelIndex + 1) COMPLETED!" }
     Write-HudText $head 'Big' $(if ($r.Last) { 'F0D040' } else { 'FFFFFF' }) 0 14 320 24
-    $fmt = { param($s) '{0}:{1:00}' -f [int][Math]::Floor($s / 60), ($s % 60) }
+    $best = if ($r.Previous -gt 0 -and $r.Exact -ge $r.Previous) { "best $(Format-Time $r.Previous -Tenths)" } elseif ($script:P.Cheated -or $script:P.RunInvalid) { 'not rated' } else { 'NEW RECORD!' }
     $rows = @(
-        @('Time', (& $fmt $r.Seconds)), @('Par', (& $fmt $script:ParSeconds)), @('', ''),
+        @('Time', "$(Format-Time $r.Exact -Tenths)   $best"), @('Par', (Format-Time $script:ParSeconds)), @('Run', (Format-Time ($script:P.RunTics / $script:TICRATE) -Tenths)),
         @('Kills', "$($r.Kills) %"), @('Secrets', "$($r.Secrets) %"), @('Treasures', "$($r.Treasures) %"), @('', ''),
         @('Bonus', "$($r.Bonus)"), @('Score', "$($script:P.Score)")
     )
@@ -221,7 +234,7 @@ function Show-DoneScreen {
     foreach ($row in $rows) {
         if ($row[0]) {
             Write-HudText $row[0] 'Mid' '8FB0FF' 60 $y 100 12
-            Write-HudText $row[1] 'Mid' $(if ($row[1] -eq '100 %') { '40FF60' } else { 'FFFFFF' }) 160 $y 100 12
+            Write-HudText $row[1] 'Mid' $(if ($row[1] -eq '100 %' -or $row[1] -like '*RECORD*') { '40FF60' } else { 'FFFFFF' }) 150 $y 150 12
         }
         $y += 14
     }
@@ -288,6 +301,7 @@ function Start-GameLoop {
                         if ($script:CheatAllWeapons) { Invoke-Cheat 'GiveAll' }
                     }
                     elseif ($h -eq $vk.L) { if (Restore-Game) { Set-Mode 'play' } }
+                    elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
                 if ($script:Mode -eq 'title') { Show-TitleScreen }
@@ -350,7 +364,7 @@ function Start-GameLoop {
                         $script:HighScores = Get-HighScores
                         Set-Mode 'gameover'
                     }
-                    else { $p.Score = $script:LevelStartScore; Start-Level $true $false; Set-Mode 'play' }
+                    else { $p.Score = $script:LevelStartScore; $p.RunTics += $script:Stats.Tics; Start-Level $true $false; Set-Mode 'play' }
                 }
             }
 

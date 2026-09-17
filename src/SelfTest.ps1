@@ -248,6 +248,20 @@ function Invoke-SelfTest([string]$OutDir) {
     $never = @($script:States.Keys | Where-Object { $_ -notin $script:StatesSeen } | Sort-Object)
     Write-Step "states visited: $(@($script:StatesSeen | Sort-Object -Unique).Count) of $($script:States.Count); never seen: $($never -join ', ')"
 
+    # ---- level completion and speedrun records ----
+    $script:Speedrun = $true
+    Remove-Item -LiteralPath (Join-Path $script:SaveDir 'speedrun.json') -ErrorAction SilentlyContinue
+    Start-Level $false $false; $script:P.Cheated = $false
+    $script:Stats.Tics = 70 * 95.5; Complete-Level
+    $first = $script:Result.Previous
+    Show-DoneScreen; Save-BackBuffer (Join-Path $OutDir 'screen-done.png')
+    Start-Level $false $false; $script:P.Cheated = $false
+    $script:Stats.Tics = 70 * 80.0; Complete-Level
+    $rec = (Get-SpeedrunData).Floors
+    Write-Step "speedrun test: first previous=$first, second previous=$($script:Result.Previous), stored best=$(@($rec.Values)[0])"
+    if ($first -ne 0 -or $script:Result.Previous -ne 95.5 -or @($rec.Values)[0] -ne 80) { throw 'speedrun test failed.' }
+    $script:Mode = 'play'
+
     # ---- title screen ----
     $script:HighScores = @()
     Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'screen-title.png')
