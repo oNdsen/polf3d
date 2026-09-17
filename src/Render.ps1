@@ -222,9 +222,12 @@ function Update-View {
     # far sprites, then the window strips, then the sprites in front of the nearest window
     $windowsPending = $minWin -lt 1e9
     if ($draw.Count) {
-        $k = $keys.ToArray(); $items = $draw.ToArray()
-        [Array]::Sort($k, $items)                               # far to near
-        foreach ($it in $items) {
+        # far to near. Sorted through an index array: Array.Sort(keys, items) called from PowerShell sorts the keys
+        # but leaves an object[] of items in its old order - which drew every enemy on top of every column.
+        $k = $keys.ToArray(); $order = [int[]](0..($k.Length - 1))
+        [Array]::Sort($k, $order)
+        foreach ($o in $order) {
+            $it = $draw[$o]
             if ($windowsPending -and $it[3] -lt $minWin) {
                 for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::Wall($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c], [int][Math]::Min($maxFog, $winD[$c] * $fogK), $true) } }
                 $windowsPending = $false
