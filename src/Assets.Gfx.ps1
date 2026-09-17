@@ -257,6 +257,59 @@ function Initialize-WallTextures {
     }
 }
 
+# ---- flats: floor and ceiling textures ------------------------------------------------------------
+function Add-FlatArt([string]$Name) {
+    switch ($Name) {
+        'flat_stone' { Add-BlockPattern '3A3A3A' @('6A6A6A', '626262', '707070', '5C5C5C') '787878' 32 32; Add-Speckle @('505050', '7A7A7A') 220 }
+        'flat_wood' {
+            Add-Box '6A4420' 0 0 64 64
+            for ($y = 0; $y -lt 64; $y += 8) { Add-Box '4A2E14' 0 $y 64 1; Add-Box '7C5228' 0 ($y + 1) 64 1; Add-Box '4A2E14' (($y * 5) % 64) $y 1 8 }
+            for ($i = 0; $i -lt 50; $i++) { Add-Box '5A3A1A' $script:Rng.Next(64) $script:Rng.Next(64) (3 + $script:Rng.Next(10)) 1 }
+        }
+        'flat_moss' {
+            Add-Box '3A3428' 0 0 64 64; Add-Speckle @('2E2A20', '4A4232', '333026') 500
+            for ($i = 0; $i -lt 22; $i++) { Add-Oval $(('2E5A28', '3A6A30', '264A22')[$script:Rng.Next(3)]) $script:Rng.Next(60) $script:Rng.Next(60) (4 + $script:Rng.Next(9)) (3 + $script:Rng.Next(7)) }
+        }
+        'flat_tech' {
+            Add-Box '2E363F' 0 0 64 64
+            foreach ($py in 0, 32) { foreach ($px in 0, 32) {
+                Add-Box '3E4852' ($px + 1) ($py + 1) 30 30; Add-Box '4C5864' ($px + 1) ($py + 1) 30 1; Add-Box '4C5864' ($px + 1) ($py + 1) 1 30
+                for ($g = 5; $g -lt 30; $g += 5) { Add-Box '343D46' ($px + 3) ($py + $g) 26 1 }
+                foreach ($r in @(3, 3), @(27, 3), @(3, 27), @(27, 27)) { Add-Box '1E242A' ($px + $r[0]) ($py + $r[1]) 2 2 }
+            } }
+        }
+        'flat_carpet' {
+            Add-Box '6A1420' 0 0 64 64; Add-Speckle @('5A101A', '7A1A28') 300
+            Add-Box 'C09010' 0 0 64 2; Add-Box 'C09010' 0 62 64 2; Add-Box 'C09010' 0 0 2 64; Add-Box 'C09010' 62 0 2 64
+            Add-Poly '8A2030' @(32, 12, 52, 32, 32, 52, 12, 32); Add-Poly '6A1420' @(32, 20, 44, 32, 32, 44, 20, 32); Add-Box 'C09010' 30 30 4 4
+        }
+        'ceil_plain' {
+            Add-Box '34343A' 0 0 64 64
+            foreach ($py in 0, 32) { foreach ($px in 0, 32) { Add-Box '3E3E46' ($px + 1) ($py + 1) 30 30; Add-Box '2A2A30' ($px + 1) ($py + 30) 30 1; Add-Box '2A2A30' ($px + 30) ($py + 1) 1 30 } }
+            Add-Speckle @('30303A', '444450') 120
+        }
+        'ceil_rock' {
+            Add-Box '24221E' 0 0 64 64; Add-Speckle @('1A1916', '302E28', '2A2824') 600
+            for ($i = 0; $i -lt 16; $i++) { Add-Oval $(('1C1B18', '2E2C26')[$script:Rng.Next(2)]) $script:Rng.Next(58) $script:Rng.Next(58) (5 + $script:Rng.Next(10)) (4 + $script:Rng.Next(8)) }
+        }
+        'ceil_tech' {
+            Add-Box '20262E' 0 0 64 64
+            for ($y = 0; $y -lt 64; $y += 16) { Add-Box '2C343E' 0 ($y + 1) 64 14; Add-Box '161A20' 0 $y 64 1 }
+            Add-Box 'C8E8FF' 8 6 48 3; Add-Box 'E8F8FF' 10 7 44 1; Add-Box 'C8E8FF' 8 38 48 3; Add-Box 'E8F8FF' 10 39 44 1
+        }
+    }
+}
+
+function Initialize-Flats {
+    $script:Flats = @{}
+    foreach ($name in 'flat_stone', 'flat_wood', 'flat_moss', 'flat_tech', 'flat_carpet', 'ceil_plain', 'ceil_rock', 'ceil_tech') {
+        $bmp = New-Canvas
+        Add-FlatArt $name
+        $script:Flats[$name] = Get-Pixels $bmp
+        $script:GFX.Dispose(); $bmp.Dispose()
+    }
+}
+
 # =============================================================================================
 # SPRITES
 # =============================================================================================

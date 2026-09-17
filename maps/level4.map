@@ -5,6 +5,9 @@
 @par 480
 @ceiling 20262E
 @floor 4A525C
+@floortex flat_tech
+@ceiltex ceil_tech
+@fog 0A1018 14
 @spawn 3 20 19 e>
 @spawn 3 20 30 m>
 @spawn 3 33 8 m<

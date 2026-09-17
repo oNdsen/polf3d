@@ -65,7 +65,8 @@ function Update-View {
     $frame = [int](++$script:FrameNo)
     $scaler = $script:Scaler                                   # the compiled pixel loops (see Initialize-Scaler)
 
-    [Array]::Copy($script:BG, $fb, $fb.Length)
+    # distance haze: fog units (0..256) per tile, capped so far walls never vanish completely
+    $fogK = [double]$script:FogPerTile; $maxFog = 205
 
     # windows: the ray goes on, the window strip is remembered and drawn over the scene later
     $isWin = $script:IsWindow
@@ -86,6 +87,12 @@ function Update-View {
     $bx0 = $pw.X + $pw.DX * $pw.Pos; $by0 = $pw.Y + $pw.DY * $pw.Pos
     $bx1 = $bx0 + 1.0; $by1 = $by0 + 1.0
     $pwTex = [int]$pw.TexId
+
+    # floor and ceiling: textured (one C# call) or, with -FlatFloors / maps without textures, two plain colours
+    if ($script:FloorTex -and $script:CeilTex -and -not $script:FlatFloors) {
+        $scaler::Floor($fb, $W, $H, $px, $py, $dirX, $dirY, $plX, $plY, $projH, $script:FloorTex, $script:CeilTex, $fogK, $maxFog)
+    }
+    else { [Array]::Copy($script:BG, $fb, $fb.Length) }
 
     $camStep = 2.0 / $W
     for ($col = 0; $col -lt $W; $col += $step) {
@@ -160,7 +167,8 @@ function Update-View {
         }
 
         if ($perp -lt 0.02) { $perp = 0.02 }
-        $scaler::Wall($fb, $W, $H, $col, $step, [int]($projH / $perp), $tex, $texX)
+        $fog = [int]($perp * $fogK); if ($fog -gt $maxFog) { $fog = $maxFog }
+        $scaler::Wall($fb, $W, $H, $col, $step, [int]($projH / $perp), $tex, $texX, $fog, $false)
         $zbuf[$col] = $perp
         if ($step -gt 1) { for ($k = 1; $k -lt $step -and ($col + $k) -lt $W; $k++) { $zbuf[$col + $k] = $perp } }
     }
@@ -218,20 +226,21 @@ function Update-View {
         [Array]::Sort($k, $items)                               # far to near
         foreach ($it in $items) {
             if ($windowsPending -and $it[3] -lt $minWin) {
-                for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
+                for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::Wall($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c], [int][Math]::Min($maxFog, $winD[$c] * $fogK), $true) } }
                 $windowsPending = $false
             }
-            $scaler::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3])
+            $fog = [int]($it[3] * $fogK); if ($fog -gt $maxFog) { $fog = $maxFog }
+            $scaler::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3], $fog)
         }
     }
     if ($windowsPending) {
-        for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
+        for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::Wall($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c], [int][Math]::Min($maxFog, $winD[$c] * $fogK), $true) } }
     }
 
     # ---- the weapon in the player's hands ------------------------------------------------------
     if ($script:ShowWeapon) {
         $wtex = $script:Spr["weapon.$($script:Weapons[$p.Weapon].Key)"][$p.WeaponFrame]
-        $scaler::Sprite($fb, $W, $H, $zbuf, $wtex, [int]$halfW, $H, 0.0)
+        $scaler::Sprite($fb, $W, $H, $zbuf, $wtex, [int]$halfW, $H, 0.0, 0)
     }
 }
 
@@ -431,7 +440,7 @@ function Show-Hud {
     $res = Get-WeaponResource
     Write-HudPanel '80101A2C' 186 ($y + 4) 60 33
     Write-HudText $res.Label 'Small' '8FB0FF' 188 ($y + 5) 34 8
-    Write-HudText $res.Text 'Big' $(if ($res.Fraction -le 0.1 -and $res.Text -ne '-') { 'FF5040' } else { 'FFFFFF' }) 186 ($y + 10) 60 18
+    Write-HudText $res.Text 'Big' $(if ($res.Fraction -le 0.05 -and $res.Text -ne '-') { 'FF5040' } else { 'FFFFFF' }) 186 ($y + 10) 60 18
     Write-HudGauge 190 ($y + 29) 52 5 $res.Fraction 'B07010' 'FFD860'
 
     # weapon slots, weapon name, keys

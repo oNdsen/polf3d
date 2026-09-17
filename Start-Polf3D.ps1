@@ -21,6 +21,8 @@
     Start the campaign on this floor.
 .PARAMETER Speedrun
     Show the speedrun clock (floor time, par, total run) and keep records in saves/speedrun.json.
+.PARAMETER FlatFloors
+    Plain coloured floor and ceiling instead of textures (the 1992 look, a little faster).
 .PARAMETER NoSound
     Skip sound synthesis (faster start, no sound effects).
 .PARAMETER NoMusic
@@ -47,6 +49,7 @@ param(
     [string]$Map,
     [ValidateRange(1, 99)][int]$Level = 1,
     [switch]$Speedrun,
+    [switch]$FlatFloors,
     [switch]$NoSound,
     [switch]$NoMusic,
     [switch]$GodMode,
@@ -76,6 +79,7 @@ $script:MapFile = $script:MapFiles[$script:LevelIndex]
 $script:Difficulty = $StartDifficulty - 1
 $script:GodMode = [bool]$GodMode
 $script:Speedrun = [bool]$Speedrun
+$script:FlatFloors = [bool]$FlatFloors
 $script:InfiniteAmmo = [bool]$InfiniteAmmo
 $script:OneHitKill = [bool]$OneHitKill
 $script:CheatAllWeapons = [bool]$AllWeapons
@@ -121,7 +125,7 @@ $script:MusicEnabled = -not $NoMusic -and -not $SelfTest -and -not $Screenshots
 
 Write-Step 'compiling scaler (C#) ...';       Initialize-Scaler
 Write-Step 'building state tables ...';        Initialize-States
-Write-Step 'painting wall textures ...';       Initialize-WallTextures
+Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initialize-Flats
 Write-Step 'painting sprites ...';             Initialize-Sprites
 Write-Step 'synthesising sounds ...';          Initialize-Sounds
 Initialize-Renderer $Scale ([int](320 / $Columns))

@@ -5,6 +5,9 @@
 @par 540
 @ceiling 30203A
 @floor 5A5060
+@floortex flat_carpet
+@ceiltex ceil_plain
+@fog 140A1C 15
 @spawn 3 24 20 ev
 @spawn 3 22 26 mv
 @spawn 3 39 20 e<

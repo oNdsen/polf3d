@@ -5,6 +5,9 @@
 @par 420
 @ceiling 1E2A1C
 @floor 4A5240
+@floortex flat_moss
+@ceiltex ceil_rock
+@fog 060C06 9
 @spawn 3 21 26 m>
 @spawn 3 37 27 k<
 @spawn 3 24 12 ov

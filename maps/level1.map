@@ -5,6 +5,9 @@
 @par 330
 @ceiling 383838
 @floor 6E6E6E
+@floortex flat_stone
+@ceiltex ceil_plain
+@fog 101010 16
 @spawn 3 23 20 g<
 @spawn 3 26 18 g<
 @spawn 3 37 18 e<

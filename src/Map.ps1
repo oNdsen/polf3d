@@ -24,6 +24,8 @@
 #   +x                                       item,       see $ItemCodes
 #   *x                                       decoration, see $DecoCodes  (*e = explosive barrel)
 #
+# Header lines "@floortex flat_stone|flat_wood|flat_moss|flat_tech|flat_carpet", "@ceiltex ceil_plain|ceil_rock|ceil_tech"
+# and "@fog RRGGBB <tiles>" choose the floor/ceiling textures and the distance haze.
 # Header line "@spawn <min difficulty 1-4> <x> <y> <enemy code>": reinforcements for the higher difficulties.
 #
 # Unlike the 1992 format there are no hand-numbered "areas": rooms are found by flood fill.
@@ -72,6 +74,13 @@ function Initialize-Level([string]$Path) {
     $script:ParSeconds = [int]$map.Meta.par
     $script:CeilingColor = [Convert]::ToInt32('FF' + $map.Meta.ceiling, 16)
     $script:FloorColor = [Convert]::ToInt32('FF' + $map.Meta.floor, 16)
+    # optional: "@floortex <flat>", "@ceiltex <flat>" and "@fog <RRGGBB> <tiles until the haze is complete>"
+    $script:FloorTex = if ($map.Meta.floortex -and $script:Flats) { $script:Flats[$map.Meta.floortex] } else { $null }
+    $script:CeilTex = if ($map.Meta.ceiltex -and $script:Flats) { $script:Flats[$map.Meta.ceiltex] } else { $null }
+    $fog = "$($map.Meta.fog)".Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+    $script:FogColor = if ($fog.Count -ge 1) { [Convert]::ToInt32('FF' + $fog[0], 16) } else { [Convert]::ToInt32('FF101010', 16) }
+    $script:FogPerTile = 256.0 / $(if ($fog.Count -ge 2) { [double]$fog[1] } else { 16.0 })
+    if ($script:Scaler) { $script:Scaler::FogColor = $script:FogColor }
 
     $script:Tiles = [int[]]::new($n)              # 0 floor | 1..99 wall texture | 100+ door | 200 moving push-wall
     $script:PushTex = [int[]]::new($n)            # texture id where a secret wall waits to be pushed
