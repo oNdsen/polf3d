@@ -219,7 +219,16 @@ function Copy-ViewToBack {
     $bd = $script:ViewBmp.LockBits($script:ViewRect, [System.Drawing.Imaging.ImageLockMode]::WriteOnly, [System.Drawing.Imaging.PixelFormat]::Format32bppRgb)
     [System.Runtime.InteropServices.Marshal]::Copy($script:FB, 0, $bd.Scan0, $script:FB.Length)
     $script:ViewBmp.UnlockBits($bd)
-    $script:BackG.DrawImage($script:ViewBmp, $script:ViewDest)
+    if ($script:Shake -gt 0) {
+        # camera shake: draw the view slightly enlarged and offset, clipped to its own area
+        $amp = [int](1 + $script:Shake / 2)
+        $r = $script:ViewDest
+        $shaken = [System.Drawing.Rectangle]::new($r.X - 8 + $script:Rng.Next(-$amp, $amp + 1), $r.Y - 8 + $script:Rng.Next(-$amp, $amp + 1), $r.Width + 16, $r.Height + 16)
+        $script:BackG.SetClip($r)
+        $script:BackG.DrawImage($script:ViewBmp, $shaken)
+        $script:BackG.ResetClip()
+    }
+    else { $script:BackG.DrawImage($script:ViewBmp, $script:ViewDest) }
 }
 
 function Show-Back {
@@ -252,6 +261,7 @@ function Show-Overlays {
             $g.FillPolygon((Get-Brush ('{0:X2}{1}' -f $a, $beam[1])), $pts)
         }
     }
+    if ($script:MuzzleFlash -gt 0) { Write-HudBar ('{0:X2}FFE8A0' -f [int]($script:MuzzleFlash * 9)) 0 0 320 $viewH }
     if ($script:ForceFlash -gt 0) {
         $a = [int][Math]::Min(235, $script:ForceFlash * 12)
         Write-HudBar ('{0:X2}B0FFC0' -f $a) 0 0 320 $viewH

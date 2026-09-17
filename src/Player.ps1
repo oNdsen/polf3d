@@ -172,6 +172,7 @@ function Get-AimedTargets {
 
 function Invoke-GunAttack {
     $script:MadeNoise = $true
+    $script:MuzzleFlash = 4.0                                    # lights up the room for a moment
     Start-Sfx $script:Weapons[$script:P.Weapon].Snd
     foreach ($a in (Get-AimedTargets)) {
         if (-not (Test-LineToPlayer $a.X $a.Y)) { continue }
@@ -180,19 +181,23 @@ function Invoke-GunAttack {
         if ($dist -lt 2) { $damage = $r / 4 }
         elseif ($dist -lt 4) { $damage = $r / 6 }
         else {
-            if (((Get-Rnd) / 12) -lt $dist) { return }          # long shots may simply miss
+            if (((Get-Rnd) / 12) -lt $dist) { break }           # long shots may simply miss
             $damage = $r / 6
         }
+        Add-HitEffect $a
         Invoke-ActorDamage $a ([int][Math]::Floor($damage))
         return
     }
+    $wall = Find-WallPoint                                       # nobody hit: the bullet strikes sparks off a wall
+    if ($wall) { Add-Effect 'puff' $wall[0] $wall[1] }
 }
 
 function Invoke-KnifeAttack {
     Start-Sfx 'knife'
     $targets = Get-AimedTargets
     if ($targets.Count -eq 0 -or $targets[0].Depth -gt 1.5) { return }
-    Invoke-ActorDamage $targets[0] ((Get-Rnd) -shr 4)
+    Add-HitEffect $targets[0]
+    Invoke-ActorDamage $targets[0] ((Get-Rnd) -shr 4) 'knife'
 }
 
 # Pipeline-Kanone: the beam passes through everybody standing in the line of fire.
@@ -201,7 +206,7 @@ function Invoke-BeamAttack {
     Start-Sfx 'shot_pipe'
     $script:BeamFlash = 10.0
     foreach ($a in (Get-AimedTargets)) {
-        if (Test-LineToPlayer $a.X $a.Y) { Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) }
+        if (Test-LineToPlayer $a.X $a.Y) { Add-HitEffect $a; Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) 'beam' }
     }
 }
 
@@ -211,7 +216,7 @@ function Invoke-BlastAttack {
     Start-Sfx 'shot_force'
     $script:ForceFlash = 24.0
     foreach ($a in @($script:Actors)) {
-        if ($a.Shootable -and $a.Visible -and (Test-LineToPlayer $a.X $a.Y)) { Invoke-ActorDamage $a (150 + (Get-Rnd)) }
+        if ($a.Shootable -and $a.Visible -and (Test-LineToPlayer $a.X $a.Y)) { Invoke-ActorDamage $a (150 + (Get-Rnd)) 'blast' }
     }
 }
 
@@ -345,6 +350,7 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     if ($Points -le 0) { return }
     if (-not $script:GodMode) { $p.Health -= $Points }
     $script:DamageFlash += $Points
+    $script:Shake = [Math]::Min(14.0, $script:Shake + $Points / 2.0)      # the view jolts with every hit
     $p.GrinTics = 0
     $script:HudDirty = $true
     if ($p.Health -le 0) {

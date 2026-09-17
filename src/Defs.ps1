@@ -217,6 +217,7 @@ $script:EnemyDefs = @{
 # things that live in the actor list without being enemies
 $script:MiscDefs = @{
     rocket = @{ Speed = 0.12; Rotates = $false; Doors = $false; Pain = $false }
+    fx = @{ Rotates = $false; Doors = $false; Pain = $false }      # short-lived effects: blood, sparks
     # explosive barrel: an "inert" actor - it can be shot, but never thinks, scores or counts as a kill
     barrel = @{ Inert = $true; HP = 15; Rotates = $false; Doors = $false; Pain = $false; Points = 0; BlastRadius = 2.2; BlastDamage = 90 }
 }
@@ -284,6 +285,13 @@ function Initialize-States {
     Add-State 'rocket.boom1' 'rocket.boom1' $false 6 $null $null 'rocket.boom2'
     Add-State 'rocket.boom2' 'rocket.boom2' $false 6 $null $null 'rocket.boom3'
     Add-State 'rocket.boom3' 'rocket.boom3' $false 6 $null 'Remove' 'rocket.boom3'
+
+    # effects: three frames each, then gone
+    foreach ($fx in 'blood', 'puff') {
+        Add-State "fx.${fx}1" "fx.${fx}1" $false 5 $null $null "fx.${fx}2"
+        Add-State "fx.${fx}2" "fx.${fx}2" $false 5 $null $null "fx.${fx}3"
+        Add-State "fx.${fx}3" "fx.${fx}3" $false 5 $null 'Remove' "fx.${fx}3"
+    }
 
     # explosive barrels: a short fuse (so chain reactions ripple through a room), then the blast
     Add-State 'barrel.idle' 'barrel_red' $false 0 $null $null 'barrel.idle'

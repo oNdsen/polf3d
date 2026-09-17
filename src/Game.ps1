@@ -68,6 +68,11 @@ function Reset-MouseCenter {
 # ---------------------------------------------------------------------------------------------
 # Starting and restarting
 # ---------------------------------------------------------------------------------------------
+function Reset-ScreenEffects {
+    $script:DamageFlash = 0.0; $script:BonusFlash = 0.0; $script:BeamFlash = 0.0; $script:ForceFlash = 0.0
+    $script:MuzzleFlash = 0.0; $script:Shake = 0.0
+}
+
 # KeepPlayer: score and lives survive (after a death).  KeepKit: weapons, ammo and health survive
 # as well (riding the lift to the next floor). Keys never leave their floor.
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
@@ -78,7 +83,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:LevelStartScore = $script:P.Score
     Reset-PlayerForLevel
     Set-Background
-    $script:DamageFlash = 0.0; $script:BonusFlash = 0.0; $script:BeamFlash = 0.0; $script:ForceFlash = 0.0
+    Reset-ScreenEffects
     $script:PlayerDied = $false; $script:LevelDone = $false; $script:Killer = $null
     $script:MadeNoise = $false
     $script:MapBmp = $null
@@ -131,6 +136,8 @@ function Update-World([double]$Tics, [hashtable]$In) {
     if ($script:BonusFlash -gt 0) { $script:BonusFlash = [Math]::Max(0.0, $script:BonusFlash - $Tics) }
     if ($script:BeamFlash -gt 0) { $script:BeamFlash = [Math]::Max(0.0, $script:BeamFlash - $Tics) }
     if ($script:ForceFlash -gt 0) { $script:ForceFlash = [Math]::Max(0.0, $script:ForceFlash - $Tics) }
+    if ($script:MuzzleFlash -gt 0) { $script:MuzzleFlash = [Math]::Max(0.0, $script:MuzzleFlash - $Tics) }
+    if ($script:Shake -gt 0) { $script:Shake = [Math]::Max(0.0, $script:Shake - $Tics) }
     $script:Stats.Tics += $Tics
 }
 

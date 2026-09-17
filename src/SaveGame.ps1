@@ -94,7 +94,7 @@ function Restore-Game {
         Update-AreaByPlayer
         Set-Background
         $script:MapBmp = $null
-        $script:DamageFlash = 0.0; $script:BonusFlash = 0.0; $script:BeamFlash = 0.0; $script:ForceFlash = 0.0
+        Reset-ScreenEffects
         $script:PlayerDied = $false; $script:LevelDone = $false; $script:Killer = $null
         $script:ShowWeapon = $true
         $script:HudDirty = $true

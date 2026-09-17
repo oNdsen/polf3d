@@ -503,6 +503,13 @@ function Add-ThingSprites {
     $S['lamp_floor'] = New-Sprite { Add-Oval '404040' 25 58 14 5; Add-Box '505050' 31 22 2 38; Add-Poly 'E0D8A0' @(24, 22, 40, 22, 36, 10, 28, 10); Add-Oval 'FFFFD0' 28 20 8 4 }
     $S['table'] = New-Sprite { Add-Box '5A3414' 16 44 4 18; Add-Box '5A3414' 44 44 4 18; Add-Box '8A5A28' 12 40 40 5; Add-Box '6A421C' 12 45 40 2; Add-Box '7A4A20' 4 48 8 14; Add-Box '7A4A20' 4 38 2 12; Add-Box '7A4A20' 52 48 8 14; Add-Box '7A4A20' 58 38 2 12 }
     $S['barrel'] = New-Sprite { Add-Oval '3A6A3A' 20 56 24 7; Add-Box '3A6A3A' 20 34 24 26; Add-Oval '4A8A4A' 20 31 24 7; Add-Oval '2A4A2A' 23 32 18 4; Add-Box '2A4A2A' 20 40 24 2; Add-Box '2A4A2A' 20 52 24 2; Add-Box '5A9A5A' 23 35 2 24 }
+    # hit feedback: blood at chest height, sparks where a bullet meets a wall
+    $S['fx.blood1'] = New-Sprite { Add-Oval 'C01010' 28 26 8 8; Add-Box 'E02020' 30 28 3 3 }
+    $S['fx.blood2'] = New-Sprite { Add-Oval 'B01010' 25 24 14 12; foreach ($d in @(20, 22), @(42, 25), @(24, 40), @(40, 38), @(32, 18)) { Add-Box 'C01010' $d[0] $d[1] 3 3 } }
+    $S['fx.blood3'] = New-Sprite { foreach ($d in @(16, 26), @(46, 30), @(22, 46), @(42, 46), @(32, 14), @(28, 34), @(36, 40), @(30, 50)) { Add-Box '900C0C' $d[0] $d[1] 2 3 } }
+    $S['fx.puff1'] = New-Sprite { Add-Oval 'FFE080' 29 29 6 6; Add-Box 'FFFFFF' 31 31 2 2 }
+    $S['fx.puff2'] = New-Sprite { Add-Oval 'A0A0A0' 26 26 12 12; foreach ($d in @(22, 24), @(40, 26), @(30, 20), @(36, 40)) { Add-Box 'FFD040' $d[0] $d[1] 2 2 } }
+    $S['fx.puff3'] = New-Sprite { Add-Oval '707070' 24 22 16 14; Add-Oval '8A8A8A' 28 24 8 7 }
     $S['barrel_red'] = New-Sprite { Add-Oval '8A1C1C' 20 56 24 7; Add-Box '8A1C1C' 20 34 24 26; Add-Oval 'B02828' 20 31 24 7; Add-Oval '5A1010' 23 32 18 4; Add-Box '5A1010' 20 40 24 2; Add-Box '5A1010' 20 52 24 2; Add-Box 'D04040' 23 35 2 24; Add-Poly 'F0D040' @(32, 42, 38, 51, 26, 51); Add-Box '101010' 31 45 2 3; Add-Box '101010' 31 49 2 1 }
     $S['plant'] = New-Sprite { Add-Poly '9A5A2A' @(24, 50, 40, 50, 37, 62, 27, 62); Add-Box '7A4420' 23 48 18 3; foreach ($l in @(32, 48, 18, 26, 24, 22), @(32, 48, 46, 26, 40, 22), @(32, 48, 28, 16, 34, 14), @(32, 48, 14, 38, 18, 32), @(32, 48, 50, 38, 46, 32)) { Add-Poly '2A8A3A' $l }; Add-Poly '3AAA4A' @(32, 48, 30, 22, 35, 22) }
     $S['armor'] = New-Sprite { Add-Box '707880' 25 58 6 4; Add-Box '707880' 33 58 6 4; Add-Box '8A929A' 26 40 5 18; Add-Box '8A929A' 33 40 5 18; Add-Box '9AA2AA' 23 20 18 21; Add-Box 'B8C0C8' 25 22 4 16; Add-Box '8A929A' 19 21 4 16; Add-Box '8A929A' 41 21 4 16; Add-Oval '9AA2AA' 26 7 12 14; Add-Box '202020' 28 13 8 2; Add-Box 'C03030' 31 2 2 6; Add-Box '606870' 46 8 2 54; Add-Poly 'B8C0C8' @(44, 8, 50, 8, 47, 1) }

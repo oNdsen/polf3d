@@ -309,6 +309,39 @@ function Invoke-ActionBite([Actor]$a) {
     if ((Get-Rnd) -lt 180) { Invoke-PlayerDamage ((Get-Rnd) -shr 4) $a }
 }
 
+# Spawns a short-lived effect sprite ('blood' or 'puff').
+function Add-Effect([string]$Name, [double]$X, [double]$Y) {
+    $e = [Actor]::new()
+    $e.Kind = 'fx'; $e.Def = $script:MiscDefs.fx
+    $e.X = $X; $e.Y = $Y; $e.TX = [int][Math]::Floor($X); $e.TY = [int][Math]::Floor($Y)
+    $e.Area = $script:P.Area; $e.Active = $true; $e.Corpse = $true
+    Set-ActorState $e "fx.${Name}1"
+    $script:NewActors.Add($e)
+}
+
+# Blood appears a little in front of the victim so it is drawn over them.
+function Add-HitEffect([Actor]$a) {
+    if ($a.Def.Inert) { Add-Effect 'puff' $a.X $a.Y; return }
+    $dx = $script:P.X - $a.X; $dy = $script:P.Y - $a.Y
+    $len = [Math]::Max(0.01, [Math]::Sqrt($dx * $dx + $dy * $dy))
+    Add-Effect 'blood' ($a.X + $dx / $len * 0.2) ($a.Y + $dy / $len * 0.2)
+}
+
+# Where does a bullet fired straight ahead hit a wall? Returns the point just in front of it.
+function Find-WallPoint {
+    $rad = $script:P.Angle * [Math]::PI / 180.0
+    $dx = [Math]::Cos($rad); $dy = - [Math]::Sin($rad)
+    $x = $script:P.X; $y = $script:P.Y; $w = $script:MapW
+    for ($i = 0; $i -lt 400; $i++) {
+        $x += $dx * 0.1; $y += $dy * 0.1
+        $idx = [int][Math]::Floor($y) * $w + [int][Math]::Floor($x)
+        $t = $script:Tiles[$idx]
+        $open = $t -eq 0 -or ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open')
+        if (-not $open -or $script:StaticBlock[$idx]) { return @(($x - $dx * 0.15), ($y - $dy * 0.15)) }
+    }
+    $null
+}
+
 # A blast: hurts the player and every shootable actor within $Radius, fading with distance.
 # Exploding barrels set each other off, which is where the chain reactions come from.
 function Invoke-Explosion([double]$X, [double]$Y, [double]$Radius, [double]$Damage, [Actor]$Owner) {
