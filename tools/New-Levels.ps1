@@ -24,7 +24,7 @@ function New-Grid([int]$Width, [int]$Height) {
 
 function Set-Cell([int]$X, [int]$Y, [string]$Code) {
     if ($X -lt 1 -or $Y -lt 1 -or $X -ge $script:W - 1 -or $Y -ge $script:H - 1) { throw "Cell $X,$Y ('$Code') is on or beyond the map border" }
-    $isWallCode = $Code -cmatch '^([SBWRMGT][A-Za-z]|\?.|D[DGSL])$'
+    $isWallCode = $Code -cmatch '^([SBWRMGT][A-Za-z]|\?.|D[DGSL0-9]|X[0-9])$'
     if (-not $isWallCode -and $script:grid[$X, $Y] -ne '..') { throw "Cell $X,$Y is not free ('$($script:grid[$X, $Y])') for '$Code'" }
     $script:grid[$X, $Y] = $Code
 }
@@ -178,7 +178,7 @@ Add-Room 15 5 5 3 'WW' @(0, 0, '+c',  4, 0, '+a',  0, 2, '+3',  4, 2, '+a')     
 Add-Room 12 31 5 3 'RR' @(0, 0, '+u',  4, 0, '+4',  0, 2, '+a',  4, 2, '+q')                                       # secret: armoury
 Add-Things @(
     5, 22, 'DD',   7, 17, 'DD',   17, 17, 'DD',  28, 17, 'DD',  29, 5, 'DD',   35, 12, 'DD'
-    14, 22, 'DD',  24, 22, 'DD',  35, 22, 'DD',  43, 19, 'DS',  46, 14, 'DL',  46, 10, 'MX'
+    14, 22, 'D1',  42, 14, 'X1',  24, 22, 'DD',  35, 22, 'DD',  43, 19, 'DS',  46, 14, 'DL',  46, 10, 'MX'
     17, 8, '?w',   14, 30, '?r'
     12, 17, 'Sb',  22, 17, 'Sb',  32, 17, 'Sp',  38, 17, 'Sp',  9, 22, 'Sb',   19, 22, 'Sb',  30, 22, 'Sb',  40, 22, 'Sb'
     42, 12, 'Wp',  38, 8, 'Ws',   2, 12, 'Wp',   22, 12, 'Ws'
@@ -298,7 +298,7 @@ Add-Room 8 29 3 3 'SS' @(0, 0, '+z',  2, 0, '+z',  0, 2, '+u',  2, 2, '+a')     
 Add-Room 37 29 3 3 'SS' @(0, 0, '+q',  2, 0, '+4',  0, 2, '+a',  2, 2, '+h')                                        # secret: east
 Add-Room 10 7 3 3 'MM' @(0, 0, '+r',  2, 0, '+z',  0, 2, '+z',  2, 2, '+p')                                         # secret: throne hall
 Add-Things @(
-    23, 39, 'DD',  23, 31, 'DD',  11, 23, 'DD',  36, 23, 'DS',  23, 15, 'DG',  34, 8, 'DL',  38, 8, 'MX'
+    23, 39, 'DD',  23, 31, 'DD',  11, 23, 'D2',  31, 34, 'X2',  36, 23, 'DS',  23, 15, 'DG',  34, 8, 'DL',  38, 8, 'MX'
     11, 30, '?s',  36, 30, '?s',  13, 8, '?M'
     14, 15, 'Sb',  18, 15, 'Sb',  28, 15, 'Sb',  32, 15, 'Sb',  14, 31, 'Sb',  32, 31, 'Sb',  11, 19, 'Sp',  36, 19, 'Sp'
     2, 20, 'Bc',   2, 25, 'Bc',   45, 22, 'Rb',  16, 39, 'Sb',  31, 35, 'Sb'

@@ -141,6 +141,7 @@ function Step-Actor([Actor]$a) {
         if ($b -eq 2) {
             if (-not $a.Def.Doors) { return $false }
             $door = $script:BlockDoor
+            if ($script:Doors[$door].Lock -eq 4 -and -not $script:Doors[$door].Unlocked) { return $false }      # lever doors are shut for everybody
             Open-Door $door
         }
     }

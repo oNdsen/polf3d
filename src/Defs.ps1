@@ -69,7 +69,9 @@ class Door {
     [int]$X
     [int]$Y
     [bool]$Vertical           # true: door plane runs north-south (blocks east-west travel)
-    [int]$Lock                # 0 none, 1 gold, 2 silver, 3 lift
+    [int]$Lock                # 0 none, 1 gold, 2 silver, 3 lift, 4 remote (opened by a lever)
+    [int]$Channel             # remote doors: the lever number that opens them
+    [bool]$Unlocked           # remote doors: the lever has been pulled
     [string]$Action = 'closed'   # closed | opening | open | closing
     [double]$Open             # 0 = closed .. 1 = fully open
     [double]$Timer
@@ -94,8 +96,12 @@ $script:WallNames = @(
     $null, 'stone', 'stone_banner', 'stone_pic', 'blue', 'blue_cell', 'wood', 'wood_pic', 'wood_shield',
     'brick', 'brick_banner', 'steel', 'switch_off', 'switch_on', 'jamb',
     'door', 'door_gold', 'door_silver', 'door_lift',
-    'moss', 'moss_vines', 'tech', 'tech_lights'          # appended: ids of the older textures stay stable
+    'moss', 'moss_vines', 'tech', 'tech_lights',         # appended: ids of the older textures stay stable
+    'lever_off', 'lever_on', 'door_remote'
 )
+$script:TEX_LEVER_OFF   = 23
+$script:TEX_LEVER_ON    = 24
+$script:TEX_DOOR_REMOTE = 25
 $script:TEX_SWITCH_OFF = 12
 $script:TEX_SWITCH_ON  = 13
 $script:TEX_JAMB       = 14

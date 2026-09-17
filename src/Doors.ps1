@@ -51,6 +51,7 @@ function Close-Door([int]$Index) {
 # The player pressed "use" on a door.
 function Invoke-DoorUse([int]$Index) {
     $d = $script:Doors[$Index]
+    if ($d.Lock -eq 4 -and -not $d.Unlocked) { Start-Sfx 'noway'; Show-Message 'This door is opened from somewhere else'; return }
     if ($d.Lock -eq 1 -and -not $script:P.KeyGold)   { Start-Sfx 'noway'; Show-Message 'Locked - you need the gold key';   return }
     if ($d.Lock -eq 2 -and -not $script:P.KeySilver) { Start-Sfx 'noway'; Show-Message 'Locked - you need the silver key'; return }
     if ($script:NOISE_DOOR -gt $script:StepNoise) { $script:StepNoise = $script:NOISE_DOOR }      # doors creak
@@ -63,6 +64,7 @@ function Update-Doors([double]$Tics) {
         $d = $script:Doors[$i]
         switch ($d.Action) {
             'open' {
+                if ($d.Lock -eq 4) { break }                              # lever doors stay open for good
                 $d.Timer += $Tics
                 if ($d.Timer -ge $script:DOOR_STAY_TICS) { Close-Door $i }
             }
@@ -89,6 +91,19 @@ function Update-Doors([double]$Tics) {
             }
         }
     }
+}
+
+# The player pulled a wall lever: every remote door on its channel opens and stays open.
+function Invoke-Lever([int]$TileIndex) {
+    $channel = $script:LeverAt[$TileIndex]
+    $script:Tiles[$TileIndex] = $script:TEX_LEVER_ON
+    Start-Sfx 'lever'
+    $count = 0
+    for ($i = 0; $i -lt $script:Doors.Count; $i++) {
+        $d = $script:Doors[$i]
+        if ($d.Lock -eq 4 -and $d.Channel -eq $channel) { $d.Unlocked = $true; Open-Door $i; $count++ }
+    }
+    Show-Message $(if ($count) { 'A door opens somewhere ...' } else { 'Nothing happens' })
 }
 
 # ---- push-walls -------------------------------------------------------------------------------

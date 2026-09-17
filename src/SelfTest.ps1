@@ -159,6 +159,21 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:InfiniteAmmo = $false
     Write-Step 'weapon test ok (rocket launcher, flamethrower, throwing knives)'
 
+    # ---- lever doors: shut until the lever is pulled, then open for good ----
+    $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    $remote = $script:Doors | Where-Object Lock -eq 4 | Select-Object -First 1
+    if ($remote) {
+        $di = $script:Doors.IndexOf($remote)
+        Invoke-DoorUse $di
+        $before = $remote.Action
+        Invoke-Lever ([Array]::IndexOf($script:LeverAt, $remote.Channel))
+        for ($f = 0; $f -lt 300; $f++) { Update-World 2.0 $idle }
+        Write-Step "lever test: door was '$before', is '$($remote.Action)' ten seconds after the lever"
+        if ($before -ne 'closed' -or $remote.Action -ne 'open') { throw 'lever test failed.' }
+    }
+    $script:LevelIndex = 0
+
     # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
     $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
     Start-Level $false $false

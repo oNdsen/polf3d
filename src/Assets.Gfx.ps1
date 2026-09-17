@@ -175,6 +175,16 @@ function Add-WallArt([string]$Name) {
             if ($Name -eq 'switch_off') { Add-Box 'D02020' 27 18 10 8; Add-Box 'FF6060' 28 19 3 2; Add-Box '303030' 24 42 16 3 }
             else { Add-Box '20C040' 27 38 10 8; Add-Box '80FF90' 28 39 3 2; Add-Box '303030' 24 17 16 3 }
         }
+        { $_ -in 'lever_off', 'lever_on' } {
+            Add-WallBase stone
+            Add-Box '2A2A2A' 22 16 20 32; Add-Box '484848' 24 18 16 28; Add-Box '181818' 30 22 4 20
+            if ($Name -eq 'lever_off') { Add-Box '8A8A8A' 31 20 2 12; Add-Oval 'D02020' 28 16 8 8 } else { Add-Box '8A8A8A' 31 32 2 12; Add-Oval '20C040' 28 40 8 8 }
+        }
+        'door_remote' {
+            Add-Box '4A3A5A' 0 0 64 64; Add-Box '6A5A7A' 0 0 64 2; Add-Box '2A1A3A' 0 62 64 2
+            for ($y = 8; $y -lt 60; $y += 12) { Add-Box '3A2A4A' 4 $y 56 8; Add-Box '5A4A6A' 4 $y 56 1 }
+            Add-Oval 'E040E0' 27 27 10 10; Add-Oval '2A1A3A' 30 30 4 4
+        }
         'jamb' {
             Add-Box '50585F' 0 0 64 64
             for ($x = 4; $x -lt 64; $x += 12) { Add-Box '3A4248' $x 0 2 64; Add-Box '6A747C' ($x + 2) 0 1 64 }

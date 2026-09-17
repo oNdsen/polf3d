@@ -158,6 +158,7 @@ function Invoke-Use {
     $idx = $ty * $script:MapW + $tx
     $t = $script:Tiles[$idx]
     if ($script:PushTex[$idx] -ne 0) { Start-PushWall $tx $ty $dx $dy }
+    elseif ($t -eq $script:TEX_LEVER_OFF) { Invoke-Lever $idx }
     elseif ($t -eq $script:TEX_SWITCH_OFF) {
         $script:Tiles[$idx] = $script:TEX_SWITCH_ON
         Start-Sfx 'level_done'

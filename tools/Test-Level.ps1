@@ -70,6 +70,12 @@ function Test-LevelFile([string]$Path) {
         if ($script:Tiles[$i] -eq $script:TEX_SWITCH_OFF) { foreach ($d in -1, 1, (-$w), $w) { if ($reach[$i + $d]) { $switchOk = $true } } }
     }
     if (-not $switchOk) { $problems.Add('No reachable lift switch (MX).') }
+    foreach ($door in $script:Doors) {
+        if ($door.Lock -eq 4 -and $door.Channel -notin $script:LeverAt) { $problems.Add("Remote door $($door.X),$($door.Y) has no lever X$($door.Channel).") }
+    }
+    for ($i = 0; $i -lt $w * $h; $i++) {
+        if ($script:LeverAt[$i] -gt 0 -and -not ($reach[$i - 1] -or $reach[$i + 1] -or $reach[$i - $w] -or $reach[$i + $w])) { $problems.Add("Lever X$($script:LeverAt[$i]) cannot be reached.") }
+    }
     $itemNames = @($script:Items | ForEach-Object { $_.Item })      # not $Items.Item: that is the list's indexer
     $kinds = @($script:Actors | ForEach-Object { $_.Kind })
     foreach ($door in $script:Doors) {
@@ -81,7 +87,7 @@ function Test-LevelFile([string]$Path) {
     for ($y = 0; $y -lt $h; $y++) {
         $line = for ($x = 0; $x -lt $w; $x++) {
             $i = $y * $w + $x; $t = $script:Tiles[$i]
-            if ($script:PushTex[$i]) { '?' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
+            if ($script:PushTex[$i]) { '?' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
             elseif ($script:ActorAt[$i]) { if ($script:ActorAt[$i].Def.Inert) { '*' } else { $script:ActorAt[$i].Kind[0] } } elseif ($script:StaticBlock[$i]) { 'o' }
             elseif ($reach[$i]) { '.' } else { '!' }
         }

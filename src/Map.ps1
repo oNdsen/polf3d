@@ -10,6 +10,7 @@
 #   MX                                       lift switch (the exit)
 #   ?S ?s ?B ?b ?W ?w ?R ?r ?M ?G ?g ?T ?t   secret push-wall (upper case plain, lower case decorated)
 #   DD DG DS DL                              door: normal / gold lock / silver lock / lift door
+#   D1..D9  X1..X9                           remote door and the wall lever (same number) that opens it for good
 #   ..                                       floor
 #   P^ P> Pv P<                              player start + view direction
 #   g d e o m s h k b u  +  ^>v< | nesw | NESW   enemy: standing | standing & deaf (ambush) | patrolling
@@ -62,6 +63,7 @@ function Initialize-Level([string]$Path) {
     $script:PushTex = [int[]]::new($n)            # texture id where a secret wall waits to be pushed
     $script:StaticBlock = [bool[]]::new($n)       # blocking decoration
     $script:TurnAt = [int[]]::new($n)             # patrol turning points (-1 = none)
+    $script:LeverAt = [int[]]::new($n)            # channel number of a wall lever (0 = none)
     $script:ActorAt = [object[]]::new($n)         # which enemy has reserved this tile
     $script:AreaOf = [int[]]::new($n)
     $script:Vis = [int[]]::new($n)                # frame number in which a ray last crossed the tile
@@ -87,7 +89,9 @@ function Initialize-Level([string]$Path) {
                 $script:PushTex[$idx] = $script:PushCodes[$code[1]]
                 $script:Stats.SecretTotal++
             }
-            elseif ($code[0] -ceq 'D' -and $script:DoorCodes.ContainsKey($code[1])) { $doorCells += , @($x, $y, $script:DoorCodes[$code[1]]) }
+            elseif ($code[0] -ceq 'D' -and $script:DoorCodes.ContainsKey($code[1])) { $doorCells += , @($x, $y, $script:DoorCodes[$code[1]], 0) }
+            elseif ($code[0] -ceq 'D' -and [char]::IsDigit($code[1])) { $doorCells += , @($x, $y, 4, [int][string]$code[1]) }
+            elseif ($code[0] -ceq 'X' -and [char]::IsDigit($code[1])) { $script:Tiles[$idx] = $script:TEX_LEVER_OFF; $script:LeverAt[$idx] = [int][string]$code[1] }
         }
     }
     foreach ($dc in $doorCells) {
@@ -96,7 +100,8 @@ function Initialize-Level([string]$Path) {
         $solidNS = ($script:Tiles[$idx - $w] -gt 0) -and ($script:Tiles[$idx + $w] -gt 0)
         if (-not ($solidWE -xor $solidNS)) { throw "Door at $x,$y needs walls on exactly two opposite sides." }
         $d = [Door]::new()
-        $d.X = $x; $d.Y = $y; $d.Vertical = $solidNS; $d.Lock = $dc[2]; $d.TexId = $script:TEX_DOOR + $dc[2]
+        $d.X = $x; $d.Y = $y; $d.Vertical = $solidNS; $d.Lock = $dc[2]; $d.Channel = $dc[3]
+        $d.TexId = if ($d.Lock -eq 4) { $script:TEX_DOOR_REMOTE } else { $script:TEX_DOOR + $d.Lock }
         $script:Tiles[$idx] = $script:TILE_DOOR_BASE + $script:Doors.Count
         $script:Doors.Add($d)
     }

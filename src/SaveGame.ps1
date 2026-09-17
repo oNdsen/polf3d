@@ -27,7 +27,7 @@ function Save-Game {
         Tiles      = $script:Tiles
         PushTex    = $script:PushTex
         Seen       = @($seen)
-        Doors      = @(foreach ($d in $script:Doors) { @{ Action = $d.Action; Open = $d.Open; Timer = $d.Timer } })
+        Doors      = @(foreach ($d in $script:Doors) { @{ Action = $d.Action; Open = $d.Open; Timer = $d.Timer; Unlocked = $d.Unlocked } })
         Items      = @(foreach ($s in $script:Items) { if (-not $s.Removed) { @{ Item = $s.Item; X = $s.X; Y = $s.Y } } })
         Actors     = @(foreach ($a in $script:Actors) { $h = @{}; foreach ($n in $script:ActorSaveProps) { $h[$n] = $a.$n }; $h })
     }
@@ -64,7 +64,7 @@ function Restore-Game {
 
         for ($i = 0; $i -lt $script:Doors.Count; $i++) {
             $d = $script:Doors[$i]; $sd = $state.Doors[$i]
-            $d.Action = $sd.Action; $d.Open = $sd.Open; $d.Timer = $sd.Timer
+            $d.Action = $sd.Action; $d.Open = $sd.Open; $d.Timer = $sd.Timer; $d.Unlocked = [bool]$sd.Unlocked
             if ($d.Action -ne 'closed') { $script:AreaConnect[$d.Area1, $d.Area2]++; $script:AreaConnect[$d.Area2, $d.Area1]++ }
         }
 
