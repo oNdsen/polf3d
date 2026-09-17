@@ -609,11 +609,14 @@ function Export-Screenshots([string]$OutDir) {
     $p.Owned = (New-OwnedList $true); $p.Ammo = 99; $p.Charges = 3; $p.Weapon = 4; $p.ChosenWeapon = 4
     $mech = $script:Actors | Where-Object Kind -eq 'uber' | Select-Object -First 1
     Set-TestCamera ($mech.X + 0.4) ($mech.Y - 5.5) 270
+    $script:InfiniteAmmo = $true                                  # the staging may take a while - the beam must not run dry
     for ($f = 0; $f -lt 900; $f++) {
         Show-PlayFrame; Update-World 2.0 $(if ($f % 30 -lt 15 -and $f -gt 120) { $fire } else { $idle })
-        $rockets = @($script:Actors | Where-Object { $_.Kind -eq 'rocket' -and $_.State -eq 'rocket.fly' -and $_.Visible -and $_.Depth -gt 1.5 })
-        if ($script:BeamFlash -gt 5 -and $rockets.Count -and $mech.Shootable) { break }
+        $rockets = @($script:Actors | Where-Object { $_.Kind -eq 'rocket' -and $_.State -eq 'rocket.fly' -and $_.Visible -and $_.Depth -gt 2.2 })
+        $blasts = @($script:Actors | Where-Object { $_.State -like 'rocket.boom*' -and $_.Visible -and $_.Depth -lt 4 })      # would fill the picture
+        if ($script:BeamFlash -gt 5 -and ($rockets.Count -or $f -gt 450) -and $mech.Shootable -and $mech.Visible -and -not $blasts.Count) { break }
     }
+    $script:InfiniteAmmo = $false
     $script:Message = $null; $p.Ammo = 71; Save-Shot $OutDir 'warmachine'
 
     # floor 5: the great hall
@@ -622,6 +625,23 @@ function Export-Screenshots([string]$OutDir) {
     Set-TestCamera 23.5 29.5 90
     for ($f = 0; $f -lt 30; $f++) { Show-PlayFrame; Update-World 2.0 $idle }
     Save-Shot $OutDir 'citadel'
+
+    # floor 2, co-op: the partner runs ahead (a network game without a network: nothing is ever sent)
+    Initialize-Network 'client' 'coop' 'localhost' 1
+    $script:Net.Connected = $true
+    $script:LevelIndex = 1; Start-Level $false $false; $script:Message = $null
+    $p = $script:P; $p.Owned[2] = $true; $p.Ammo = 48; $p.Weapon = 2; $p.ChosenWeapon = 2
+    $foe = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and $_.Kind -notin 'peer', 'dog' } | Select-Object -First 1
+    $step = @{ 0 = @(1, 0); 2 = @(0, -1); 4 = @(-1, 0); 6 = @(0, 1) }[[int]$foe.Dir]; if (-not $step) { $step = @(1, 0) }
+    $cx = $foe.X + $step[0] * 4; $cy = $foe.Y + $step[1] * 4
+    if ($script:Tiles[[int][Math]::Floor($cy) * $script:MapW + [int][Math]::Floor($cx)] -ne 0) { $cx = $foe.X + $step[0] * 2; $cy = $foe.Y + $step[1] * 2 }
+    Set-TestCamera $cx $cy 0; Set-TestAim $foe
+    $g = $script:Net.Ghost
+    $g.X = $cx + ($foe.X - $cx) * 0.45 - $step[1] * 0.45; $g.Y = $cy + ($foe.Y - $cy) * 0.45 + $step[0] * 0.45
+    $g.NX = $g.X; $g.NY = $g.Y; $g.TX = [int][Math]::Floor($g.X); $g.TY = [int][Math]::Floor($g.Y)
+    $g.Dir = ([int]$foe.Dir + 4) % 8; $g.State = 'peer.w2'; $script:Net.PeerHealth = 82
+    Save-Shot $OutDir 'coop'
+    Stop-Network
 
     # the cast: front views of every enemy, 3x
     $cast = 'guard.s', 'dog.s', 'officer.s', 'elite.s', 'mutant.s', 'sniper.s', 'shield.s', 'bot.s', 'boss.s', 'uber.s', 'pilot.s'

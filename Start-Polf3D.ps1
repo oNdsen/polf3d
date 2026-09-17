@@ -8,7 +8,7 @@
 .DESCRIPTION
     A from-scratch rewrite of the ideas behind the classic 1992 tile-based shooter: own code,
     own level, procedurally generated graphics and sounds. Everything is PowerShell except
-    the two innermost pixel loops (src/Scaler.cs, about 50 lines of C#).
+    the innermost pixel loops (src/Scaler.cs) and the XInput declaration (src/Gamepad.cs), about 150 lines of C#.
 .PARAMETER Scale
     Window size as a multiple of the internal 320x240 resolution (2..5).
 .PARAMETER Columns
