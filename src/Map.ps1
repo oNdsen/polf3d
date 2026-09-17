@@ -220,7 +220,10 @@ function Initialize-Level([string]$Path) {
                 $dir = Get-DirFromChar $b
                 if ($dir -lt 0) { throw "Enemy '$a$b' at $x,$y has no valid direction." }
                 $mode = if ('NESW'.Contains([string]$b)) { 'patrol' } elseif ('nesw'.Contains([string]$b)) { 'ambush' } else { 'stand' }
-                Add-Enemy $script:EnemyCodes[$a] $x $y $dir $mode
+                # the easier difficulties thin out the rank and file - always the same ones, decided by where they stand
+                $kind = $script:EnemyCodes[$a]
+                if ($kind -notin 'boss', 'uber' -and (($x * 73 + $y * 151) % 100) -lt 100 * $script:Difficulties[$script:Difficulty].Thin) { continue }
+                Add-Enemy $kind $x $y $dir $mode
             }
             else { throw "Unknown map code '$a$b' at $x,$y" }
         }

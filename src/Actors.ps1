@@ -68,6 +68,13 @@ function Test-Hearing([Actor]$a) {
     $r -gt 0 -and [Math]::Abs($script:P.X - $a.X) -le $r -and [Math]::Abs($script:P.Y - $a.Y) -le $r
 }
 
+# Gunfire this frame: heard in every room connected to the player's - up to a distance that depends on the difficulty.
+function Test-Gunfire([Actor]$a) {
+    if (-not $script:MadeNoise) { return $false }
+    $r = $script:Difficulties[$script:Difficulty].Hear
+    [Math]::Abs($script:P.X - $a.X) -le $r -and [Math]::Abs($script:P.Y - $a.Y) -le $r
+}
+
 function Start-Attack([Actor]$a) {
     $a.AlertTics = 50
     Start-Sfx $a.Def.AlertSnd
@@ -91,10 +98,10 @@ function Test-NoticePlayer([Actor]$a, [double]$Tics) {
         if (-not (Test-Sight $a)) { return $false }
         $a.Ambush = $false
     }
-    elseif (-not $script:MadeNoise -and -not (Test-Sight $a) -and -not (Test-Hearing $a)) { return $false }
+    elseif (-not (Test-Gunfire $a) -and -not (Test-Sight $a) -and -not (Test-Hearing $a)) { return $false }
 
     $def = $a.Def
-    $a.React = $def.ReactBase + $(if ($def.ReactDiv) { (Get-Rnd) / $def.ReactDiv } else { 0 })
+    $a.React = ($def.ReactBase + $(if ($def.ReactDiv) { (Get-Rnd) / $def.ReactDiv } else { 0 })) * $script:Difficulties[$script:Difficulty].React
     $false
 }
 
@@ -310,26 +317,27 @@ function Invoke-ActionShoot([Actor]$a) {
     if (-not $script:AreaByPlayer[$a.Area]) { return }
     if (-not (Test-LineToPlayer $a.X $a.Y)) { return }
     Start-Sfx $a.Def.ShotSnd
+    $aim = $script:Difficulties[$script:Difficulty].Aim         # beginners are shot at by worse marksmen
 
     if ($a.Def.Marksman) {                                     # snipers: distance means nothing, only your speed helps
-        if ((Get-Rnd) -lt $(if ($script:P.Running) { 110 } else { 225 })) { Invoke-PlayerDamage (25 + ((Get-Rnd) -shr 3)) $a }
+        if ((Get-Rnd) -lt $(if ($script:P.Running) { 110 } else { 225 }) * $aim) { Invoke-PlayerDamage (25 + ((Get-Rnd) -shr 3)) $a }
         return
     }
     $dist = [Math]::Max([Math]::Abs($script:P.X - $a.X), [Math]::Abs($script:P.Y - $a.Y))
     $dist = [Math]::Floor($dist / $a.Def.Accuracy)             # good marksmen "stand closer"
     $base = if ($script:P.Running) { 160 } else { 256 }        # a running target is harder to hit
     $perTile = if ($a.Visible) { 16 } else { 8 }               # ... and one who sees it coming can duck
-    if ((Get-Rnd) -ge ($base - $dist * $perTile)) { return }
+    if ((Get-Rnd) -ge ($base - $dist * $perTile) * $aim) { return }
 
     $r = Get-Rnd
-    $damage = if ($dist -lt 2) { $r -shr 2 } elseif ($dist -lt 4) { $r -shr 3 } else { $r -shr 4 }
+    $damage = if ($dist -lt 2) { 8 + ($r -shr 3) } elseif ($dist -lt 4) { $r -shr 3 } else { $r -shr 4 }      # point blank: 8..39
     Invoke-PlayerDamage $damage $a
 }
 
 function Invoke-ActionBite([Actor]$a) {
     Start-Sfx 'bite'
     if ([Math]::Abs($script:P.X - $a.X) -gt 1.6 -or [Math]::Abs($script:P.Y - $a.Y) -gt 1.6) { return }
-    if ((Get-Rnd) -lt 180) { Invoke-PlayerDamage ((Get-Rnd) -shr 4) $a }
+    if ((Get-Rnd) -lt 180 * $script:Difficulties[$script:Difficulty].Aim) { Invoke-PlayerDamage ((Get-Rnd) -shr 4) $a }
 }
 
 # Spawns a short-lived effect sprite ('blood' or 'puff').
@@ -428,8 +436,8 @@ function Invoke-ThinkProjectile([Actor]$a, [double]$Tics) {
     if (-not $hitPlayer -and -not $hitWall) { return }
     if ($hitWall) { $a.X -= $a.VX * $Tics; $a.Y -= $a.VY * $Tics }  # explode in front of the wall, not inside it
     # a direct hit hurts on top of the blast, which also catches bystanders and barrels
-    if ($hitPlayer) { Invoke-PlayerDamage (((Get-Rnd) -shr 3) + 20) $a }
-    Invoke-Explosion $a.X $a.Y 1.6 40 $a
+    if ($hitPlayer) { Invoke-PlayerDamage (((Get-Rnd) -shr 4) + 12) $a }
+    Invoke-Explosion $a.X $a.Y 1.6 32 $a
     Set-ActorState $a 'rocket.boom1'
 }
 

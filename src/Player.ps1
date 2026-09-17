@@ -18,7 +18,7 @@ function New-OwnedList([bool]$All) {
 function New-Player {
     $script:P = @{
         X = 0.0; Y = 0.0; Angle = 0.0; Area = -1
-        Health = 100; Ammo = $script:START_AMMO; Lives = 3; Score = 0; NextExtra = $script:EXTRA_LIFE_POINTS
+        Health = 100; Ammo = (Get-AmmoCount $script:START_AMMO); Lives = 3; Score = 0; NextExtra = $script:EXTRA_LIFE_POINTS
         KeyGold = $false; KeySilver = $false
         Weapon = 1; ChosenWeapon = 1
         Owned = New-OwnedList $false                              # knife and pistol from the start
@@ -82,7 +82,7 @@ function Reset-PlayerForLevel {
 
 function Reset-PlayerKit {
     $p = $script:P
-    $p.Health = 100; $p.Ammo = $script:START_AMMO
+    $p.Health = 100; $p.Ammo = Get-AmmoCount $script:START_AMMO
     $p.Weapon = 1; $p.ChosenWeapon = 1
     $p.Owned = New-OwnedList $false
     $p.Charges = 0; $p.Rockets = 0; $p.Knives = 0; $p.SudoTics = 0.0
@@ -334,6 +334,9 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
 # ---------------------------------------------------------------------------------------------
 function Add-Health([int]$Points) { $script:P.Health = [Math]::Min(100, $script:P.Health + $Points) }
 
+# Clips and the start kit are worth more on the easier difficulties.
+function Get-AmmoCount([int]$Rounds) { [int][Math]::Round($Rounds * $script:Difficulties[$script:Difficulty].Ammo) }
+
 function Add-Ammo([int]$Count) {
     $p = $script:P
     $p.Ammo = [Math]::Min($script:MAX_AMMO, $p.Ammo + $Count)
@@ -364,8 +367,8 @@ function Invoke-Pickup([string]$Item) {
         'dogfood'    { if ($p.Health -ge 100) { return $false }; Add-Health 4;  Start-Sfx 'pickup' }
         'food'       { if ($p.Health -ge 100) { return $false }; Add-Health 10; Start-Sfx 'pickup' }
         'medkit'     { if ($p.Health -ge 100) { return $false }; Add-Health 25; Start-Sfx 'pickup' }
-        'clip'       { if ($p.Ammo -ge $script:MAX_AMMO) { return $false }; Add-Ammo 8; Start-Sfx 'ammo' }
-        'clip_small' { if ($p.Ammo -ge $script:MAX_AMMO) { return $false }; Add-Ammo 4; Start-Sfx 'ammo' }
+        'clip'       { if ($p.Ammo -ge $script:MAX_AMMO) { return $false }; Add-Ammo (Get-AmmoCount 8); Start-Sfx 'ammo' }
+        'clip_small' { if ($p.Ammo -ge $script:MAX_AMMO) { return $false }; Add-Ammo (Get-AmmoCount 4); Start-Sfx 'ammo' }
         'mgun'       { Add-Weapon 2; Start-Sfx 'weapon'; Show-Message 'Machine gun!' }
         'chaingun'   { Add-Weapon 3; Start-Sfx 'weapon'; Show-Message 'Chain gun!' }
         'pipeline'   { Add-Weapon 4; Start-Sfx 'weapon'; Show-Message 'PIPELINE CANNON!  Pierces everything in the line of fire' }

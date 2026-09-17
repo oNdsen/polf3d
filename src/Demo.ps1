@@ -87,12 +87,22 @@ function Test-DemoInSync {
 # The demo bot: hunts the nearest enemy along the shortest path, opens doors, shoots what it
 # sees. Not a great player - but good enough for thirty seconds of attract mode.
 # ---------------------------------------------------------------------------------------------
-# One flood fill from the player finds the NEAREST REACHABLE enemy and returns the first tile of the
-# way there (or $null if nobody can be reached, e.g. everyone left is behind a locked door).
+# One flood fill from the player finds the NEAREST REACHABLE enemy (or clip, or first aid kit when needed)
+# and returns the first tile of the way there - or $null if nothing can be reached.
 function Find-BotStep([int]$FromX, [int]$FromY) {
     $w = $script:MapW; $n = $w * $script:MapH
     $goals = [bool[]]::new($n)
     foreach ($a in $script:Actors) { if ($a.Shootable -and -not $a.Def.Inert) { $goals[[int][Math]::Floor($a.Y) * $w + [int][Math]::Floor($a.X)] = $true } }
+    foreach ($s in $script:Items) {                              # ... or the nearest thing worth picking up
+        if ($s.Removed) { continue }
+        $wanted = switch -Regex ($s.Item) {
+            '^(clip|clip_small|mgun|chaingun)$' { $script:P.Ammo -lt 80; break }
+            '^(dogfood|food|medkit)$'           { $script:P.Health -lt 70; break }
+            '^key_'                             { $true; break }
+            default                             { $false }
+        }
+        if ($wanted) { $goals[$s.Y * $w + $s.X] = $true }
+    }
     $prev = [int[]]::new($n); [Array]::Fill($prev, -1)
     $start = $FromY * $w + $FromX
     $queue = [System.Collections.Generic.Queue[int]]::new(); $queue.Enqueue($start); $prev[$start] = $start
@@ -132,6 +142,9 @@ function Get-BotInput([int]$Frame) {
         if ($null -eq $script:BotStep) { $in.Turn = 1; return $in }
         $tx = $script:BotStep % $script:MapW + 0.5; $ty = [Math]::Floor($script:BotStep / $script:MapW) + 0.5
     }
+
+    # a rocket on its way? step aside (this way, then that way)
+    foreach ($a in $script:Actors) { if ($a.Kind -eq 'rocket' -and $a.State -eq 'rocket.fly' -and $a.Visible) { $in.Strafe = if ([int]($Frame / 50) % 2) { 1 } else { -1 }; $in.Run = $true; break } }
 
     $want = [Math]::Atan2(- ($ty - $p.Y), $tx - $p.X) * 180.0 / [Math]::PI
     $diff = (($want - $p.Angle + 540.0) % 360.0) - 180.0

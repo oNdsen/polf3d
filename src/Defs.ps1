@@ -175,33 +175,33 @@ $script:EnemyCodes = @{
 
 $script:EnemyDefs = @{
     guard = @{
-        HP = @(25, 25, 25, 25); Points = 100; Patrol = 0.0078; Chase = 0.0234
+        HP = @(15, 20, 25, 25); Points = 100; Patrol = 0.0078; Chase = 0.0234
         ReactBase = 1; ReactDiv = 4; Doors = $true; Pain = $true; Rotates = $true
         Accuracy = 1.0; Drop = 'clip_small'; AlertSnd = 'alert_guard'; ShotSnd = 'shot_enemy'; DieSnd = 'die_a'
         Shoot = @(, @('aim', 20, $false)) + @(, @('aim', 20, $true)) + @(, @('fire', 20, $false))
         DieTics = 15
     }
     officer = @{
-        HP = @(50, 50, 50, 50); Points = 400; Patrol = 0.0078; Chase = 0.039
+        HP = @(30, 40, 50, 50); Points = 400; Patrol = 0.0078; Chase = 0.039
         ReactBase = 2; ReactDiv = 0; Doors = $true; Pain = $true; Rotates = $true
         Accuracy = 1.0; Drop = 'clip_small'; AlertSnd = 'alert_officer'; ShotSnd = 'shot_enemy'; DieSnd = 'die_b'
         Shoot = @(, @('aim', 6, $false)) + @(, @('aim', 20, $true)) + @(, @('fire', 10, $false))
         DieTics = 11
     }
     elite = @{
-        HP = @(100, 100, 100, 100); Points = 500; Patrol = 0.0078; Chase = 0.0312
+        HP = @(55, 80, 100, 100); Points = 500; Patrol = 0.0078; Chase = 0.0312
         ReactBase = 1; ReactDiv = 6; Doors = $true; Pain = $true; Rotates = $true
         Accuracy = 1.5; Drop = 'mgun_or_clip'; AlertSnd = 'alert_elite'; ShotSnd = 'shot_elite'; DieSnd = 'die_b'
         Shoot = @(, @('aim', 20, $false)) + @(, @('aim', 20, $true)) + @(, @('fire', 10, $false)) +
                 @(, @('aim', 10, $true)) + @(, @('fire', 10, $false)) + @(, @('aim', 10, $true)) +
-                @(, @('fire', 10, $false)) + @(, @('aim', 10, $true)) + @(, @('fire', 10, $false))
+                @(, @('fire', 10, $false)) + @(, @('aim', 25, $false))
         DieTics = 15
     }
     mutant = @{
-        HP = @(45, 55, 55, 65); Points = 700; Patrol = 0.0078; Chase = 0.0234
+        HP = @(30, 45, 55, 65); Points = 700; Patrol = 0.0078; Chase = 0.0234
         ReactBase = 1; ReactDiv = 6; Doors = $true; Pain = $true; Rotates = $true
         Accuracy = 1.0; Drop = 'clip_small'; AlertSnd = $null; ShotSnd = 'shot_enemy'; DieSnd = 'die_c'
-        Shoot = @(, @('aim', 6, $true)) + @(, @('fire', 20, $false)) + @(, @('aim', 10, $true)) + @(, @('fire', 20, $false))
+        Shoot = @(, @('aim', 10, $true)) + @(, @('fire', 20, $false)) + @(, @('aim', 15, $true)) + @(, @('fire', 25, $false))
         DieTics = 7
     }
     dog = @{
@@ -212,17 +212,17 @@ $script:EnemyDefs = @{
         DieTics = 15
     }
     boss = @{
-        HP = @(850, 950, 1050, 1200); Points = 5000; Patrol = 0.0078; Chase = 0.0234
+        HP = @(350, 600, 900, 1200); Points = 5000; Patrol = 0.0078; Chase = 0.0234
         ReactBase = 1; ReactDiv = 0; Doors = $true; Pain = $false; Rotates = $false
         Accuracy = 1.5; Drop = 'key_gold'; AlertSnd = 'alert_boss'; ShotSnd = 'shot_boss'; DieSnd = 'die_boss'
-        Shoot = @(, @('aim', 30, $false)) + @(, @('fire', 10, $true)) + @(, @('aim', 10, $true)) +
-                @(, @('fire', 10, $true)) + @(, @('aim', 10, $true)) + @(, @('fire', 10, $true)) +
-                @(, @('aim', 10, $true)) + @(, @('aim', 10, $false))
+        Shoot = @(, @('aim', 35, $false)) + @(, @('fire', 10, $true)) + @(, @('aim', 10, $false)) +
+                @(, @('fire', 10, $true)) + @(, @('aim', 10, $false)) + @(, @('fire', 10, $true)) +
+                @(, @('aim', 35, $false))
         DieTics = 15
     }
     # Sniper: fragile and slow, but takes his time to aim and then hits hard at ANY distance. Never shouts.
     sniper = @{
-        HP = @(30, 30, 30, 30); Points = 600; Patrol = 0.0078; Chase = 0.012
+        HP = @(15, 25, 30, 30); Points = 600; Patrol = 0.0078; Chase = 0.012
         ReactBase = 1; ReactDiv = 6; Doors = $true; Pain = $true; Rotates = $true
         Accuracy = 1.0; Marksman = $true; Drop = 'clip_small'; AlertSnd = $null; ShotSnd = 'shot_sniper'; DieSnd = 'die_a'
         Shoot = @(, @('aim', 60, $false)) + @(, @('aim', 10, $true)) + @(, @('fire', 25, $false))
@@ -231,7 +231,7 @@ $script:EnemyDefs = @{
     # Shield bearer: bullets and blades glance off the shield. He is only vulnerable from behind,
     # while he lowers the shield to shoot - or to anything that does not care (beam, blast, explosions).
     shield = @{
-        HP = @(80, 80, 80, 80); Points = 500; Patrol = 0.0078; Chase = 0.0195
+        HP = @(45, 65, 80, 80); Points = 500; Patrol = 0.0078; Chase = 0.0195
         ReactBase = 1; ReactDiv = 6; Doors = $true; Pain = $false; Rotates = $true
         Accuracy = 1.0; Shield = $true; Drop = 'clip_small'; AlertSnd = 'alert_elite'; ShotSnd = 'shot_enemy'; DieSnd = 'die_b'
         Shoot = @(, @('aim', 25, $false)) + @(, @('aim', 12, $true)) + @(, @('fire', 12, $false)) + @(, @('aim', 12, $false))
@@ -239,7 +239,7 @@ $script:EnemyDefs = @{
     }
     # Kamikaze bot: rolls at you at speed and blows itself up - shooting it has the same effect. No doors.
     bot = @{
-        HP = @(20, 20, 20, 20); Points = 300; Patrol = 0.02; Chase = 0.06
+        HP = @(10, 15, 20, 20); Points = 300; Patrol = 0.02; Chase = 0.06
         ReactBase = 1; ReactDiv = 8; Doors = $false; Pain = $false; Rotates = $false
         Accuracy = 1.0; Drop = $null; AlertSnd = 'bot_beep'; ShotSnd = $null; DieSnd = $null
         Shoot = @(); ChaseThink = 'BotChase'; DieScream = 'Explode'; BlastRadius = 1.9; BlastDamage = 75
@@ -247,28 +247,28 @@ $script:EnemyDefs = @{
     }
     # The super boss, phase 1: a walking war machine - bursts of gunfire, then a salvo of rockets.
     uber = @{
-        HP = @(1100, 1300, 1500, 1800); Points = 10000; Patrol = 0.0078; Chase = 0.0195
+        HP = @(550, 950, 1400, 1800); Points = 10000; Patrol = 0.0078; Chase = 0.0195
         ReactBase = 1; ReactDiv = 0; Doors = $false; Pain = $false; Rotates = $false
         Accuracy = 1.5; Drop = $null; AlertSnd = 'alert_uber'; ShotSnd = 'shot_boss'; DieSnd = 'die_uber'
-        Shoot = @(, @('aim', 30, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 8, $true)) + @(, @('fire', 8, $true)) +
-                @(, @('aim', 8, $true)) + @(, @('aim', 25, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 12, $false)) +
+        Shoot = @(, @('aim', 30, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 8, $false)) + @(, @('fire', 8, $true)) +
+                @(, @('aim', 8, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 30, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 12, $false)) +
                 @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 12, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 20, $false))
         DieTics = 20; DieAction = 'SpawnPilot'
     }
     # ... phase 2: the pilot bails out - little armour, but fast and trigger-happy.
     pilot = @{
-        HP = @(250, 300, 400, 500); Points = 5000; Patrol = 0.0078; Chase = 0.05
+        HP = @(140, 250, 380, 500); Points = 5000; Patrol = 0.0078; Chase = 0.05
         ReactBase = 1; ReactDiv = 0; Doors = $true; Pain = $false; Rotates = $true
         Accuracy = 1.5; Drop = 'crown'; AlertSnd = 'alert_officer'; ShotSnd = 'shot_elite'; DieSnd = 'die_b'
-        Shoot = @(, @('aim', 8, $false)) + @(, @('aim', 6, $true)) + @(, @('fire', 6, $false)) + @(, @('aim', 6, $true)) +
-                @(, @('fire', 6, $false)) + @(, @('aim', 6, $true)) + @(, @('fire', 6, $false))
+        Shoot = @(, @('aim', 12, $false)) + @(, @('aim', 8, $true)) + @(, @('fire', 8, $false)) + @(, @('aim', 8, $true)) +
+                @(, @('fire', 8, $false)) + @(, @('aim', 8, $true)) + @(, @('fire', 8, $false)) + @(, @('aim', 30, $false))
         DieTics = 12
     }
 }
 
 # things that live in the actor list without being enemies
 $script:MiscDefs = @{
-    rocket = @{ Speed = 0.12; Rotates = $false; Doors = $false; Pain = $false }
+    rocket = @{ Speed = 0.09; Rotates = $false; Doors = $false; Pain = $false }
     # the player's own projectiles
     procket = @{ Speed = 0.16; Rotates = $false; Doors = $false; Pain = $false; BlastRadius = 1.9; BlastDamage = 120 }
     tknife  = @{ Speed = 0.22; Rotates = $false; Doors = $false; Pain = $false }
@@ -389,9 +389,15 @@ $script:WEAPON_TKNIFE = 8
 $script:ResourceMax = @{ ammo = 99; charges = 9; rockets = 20; knives = 20 }
 $script:SUDO_TICS = 1400.0        # the "sudo" power-up lasts 20 seconds
 
+# What the difficulty changes:
+#   DamageScale  the damage the player takes          Aim    the enemies' chance to hit
+#   React        how long enemies need to react        Ammo   what clips (and the start kit) are worth
+#   Thin         the share of ordinary enemies that stay at home (bosses always show up)
+#   Hear         how many tiles away gunfire still wakes enemies up (in rooms connected to the player's)
+# ... plus the hit points of every enemy (the HP tables above) and the @spawn reinforcements of the maps.
 $script:Difficulties = @(
-    @{ Name = 'Intern (-WhatIf)';          DamageScale = 0.25 }
-    @{ Name = 'Sysadmin';                  DamageScale = 0.6 }
-    @{ Name = 'Senior Engineer';           DamageScale = 1.0 }
-    @{ Name = 'root (-Force -Confirm:$false)'; DamageScale = 1.3 }
+    @{ Name = 'Intern (-WhatIf)';              DamageScale = 0.2;  Aim = 0.55; React = 2.5; Ammo = 2.0; Thin = 0.35; Hear = 10 }
+    @{ Name = 'Sysadmin';                      DamageScale = 0.33; Aim = 0.7;  React = 1.6; Ammo = 1.5; Thin = 0.2;  Hear = 13 }
+    @{ Name = 'Senior Engineer';               DamageScale = 0.6;  Aim = 0.85; React = 1.0; Ammo = 1.0; Thin = 0.08; Hear = 18 }
+    @{ Name = 'root (-Force -Confirm:$false)'; DamageScale = 1.0;  Aim = 1.0;  React = 0.7; Ammo = 1.0; Thin = 0.0;  Hear = 99 }
 )

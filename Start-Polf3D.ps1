@@ -73,6 +73,7 @@ param(
     [switch]$AllWeapons,
     [switch]$SelfTest,
     [Parameter(DontShow)][string]$RecordAttractDemo,     # maintenance: let the bot play floor 1 and save the demo to this file
+    [Parameter(DontShow)][int]$BalanceTest = 0,          # maintenance: let the bot play this floor on every difficulty and print how it fared (negative: only the boss duels)
     [Parameter(DontShow)][string]$Screenshots,           # maintenance: stage and save the README pictures into this folder
     [Parameter(DontShow)][int]$AutoQuitSeconds = 0      # test aid: play by script in the real window, then quit
 )
@@ -143,7 +144,7 @@ Write-Step 'POLF 3D starting ...'
 foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Network', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
-$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo
+$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest
 $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
 $script:AttractDemo = Join-Path $PSScriptRoot 'demos/attract.json'
@@ -157,6 +158,10 @@ Initialize-Renderer $Scale ([int](320 / $Columns))
 
 if ($RecordAttractDemo) {
     Export-AttractDemo $RecordAttractDemo
+    return
+}
+if ($BalanceTest) {
+    Invoke-BalanceTest $BalanceTest
     return
 }
 if ($Screenshots) {

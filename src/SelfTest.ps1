@@ -90,6 +90,20 @@ function Invoke-SelfTest([string]$OutDir) {
         Save-BackBuffer (Join-Path $OutDir "$($s[0]).png")
     }
 
+    # ---- sprite order: an enemy BEHIND a column must not be drawn over it ----
+    $w = $script:MapW
+    $col = $script:Statics | Where-Object { [object]::ReferenceEquals($_.Sprite, $script:Spr['column']) -and $script:Tiles[$_.Y * $w + $_.X - 2] -eq 0 -and $script:Tiles[$_.Y * $w + $_.X - 1] -eq 0 -and
+        $script:Tiles[$_.Y * $w + $_.X + 1] -eq 0 -and $script:Tiles[$_.Y * $w + $_.X + 2] -eq 0 } | Select-Object -First 1
+    Set-TestCamera ($col.X - 1.5) ($col.Y + 0.5) 0
+    $lurker = New-Enemy 'guard' ($col.X + 2) $col.Y 4 'stand'
+    $mid = [int]($script:ViewW / 2); $strip = { Update-View; for ($y = 0; $y -lt $script:ViewH; $y++) { $script:FB[$y * $script:ViewW + $mid] } }
+    $without = & $strip
+    $script:Actors.Add($lurker); $with = & $strip; $null = $script:Actors.Remove($lurker)
+    if (-not $lurker.Visible) { throw 'sprite order test: the scene is not set up right, the guard is out of view.' }
+    $differ = 0; for ($y = 0; $y -lt $with.Count; $y++) { if ($with[$y] -ne $without[$y]) { $differ++ } }
+    Write-Step "sprite order test: a guard two tiles behind a column changes $differ pixels of the column's centre line"
+    if ($differ) { throw 'sprite order test failed: far sprites are drawn over near ones.' }
+
     # ---- frame time ----
     Set-TestCamera 20.5 24.5 45
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -552,6 +566,7 @@ function Export-Screenshots([string]$OutDir) {
     $null = New-Item -ItemType Directory -Path $OutDir -Force
     $script:SaveDir = Join-Path $OutDir '_tmp'
     $script:GodMode = $true
+    $script:Difficulty = 3                                        # the full cast: the easier difficulties thin out the floors
     $script:KeyDown = [bool[]]::new(256)
     $script:KeyHit = [System.Collections.Generic.Queue[int]]::new()
     $script:Mode = 'play'
@@ -610,11 +625,13 @@ function Export-Screenshots([string]$OutDir) {
     $mech = $script:Actors | Where-Object Kind -eq 'uber' | Select-Object -First 1
     Set-TestCamera ($mech.X + 0.4) ($mech.Y - 5.5) 270
     $script:InfiniteAmmo = $true                                  # the staging may take a while - the beam must not run dry
+    foreach ($barrel in @($script:Actors | Where-Object { $_.Def.Inert })) { $null = $script:Actors.Remove($barrel) }      # they would stand in the picture
     for ($f = 0; $f -lt 900; $f++) {
         Show-PlayFrame; Update-World 2.0 $(if ($f % 30 -lt 15 -and $f -gt 120) { $fire } else { $idle })
-        $rockets = @($script:Actors | Where-Object { $_.Kind -eq 'rocket' -and $_.State -eq 'rocket.fly' -and $_.Visible -and $_.Depth -gt 2.2 })
+        $rockets = @($script:Actors | Where-Object { $_.Kind -eq 'rocket' -and $_.State -eq 'rocket.fly' -and $_.Visible -and $_.Depth -gt 2.6 -and [Math]::Abs($_.ScreenX - $mech.ScreenX) -gt 45 })
         $blasts = @($script:Actors | Where-Object { $_.State -like 'rocket.boom*' -and $_.Visible -and $_.Depth -lt 4 })      # would fill the picture
-        if ($script:BeamFlash -gt 5 -and ($rockets.Count -or $f -gt 450) -and $mech.Shootable -and $mech.Visible -and -not $blasts.Count) { break }
+        $near = @($script:Actors | Where-Object { $_.Kind -eq 'rocket' -and $_.Visible -and $_.Depth -le 2.6 })
+        if ($script:BeamFlash -gt 5 -and ($rockets.Count -or $f -gt 600) -and -not $near.Count -and $mech.Shootable -and $mech.Visible -and $mech.Depth -gt 3 -and -not $blasts.Count) { break }
     }
     $script:InfiniteAmmo = $false
     $script:Message = $null; $p.Ammo = 71; Save-Shot $OutDir 'warmachine'
@@ -665,6 +682,140 @@ function Export-Screenshots([string]$OutDir) {
     }
     $bmp.Save((Join-Path $OutDir 'cast.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
 
+    Export-Banner (Join-Path $OutDir 'banner.png')
+
     Remove-Item -LiteralPath $script:SaveDir -Recurse -Force -ErrorAction SilentlyContinue
     Write-Step "screenshots written: $OutDir"
+}
+
+# The title picture (1280x640, the size GitHub uses for social previews): the war machine opening fire, straight
+# from the game's own renderer, with the title set over it.
+function Export-Banner([string]$Path) {
+    $script:LevelIndex = 3; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    $mech = $script:Actors | Where-Object Kind -eq 'uber' | Select-Object -First 1
+    Set-TestCamera ($mech.X + 0.3) ($mech.Y - 3.3) 288            # looking a little past it: the machine stands in the right half
+    $mech.State = 'uber.shoot2'; $mech.Dir = 2
+    $rocket = [Actor]::new(); $rocket.Kind = 'rocket'; $rocket.Def = $script:MiscDefs.rocket; $rocket.State = 'rocket.fly'; $rocket.Corpse = $true
+    $rocket.X = $mech.X + 0.75; $rocket.Y = $mech.Y - 1.5; $rocket.TX = [int][Math]::Floor($rocket.X); $rocket.TY = [int][Math]::Floor($rocket.Y)
+    $script:Actors.Add($rocket)
+    $fog = $script:FogPerTile; $script:FogPerTile = $fog * 0.45   # studio lighting
+    $script:ShowWeapon = $false
+    Update-View
+    $script:ShowWeapon = $true; $script:FogPerTile = $fog
+    $view = [System.Drawing.Bitmap]::new($script:ViewW, $script:ViewH, [System.Drawing.Imaging.PixelFormat]::Format32bppRgb)
+    $bd = $view.LockBits([System.Drawing.Rectangle]::new(0, 0, $view.Width, $view.Height), 'WriteOnly', $view.PixelFormat)
+    [System.Runtime.InteropServices.Marshal]::Copy($script:FB, 0, $bd.Scan0, $script:FB.Length); $view.UnlockBits($bd)
+
+    $W = 1280; $H = 640
+    $bmp = [System.Drawing.Bitmap]::new($W, $H)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+    $scale = $W / $view.Width; $vh = $view.Height * $scale
+    $g.DrawImage($view, [System.Drawing.RectangleF]::new(0, ($H - $vh) / 2 - 20, $W, $vh))
+    $view.Dispose()
+
+    # darken the left for the lettering, and the edges all round
+    $rect = [System.Drawing.Rectangle]::new(0, 0, $W, $H)
+    $shade = [System.Drawing.Drawing2D.LinearGradientBrush]::new([System.Drawing.Point]::new(0, 0), [System.Drawing.Point]::new([int]($W * 0.72), 0),
+        [System.Drawing.Color]::FromArgb(235, 6, 10, 24), [System.Drawing.Color]::FromArgb(0, 6, 10, 24))
+    $g.FillRectangle($shade, 0, 0, [int]($W * 0.72), $H); $shade.Dispose()
+    foreach ($edge in @(0, 0, 90, 270), @(($H - 110), 110, 110, 90)) {
+        $r = [System.Drawing.Rectangle]::new(0, $edge[0], $W, $(if ($edge[1]) { $edge[1] } else { $edge[2] }))
+        $dark = [System.Drawing.Color]::FromArgb(210, 4, 6, 14); $clear = [System.Drawing.Color]::FromArgb(0, 4, 6, 14)
+        $fade = [System.Drawing.Drawing2D.LinearGradientBrush]::new($r, $(if ($edge[3] -eq 270) { $dark } else { $clear }), $(if ($edge[3] -eq 270) { $clear } else { $dark }), [single]90)
+        $g.FillRectangle($fade, $r); $fade.Dispose()
+    }
+    for ($y = 0; $y -lt $H; $y += 4) { $g.FillRectangle((Get-Brush '30000000'), 0, $y, $W, 2) }      # scan lines
+
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
+    $title = [System.Drawing.Font]::new('Consolas', 138, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+    $mid = [System.Drawing.Font]::new('Consolas', 30, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
+    $small = [System.Drawing.Font]::new('Consolas', 21, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Pixel)
+    $x = 58; $y = 150
+    for ($i = 12; $i -ge 1; $i--) { $g.DrawString('POLF 3D', $title, (Get-Brush $(if ($i -gt 9) { 'FF050A18' } else { 'FF1C3C9C' })), ($x + $i), ($y + $i)) }      # extruded
+    $face = [System.Drawing.Drawing2D.LinearGradientBrush]::new([System.Drawing.Point]::new(0, $y + 20), [System.Drawing.Point]::new(0, $y + 150),
+        [System.Drawing.Color]::White, [System.Drawing.Color]::FromArgb(255, 120, 215, 255))
+    $g.DrawString('POLF 3D', $title, $face, $x, $y); $face.Dispose()
+
+    # the prompt line: a little terminal window
+    $px = $x + 8; $py = $y + 176
+    $px = $x + 24
+    $g.FillRectangle((Get-Brush 'E0081020'), $px, $py, 470, 52)
+    $pen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 44, 84, 196), [single]3); $g.DrawRectangle($pen, $px, $py, 470, 52); $pen.Dispose()
+    $g.DrawString('PS>', $mid, (Get-Brush 'FF60FF80'), ($px + 14), ($py + 9))
+    $g.DrawString('./Start-Polf3D.ps1', $mid, (Get-Brush 'FF40E0FF'), ($px + 76), ($py + 9))
+    $g.FillRectangle((Get-Brush 'FF40E0FF'), ($px + 386), ($py + 12), 16, 29)
+
+    $g.DrawString('A 90s-style ray casting shooter - written in PowerShell.', $small, (Get-Brush 'FFE8ECF4'), ($px - 3), ($py + 78))
+    $g.DrawString('5 floors   11 enemies   9 weapons   co-op & duel   everything procedural', $small, (Get-Brush 'FF8FB0FF'), ($px - 3), ($py + 108))
+    $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, 0, $W, 8); $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, ($H - 8), $W, 8)
+
+    $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    foreach ($o in $title, $mid, $small, $g, $bmp) { $o.Dispose() }
+}
+
+# Maintenance (-BalanceTest <floor>): the demo bot plays the floor a few times on every difficulty. The bot never
+# takes cover, never retreats and never goes looking for supplies - a human should do clearly better than this.
+function Invoke-BalanceTest([int]$Floor, [int]$Runs = 6, [int]$Seconds = 120) {
+    $script:KeyDown = [bool[]]::new(256); $script:KeyHit = [System.Collections.Generic.Queue[int]]::new(); $script:Mode = 'play'
+    $script:SaveDir = Join-Path $PSScriptRoot '../selftest/_balance'
+    $duelsOnly = $Floor -lt 0; $Floor = [Math]::Abs($Floor)          # a negative floor number: just the boss duels
+    for ($d = 0; $d -lt 4 -and -not $duelsOnly; $d++) {
+        $alive = 0.0; $kills = 0; $deaths = 0; $dry = 0; $frames = 0; $left = 0; $killers = @()
+        for ($run = 0; $run -lt $Runs; $run++) {
+            $script:GodMode = $false; $script:Difficulty = $d; $script:LevelIndex = $Floor - 1; $script:BonusMap = $null
+            $script:NextSeed = 1000 + $run
+            Start-Level $false $false
+            $script:BotStep = $null
+            # nobody arrives on a later floor with just a pistol: a modest kit of what the floors before offer
+            $p = $script:P
+            if ($Floor -ge 2) { $p.Owned[2] = $true; $p.Weapon = 2; $p.ChosenWeapon = 2; $p.Ammo = 40 }
+            if ($Floor -ge 3) { $p.Owned[3] = $true; $p.Weapon = 3; $p.ChosenWeapon = 3; $p.Ammo = 60 }
+            for ($f = 0; $f -lt $Seconds * 35 -and -not $script:PlayerDied -and -not $script:LevelDone; $f++) {
+                Update-View
+                Update-World 2.0 (Get-BotInput $f)
+                if ($script:P.Ammo -le 0) { $dry++ }
+            }
+            $frames += $f; $alive += $f / 35.0; $kills += $script:Stats.Kills; $left += $script:P.Health
+            if ($script:PlayerDied) { $deaths++; $killers += "$(if ($script:Killer) { $script:Killer.Kind } else { 'trap' })$(if ($script:P.Ammo -le 0) { ' (no ammo)' })" }
+        }
+        Write-Step ('{0,-30} died {1}/{2}   alive {3,5:0.0}s   kills {4,4:0.0}   health left {5,3:0}   out of ammo {6,3:0}% of the time   killed by: {7}' -f
+            $script:Difficulties[$d].Name, $deaths, $Runs, ($alive / $Runs), ($kills / $Runs), ($left / $Runs), (100.0 * $dry / [Math]::Max(1, $frames)), ($killers -join ', '))
+    }
+    # the boss duels: full health, the guns one has by then, four tiles in front of the boss - and no cover at all
+    for ($d = 0; $d -lt 4; $d++) {
+        $script:Difficulty = $d; $script:LevelIndex = $Floor - 1; $script:NextSeed = 77; Start-Level $false $false
+        $bosses = @($script:Actors | Where-Object { $_.Kind -in 'boss', 'uber' } | ForEach-Object { "$($_.TX),$($_.TY)" })
+        foreach ($spot in $bosses) {
+            $won = 0; $left = 0; $time = 0.0
+            for ($run = 0; $run -lt $Runs; $run++) {
+                $script:GodMode = $false; $script:NextSeed = 2000 + $run; Start-Level $false $false; $script:BotStep = $null
+                $boss = $script:Actors | Where-Object { "$($_.TX),$($_.TY)" -eq $spot -and $_.Kind -in 'boss', 'uber' } | Select-Object -First 1
+                $kind = $boss.Kind
+                # everybody else stays out of it
+                foreach ($other in @($script:Actors)) { if ($other -ne $boss -and -not $other.Def.Inert) { $script:ActorAt[$other.TY * $script:MapW + $other.TX] = $null; $null = $script:Actors.Remove($other) } }
+                $px = $boss.TX; $py = $boss.TY; $best = -1
+                foreach ($dir in @(1, 0), @(-1, 0), @(0, 1), @(0, -1)) {      # whichever direction has room for it
+                    $tx = $boss.TX; $ty = $boss.TY
+                    for ($i = 0; $i -lt 4; $i++) { $idx = ($ty + $dir[1]) * $script:MapW + $tx + $dir[0]; if ($script:Tiles[$idx] -ne 0 -or $script:StaticBlock[$idx]) { break }; $tx += $dir[0]; $ty += $dir[1] }
+                    if ($i -gt $best) { $best = $i; $px = $tx; $py = $ty }
+                }
+                Set-TestCamera ($px + 0.5) ($py + 0.5) 0; Set-TestAim $boss
+                $p = $script:P; $gun = if ($Floor -ge 3) { 3 } else { 2 }
+                $p.Owned[2] = $true; $p.Owned[$gun] = $true; $p.Weapon = $gun; $p.ChosenWeapon = $gun; $p.Ammo = 99
+                for ($f = 0; $f -lt 60 * 35 -and -not $script:PlayerDied; $f++) {
+                    Update-View; Update-World 2.0 (Get-BotInput $f)
+                    if (-not @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert }).Count -and $f -gt 35) { break }
+                }
+                if (-not $script:PlayerDied) { $won++; $left += $script:P.Health }
+                elseif ($env:POLF_DEBUG) { Write-Step "    lost: started $([Math]::Abs($px - $boss.TX) + [Math]::Abs($py - $boss.TY)) tiles away, killed by $(if ($script:Killer) { $script:Killer.Kind } else { 'a blast or trap' }) after $([int]($f / 35.0 * 10) / 10)s, boss HP $($boss.HP)" }
+                $time += $f / 35.0
+            }
+            Write-Step ('  duel with the {0,-5} on {1,-30} won {2}/{3}   health left after a win {4,3:0}   {5,4:0.0}s' -f $kind, $script:Difficulties[$d].Name, $won, $Runs, ($left / [Math]::Max(1, $won)), ($time / $Runs))
+        }
+    }
+    Remove-Item -LiteralPath $script:SaveDir -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Step "balance test of floor $Floor finished"
 }
