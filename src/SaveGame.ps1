@@ -79,7 +79,7 @@ function Restore-Game {
         for ($i = 0; $i -lt [Math]::Min($script:Traps.Count, @($state.Traps).Count); $i++) { $script:Traps[$i].Phase = [double]$state.Traps[$i]; $script:Traps[$i].State = -1 }
 
         # items: drop the map's own, take the saved ones (includes what enemies dropped)
-        $null = $script:Statics.RemoveAll([Predicate[Static]] { param($s) $null -ne $s.Item })
+        for ($i = $script:Statics.Count - 1; $i -ge 0; $i--) { if ($null -ne $script:Statics[$i].Item) { $script:Statics.RemoveAt($i) } }
         $script:Items.Clear()
         foreach ($it in $state.Items) { Add-Item $it.Item ([int]$it.X) ([int]$it.Y) }
 

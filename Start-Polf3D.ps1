@@ -86,21 +86,30 @@ function Write-Step([string]$Text) { Write-Host ('[{0,6:0.0}s] {1}' -f $script:C
 
 # ---- the only C#: the pixel scalers. Compiled once and cached as a DLL next to the script. -------
 function Initialize-Scaler {
-    if ('PolfScaler' -as [type]) { return }
-    $source = Join-Path $PSScriptRoot 'src/Scaler.cs'
-    $binDir = Join-Path $PSScriptRoot 'bin'
-    $dll = Join-Path $binDir 'PolfScaler.dll'
-    try {
-        if (-not (Test-Path $dll) -or (Get-Item $dll).LastWriteTimeUtc -lt (Get-Item $source).LastWriteTimeUtc) {
-            $null = New-Item -ItemType Directory -Path $binDir -Force
-            Add-Type -Path $source -OutputAssembly $dll -OutputType Library
+    # The class name carries a hash of its source. A PowerShell session can never unload a type, so
+    # without this an older PolfScaler from an earlier run in the same session would shadow the new one.
+    $source = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'src/Scaler.cs') -Raw
+    $hash = [BitConverter]::ToString([System.Security.Cryptography.SHA1]::HashData([Text.Encoding]::UTF8.GetBytes($source))).Replace('-', '').Substring(0, 10)
+    $name = "PolfScaler_$hash"
+    if (-not ($name -as [type])) {
+        $code = $source.Replace('class PolfScaler', "class $name")
+        $binDir = Join-Path $PSScriptRoot 'bin'
+        $dll = Join-Path $binDir "$name.dll"
+        try {
+            if (-not (Test-Path $dll)) {
+                $null = New-Item -ItemType Directory -Path $binDir -Force
+                Get-ChildItem $binDir -Filter 'PolfScaler*.dll' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+                Add-Type -TypeDefinition $code -OutputAssembly $dll -OutputType Library
+            }
+            Add-Type -Path $dll
         }
-        Add-Type -Path $dll
+        catch {
+            Write-Verbose "DLL cache not usable ($($_.Exception.Message)), compiling in memory."
+            Add-Type -TypeDefinition $code
+        }
     }
-    catch {
-        Write-Verbose "DLL cache not usable ($($_.Exception.Message)), compiling in memory."
-        Add-Type -Path $source
-    }
+    $script:Scaler = $name -as [type]
+    if (-not $script:Scaler) { throw 'The scaler (src/Scaler.cs) could not be compiled.' }
 }
 
 Write-Step 'POLF 3D starting ...'

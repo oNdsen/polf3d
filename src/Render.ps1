@@ -63,6 +63,7 @@ function Update-View {
     $step = [int]$script:ColumnStep
     $projH = [double]$script:ProjH; $pl = [double]$script:PlaneLen
     $frame = [int](++$script:FrameNo)
+    $scaler = $script:Scaler                                   # the compiled pixel loops (see Initialize-Scaler)
 
     [Array]::Copy($script:BG, $fb, $fb.Length)
 
@@ -159,7 +160,7 @@ function Update-View {
         }
 
         if ($perp -lt 0.02) { $perp = 0.02 }
-        [PolfScaler]::Wall($fb, $W, $H, $col, $step, [int]($projH / $perp), $tex, $texX)
+        $scaler::Wall($fb, $W, $H, $col, $step, [int]($projH / $perp), $tex, $texX)
         $zbuf[$col] = $perp
         if ($step -gt 1) { for ($k = 1; $k -lt $step -and ($col + $k) -lt $W; $k++) { $zbuf[$col + $k] = $perp } }
     }
@@ -217,20 +218,20 @@ function Update-View {
         [Array]::Sort($k, $items)                               # far to near
         foreach ($it in $items) {
             if ($windowsPending -and $it[3] -lt $minWin) {
-                for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { [PolfScaler]::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
+                for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
                 $windowsPending = $false
             }
-            [PolfScaler]::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3])
+            $scaler::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3])
         }
     }
     if ($windowsPending) {
-        for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { [PolfScaler]::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
+        for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
     }
 
     # ---- the weapon in the player's hands ------------------------------------------------------
     if ($script:ShowWeapon) {
         $wtex = $script:Spr["weapon.$($script:Weapons[$p.Weapon].Key)"][$p.WeaponFrame]
-        [PolfScaler]::Sprite($fb, $W, $H, $zbuf, $wtex, [int]$halfW, $H, 0.0)
+        $scaler::Sprite($fb, $W, $H, $zbuf, $wtex, [int]$halfW, $H, 0.0)
     }
 }
 

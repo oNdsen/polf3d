@@ -83,11 +83,13 @@ function Initialize-Level([string]$Path) {
     $script:ActorAt = [object[]]::new($n)         # which enemy has reserved this tile
     $script:AreaOf = [int[]]::new($n)
     $script:Vis = [int[]]::new($n)                # frame number in which a ray last crossed the tile
-    $script:Doors = [System.Collections.Generic.List[Door]]::new()
-    $script:Statics = [System.Collections.Generic.List[Static]]::new()
-    $script:Items = [System.Collections.Generic.List[Static]]::new()
-    $script:Actors = [System.Collections.Generic.List[Actor]]::new()
-    $script:NewActors = [System.Collections.Generic.List[Actor]]::new()
+    # plain object lists on purpose: a generic List[Actor] stays bound to an OLDER version of the class when the
+    # game has been dot-sourced before in the same session, and then refuses the new objects
+    $script:Doors = [System.Collections.Generic.List[object]]::new()
+    $script:Statics = [System.Collections.Generic.List[object]]::new()
+    $script:Items = [System.Collections.Generic.List[object]]::new()
+    $script:Actors = [System.Collections.Generic.List[object]]::new()
+    $script:NewActors = [System.Collections.Generic.List[object]]::new()
     $script:Traps = [System.Collections.Generic.List[hashtable]]::new()
     $script:Teleporters = [System.Collections.Generic.List[hashtable]]::new()
     $script:TeleLock = $false
