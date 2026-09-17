@@ -175,6 +175,7 @@ function Add-WallArt([string]$Name) {
             if ($Name -eq 'switch_off') { Add-Box 'D02020' 27 18 10 8; Add-Box 'FF6060' 28 19 3 2; Add-Box '303030' 24 42 16 3 }
             else { Add-Box '20C040' 27 38 10 8; Add-Box '80FF90' 28 39 3 2; Add-Box '303030' 24 17 16 3 }
         }
+        { $_ -like '*_window' } { Add-WallBase ($Name -replace '_window'); Add-WindowArt }
         { $_ -like '*_cracked' } {
             Add-WallBase ($Name -replace '_cracked')
             # a web of cracks radiating from a weak spot - the hint that explosives will do the rest
@@ -225,6 +226,16 @@ function Add-WallArt([string]$Name) {
     }
 }
 
+# A window: frame, a hole punched through to transparency, and bars across it.
+function Add-WindowArt {
+    Add-Box '2A2A2A' 12 14 40 34; Add-Box '5A5A5A' 12 14 40 2; Add-Box '5A5A5A' 12 14 2 34
+    $g = $script:GFX
+    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+    $g.FillRectangle([System.Drawing.Brushes]::Transparent, 15, 17, 34, 28)
+    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceOver
+    foreach ($x in 23, 31, 39) { Add-Box '3A3A3A' $x 17 2 28; Add-Box '6A6A6A' $x 17 1 28 }
+}
+
 function Initialize-WallTextures {
     $n = $script:WallNames.Count
     $script:WallLight = [object[]]::new($n)
@@ -234,6 +245,7 @@ function Initialize-WallTextures {
         Add-WallArt $script:WallNames[$i]
         $script:WallLight[$i] = Get-Pixels $bmp
         Add-Box '60000000' 0 0 64 64            # east/west faces use a darker copy: cheap lighting
+        if ($script:WallNames[$i] -like '*_window') { Add-WindowArt }      # ... but the hole must stay a hole
         $script:WallDark[$i] = Get-Pixels $bmp
         $script:GFX.Dispose(); $bmp.Dispose()
     }

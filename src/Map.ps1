@@ -9,6 +9,7 @@
 #   GG Gv  TT Tl                             mossy rock (+ vines), tech panels (+ console)
 #   MX                                       lift switch (the exit)
 #   ?S ?s ?B ?b ?W ?w ?R ?r ?M ?G ?g ?T ?t   secret push-wall (upper case plain, lower case decorated)
+#   =S =B =W =R =M =G =T                     window: solid to walk into, open to eyes, ears and bullets
 #   !S !B !W !R !M !G !T                     cracked wall: only an explosion brings it down (counts as a secret)
 #   DD DG DS DL                              door: normal / gold lock / silver lock / lift door
 #   D1..D9  X1..X9                           remote door and the wall lever (same number) that opens it for good
@@ -68,6 +69,7 @@ function Initialize-Level([string]$Path) {
     $script:TurnAt = [int[]]::new($n)             # patrol turning points (-1 = none)
     $script:LeverAt = [int[]]::new($n)            # channel number of a wall lever (0 = none)
     $script:Breakable = [bool[]]::new($n)         # cracked walls that an explosion brings down
+    $script:IsWindow = [bool[]]::new($n)          # walls one can see, hear and shoot through
     $script:ActorAt = [object[]]::new($n)         # which enemy has reserved this tile
     $script:AreaOf = [int[]]::new($n)
     $script:Vis = [int[]]::new($n)                # frame number in which a ray last crossed the tile
@@ -95,6 +97,10 @@ function Initialize-Level([string]$Path) {
                 $script:Tiles[$idx] = $script:PushCodes[$code[1]]
                 $script:PushTex[$idx] = $script:PushCodes[$code[1]]
                 $script:Stats.SecretTotal++
+            }
+            elseif ($code[0] -ceq '=') {
+                if (-not $script:WindowCodes.ContainsKey($code[1])) { throw "Unknown window '$code' at $x,$y" }
+                $script:Tiles[$idx] = $script:WindowCodes[$code[1]]; $script:IsWindow[$idx] = $true
             }
             elseif ($code[0] -ceq '!') {
                 if (-not $script:BreakCodes.ContainsKey($code[1])) { throw "Unknown breakable wall '$code' at $x,$y" }
@@ -142,6 +148,15 @@ function Initialize-Level([string]$Path) {
         if ($d.Vertical) { $d.Area1 = $script:AreaOf[$idx - 1]; $d.Area2 = $script:AreaOf[$idx + 1] }
         else { $d.Area1 = $script:AreaOf[$idx - $w]; $d.Area2 = $script:AreaOf[$idx + $w] }
         if ($d.Area1 -lt 0 -or $d.Area2 -lt 0) { throw "Door at $($d.X),$($d.Y) leads nowhere." }
+    }
+
+    # windows join the rooms on either side for good: sound and sight pass through
+    for ($i = 0; $i -lt $n; $i++) {
+        if (-not $script:IsWindow[$i]) { continue }
+        foreach ($pair in @(($i - 1), ($i + 1)), @(($i - $w), ($i + $w))) {
+            $a1 = $script:AreaOf[$pair[0]]; $a2 = $script:AreaOf[$pair[1]]
+            if ($a1 -ge 0 -and $a2 -ge 0 -and $a1 -ne $a2) { $script:AreaConnect[$a1, $a2]++; $script:AreaConnect[$a2, $a1]++ }
+        }
     }
 
     # ---- pass 3: things ---------------------------------------------------------------------------

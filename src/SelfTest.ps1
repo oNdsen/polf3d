@@ -218,6 +218,22 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     $script:LevelIndex = 0
 
+    # ---- window: line of sight must pass through it, not through the wall next to it ----
+    $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    $wi = [Array]::IndexOf($script:IsWindow, $true)
+    if ($wi -ge 0) {
+        $wx = $wi % $script:MapW; $wy = [Math]::Floor($wi / $script:MapW)
+        Set-TestCamera ($wx + 0.5) ($wy + 2.5) 90
+        $through = Test-LineToPlayer ($wx + 0.5) ($wy - 1.5)
+        $blocked = Test-LineToPlayer ($wx + 1.5) ($wy - 1.5)
+        Set-TestCamera ($wx + 0.5) ($wy + 1.6) 90
+        Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-0-window.png')
+        Write-Step "window test: sight through the window $through, through the wall beside it $(-not $blocked -eq $false)"
+        if (-not $through) { throw 'window test failed.' }
+    }
+    $script:LevelIndex = 0
+
     # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
     $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
     Start-Level $false $false

@@ -94,7 +94,7 @@ function Test-LevelFile([string]$Path) {
     for ($y = 0; $y -lt $h; $y++) {
         $line = for ($x = 0; $x -lt $w; $x++) {
             $i = $y * $w + $x; $t = $script:Tiles[$i]
-            if ($script:PushTex[$i]) { '?' } elseif ($script:Breakable[$i]) { '%' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
+            if ($script:PushTex[$i]) { '?' } elseif ($script:Breakable[$i]) { '%' } elseif ($script:IsWindow[$i]) { '=' } elseif ($script:LeverAt[$i]) { 'L' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
             elseif ($script:ActorAt[$i]) { if ($script:ActorAt[$i].Def.Inert) { '*' } else { $script:ActorAt[$i].Kind[0] } } elseif ($script:StaticBlock[$i]) { 'o' }
             elseif ($reach[$i]) { '.' } else { '!' }
         }

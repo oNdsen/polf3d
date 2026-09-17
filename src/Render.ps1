@@ -66,6 +66,13 @@ function Update-View {
 
     [Array]::Copy($script:BG, $fb, $fb.Length)
 
+    # windows: the ray goes on, the window strip is remembered and drawn over the scene later
+    $isWin = $script:IsWindow
+    if ($null -eq $script:WinD -or $script:WinD.Length -ne $W) { $script:WinD = [double[]]::new($W); $script:WinX = [int[]]::new($W); $script:WinT = [object[]]::new($W) }
+    $winD = $script:WinD; $winX = $script:WinX; $winT = $script:WinT
+    [Array]::Clear($winD, 0, $W)
+    $minWin = 1e9
+
     $rad = $p.Angle * [Math]::PI / 180.0
     $dirX = [Math]::Cos($rad); $dirY = - [Math]::Sin($rad)
     $plX = - $dirY * $pl; $plY = $dirX * $pl                   # camera plane = view direction turned right
@@ -111,6 +118,10 @@ function Update-View {
                     if ($rdy -gt 0) { $texX = 63 - $texX }
                     if ($before -ge 100 -and $before -lt 200) { $t = $jamb }
                     $tex = $dark[$t]
+                }
+                if ($isWin[$idx]) {
+                    if ($winD[$col] -eq 0) { $winD[$col] = $perp; $winX[$col] = $texX; $winT[$col] = $tex; if ($perp -lt $minWin) { $minWin = $perp } }
+                    continue
                 }
                 break
             }
@@ -199,10 +210,21 @@ function Update-View {
         $draw.Add(@($spr, $a.ScreenX, [int]($projH / $depth), $depth))
     }
 
+    # far sprites, then the window strips, then the sprites in front of the nearest window
+    $windowsPending = $minWin -lt 1e9
     if ($draw.Count) {
         $k = $keys.ToArray(); $items = $draw.ToArray()
         [Array]::Sort($k, $items)                               # far to near
-        foreach ($it in $items) { [PolfScaler]::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3]) }
+        foreach ($it in $items) {
+            if ($windowsPending -and $it[3] -lt $minWin) {
+                for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { [PolfScaler]::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
+                $windowsPending = $false
+            }
+            [PolfScaler]::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3])
+        }
+    }
+    if ($windowsPending) {
+        for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { [PolfScaler]::WallAlpha($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c]) } }
     }
 
     # ---- the weapon in the player's hands ------------------------------------------------------
@@ -448,7 +470,7 @@ function Get-WeaponResource {
 # second: only tiles that are new or have changed are painted.
 $script:MAP_CELL = 8
 $script:MAP_PAD = 10
-$script:MapColors = @{ 1 = '8A8A8A'; 2 = '8A8A8A'; 3 = '8A8A8A'; 4 = '3048B8'; 5 = '3048B8'; 6 = '8A5A28'; 7 = '8A5A28'; 8 = '8A5A28'; 9 = 'A43828'; 10 = 'A43828'; 11 = '7A8A9A'; 12 = 'D02020'; 13 = '20C040'; 19 = '5A7A4A'; 20 = '5A7A4A'; 21 = '4A6A80'; 22 = '4A6A80'; 23 = 'E040E0'; 24 = '20C040' }
+$script:MapColors = @{ 1 = '8A8A8A'; 2 = '8A8A8A'; 3 = '8A8A8A'; 4 = '3048B8'; 5 = '3048B8'; 6 = '8A5A28'; 7 = '8A5A28'; 8 = '8A5A28'; 9 = 'A43828'; 10 = 'A43828'; 11 = '7A8A9A'; 12 = 'D02020'; 13 = '20C040'; 19 = '5A7A4A'; 20 = '5A7A4A'; 21 = '4A6A80'; 22 = '4A6A80'; 23 = 'E040E0'; 24 = '20C040'; 33 = 'A0D0FF'; 34 = 'A0D0FF'; 35 = 'A0D0FF'; 36 = 'A0D0FF'; 37 = 'A0D0FF'; 38 = 'A0D0FF'; 39 = 'A0D0FF' }
 
 function Update-MapBitmap {
     $now = $script:Clock.Elapsed.TotalSeconds

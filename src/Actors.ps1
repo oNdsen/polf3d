@@ -26,6 +26,7 @@ function Test-LineToPlayer([double]$X1, [double]$Y1) {
         if ($mx -eq $ex -and $my -eq $ey) { return $true }
         $tile = $tiles[$my * $w + $mx]
         if ($tile -eq 0) { continue }
+        if ($script:IsWindow[$my * $w + $mx]) { continue }                        # windows do not block the view
         if ($tile -lt $script:TILE_DOOR_BASE -or $tile -ge $script:TILE_PUSHWALL) { return $false }
 
         $d = $script:Doors[$tile - $script:TILE_DOOR_BASE]
@@ -358,7 +359,7 @@ function Find-WallPoint {
         $x += $dx * 0.1; $y += $dy * 0.1
         $idx = [int][Math]::Floor($y) * $w + [int][Math]::Floor($x)
         $t = $script:Tiles[$idx]
-        $open = $t -eq 0 -or ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open')
+        $open = $t -eq 0 -or $script:IsWindow[$idx] -or ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open')
         if (-not $open -or $script:StaticBlock[$idx]) { return @(($x - $dx * 0.15), ($y - $dy * 0.15)) }
     }
     $null

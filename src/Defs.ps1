@@ -98,8 +98,11 @@ $script:WallNames = @(
     'door', 'door_gold', 'door_silver', 'door_lift',
     'moss', 'moss_vines', 'tech', 'tech_lights',         # appended: ids of the older textures stay stable
     'lever_off', 'lever_on', 'door_remote',
-    'stone_cracked', 'blue_cracked', 'wood_cracked', 'brick_cracked', 'steel_cracked', 'moss_cracked', 'tech_cracked'
+    'stone_cracked', 'blue_cracked', 'wood_cracked', 'brick_cracked', 'steel_cracked', 'moss_cracked', 'tech_cracked',
+    'stone_window', 'blue_window', 'wood_window', 'brick_window', 'steel_window', 'moss_window', 'tech_window'
 )
+# windows: '=' + texture letter. Solid to walk into, open to eyes, ears and bullets.
+$script:WindowCodes = @{ [char]'S' = 33; [char]'B' = 34; [char]'W' = 35; [char]'R' = 36; [char]'M' = 37; [char]'G' = 38; [char]'T' = 39 }
 # breakable walls: '!' + texture letter. Only explosions bring them down.
 $script:BreakCodes = @{ [char]'S' = 26; [char]'B' = 27; [char]'W' = 28; [char]'R' = 29; [char]'M' = 30; [char]'G' = 31; [char]'T' = 32 }
 $script:TEX_LEVER_OFF   = 23
