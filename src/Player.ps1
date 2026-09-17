@@ -8,14 +8,20 @@ $script:BACK_FACTOR = 0.67        # walking backwards is slower
 $script:WALK_TURN  = 1.9          # degrees per tic
 $script:RUN_TURN   = 3.2
 
+function New-OwnedList([bool]$All) {
+    $owned = [bool[]]::new($script:Weapons.Count)
+    for ($i = 0; $i -lt $owned.Length; $i++) { $owned[$i] = $All -or $i -le 1 }
+    , $owned
+}
+
 function New-Player {
     $script:P = @{
         X = 0.0; Y = 0.0; Angle = 0.0; Area = -1
         Health = 100; Ammo = $script:START_AMMO; Lives = 3; Score = 0; NextExtra = $script:EXTRA_LIFE_POINTS
         KeyGold = $false; KeySilver = $false
         Weapon = 1; ChosenWeapon = 1
-        Owned = [bool[]]($true, $true, $false, $false, $false, $false)    # knife and pistol from the start
-        Charges = 0; SudoTics = 0.0
+        Owned = New-OwnedList $false                              # knife and pistol from the start
+        Charges = 0; Rockets = 0; Knives = 0; SudoTics = 0.0
         AttackFrame = -1; AttackTics = 0.0; WeaponFrame = 0
         Running = $false; UseHeld = $false; FireHeld = $false
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0
@@ -35,8 +41,8 @@ function Invoke-Cheat([string]$Name) {
     $onOff = { param($flag) if ($flag) { 'ON' } else { 'OFF' } }
     switch ($Name) {
         'GiveAll' {
-            $p.Owned = [bool[]]($true, $true, $true, $true, $true, $true)
-            $p.Ammo = $script:MAX_AMMO; $p.Charges = [Math]::Max($p.Charges, 9); $p.Health = 100
+            $p.Owned = New-OwnedList $true
+            $p.Ammo = $script:MAX_AMMO; $p.Charges = [Math]::Max($p.Charges, 9); $p.Rockets = 20; $p.Knives = 20; $p.Health = 100
             $p.KeyGold = $true; $p.KeySilver = $true
             if ($p.AttackFrame -lt 0) { $p.Weapon = 3; $p.ChosenWeapon = 3 }
             Show-Message 'CHEAT: all weapons, ammo, charges and keys'
@@ -76,8 +82,8 @@ function Reset-PlayerKit {
     $p = $script:P
     $p.Health = 100; $p.Ammo = $script:START_AMMO
     $p.Weapon = 1; $p.ChosenWeapon = 1
-    $p.Owned = [bool[]]($true, $true, $false, $false, $false, $false)
-    $p.Charges = 0; $p.SudoTics = 0.0
+    $p.Owned = New-OwnedList $false
+    $p.Charges = 0; $p.Rockets = 0; $p.Knives = 0; $p.SudoTics = 0.0
 }
 
 function Show-Message([string]$Text) {
@@ -220,12 +226,43 @@ function Invoke-BlastAttack {
 }
 
 # Can the weapon fire at all right now?
+function Get-ResourceCount([string]$Res) {
+    switch ($Res) { 'ammo' { $script:P.Ammo } 'charges' { $script:P.Charges } 'rockets' { $script:P.Rockets } 'knives' { $script:P.Knives } default { 0 } }
+}
+
 function Test-WeaponReady([int]$Index) {
-    $p = $script:P
-    if (-not $p.Owned[$Index]) { return $false }
-    if ($script:InfiniteAmmo) { return $true }
-    if ($Index -eq $script:WEAPON_FORCE) { return $p.Charges -gt 0 }
-    $p.Ammo -ge $script:Weapons[$Index].Cost
+    if (-not $script:P.Owned[$Index]) { return $false }
+    $w = $script:Weapons[$Index]
+    $script:InfiniteAmmo -or $w.Res -eq 'none' -or (Get-ResourceCount $w.Res) -ge $w.Cost
+}
+
+# Pays for one shot of the weapon in hand. Returns $false if the player cannot afford it.
+function Use-WeaponResource {
+    $p = $script:P; $w = $script:Weapons[$p.Weapon]
+    if ($script:InfiniteAmmo -or $w.Res -eq 'none') { return $true }
+    if ((Get-ResourceCount $w.Res) -lt $w.Cost) { return $false }
+    switch ($w.Res) { 'ammo' { $p.Ammo -= $w.Cost } 'charges' { $p.Charges -= $w.Cost } 'rockets' { $p.Rockets -= $w.Cost } 'knives' { $p.Knives -= $w.Cost } }
+    $script:HudDirty = $true
+    $true
+}
+
+# Flamethrower: short range, wide cone, burns everybody in it - shields do not help.
+function Invoke-FlameAttack {
+    $script:MadeNoise = $true
+    $script:MuzzleFlash = 3.0
+    Start-Sfx 'flame'
+    $p = $script:P; $rad = $p.Angle * [Math]::PI / 180.0
+    $dx = [Math]::Cos($rad); $dy = - [Math]::Sin($rad)
+    foreach ($d in 0.9, 1.9) {
+        $side = ($script:Rng.NextDouble() - 0.5) * 0.5
+        Add-Effect 'flame' ($p.X + $dx * $d - $dy * $side) ($p.Y + $dy * $d + $dx * $side)
+    }
+    $cx = $script:ViewW / 2; $tol = $script:ViewW / 4
+    foreach ($a in @($script:Actors)) {
+        if ($a.Shootable -and $a.Visible -and $a.Depth -lt 3.6 -and [Math]::Abs($a.ScreenX - $cx) -lt $tol -and (Test-LineToPlayer $a.X $a.Y)) {
+            Invoke-ActorDamage $a (6 + ((Get-Rnd) -shr 4)) 'flame'
+        }
+    }
 }
 
 # Falls back to the best weapon that still has something to shoot with.
@@ -251,21 +288,21 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
             return
         }
         if ($action -eq 'knife') { Invoke-KnifeAttack }
-        elseif ($action -eq 'beam') {
-            if (Test-WeaponReady $p.Weapon) { Invoke-BeamAttack; if (-not $script:InfiniteAmmo) { $p.Ammo -= $script:Weapons[$p.Weapon].Cost }; $script:HudDirty = $true }
-            else { Start-Sfx 'noway' }
-        }
-        elseif ($action -eq 'blast') {
-            if ($p.Charges -gt 0 -or $script:InfiniteAmmo) { Invoke-BlastAttack; if (-not $script:InfiniteAmmo) { $p.Charges-- }; $script:HudDirty = $true } else { Start-Sfx 'noway' }
-        }
-        elseif ($action -eq 'repeat') { if (($p.Ammo -gt 0 -or $script:InfiniteAmmo) -and $Trigger) { $p.AttackFrame -= 2 } }
-        elseif ($action -eq 'fire' -or $action -eq 'firerepeat') {
-            if ($p.Ammo -gt 0 -or $script:InfiniteAmmo) {
-                if ($action -eq 'firerepeat' -and $Trigger) { $p.AttackFrame -= 2 }
-                Invoke-GunAttack
-                if (-not $script:InfiniteAmmo) { $p.Ammo-- }
-                $script:HudDirty = $true
+        elseif ($action -eq 'repeat') { if ($Trigger -and (Test-WeaponReady $p.Weapon)) { $p.AttackFrame -= 2 } }
+        elseif ($action -ne 'none') {
+            # every other action fires something - if the player can pay for it
+            if (Use-WeaponResource) {
+                if ($action -like '*repeat' -and $Trigger) { $p.AttackFrame -= 2 }
+                switch -Wildcard ($action) {
+                    'fire*'  { Invoke-GunAttack }
+                    'beam'   { Invoke-BeamAttack }
+                    'blast'  { Invoke-BlastAttack }
+                    'flame*' { Invoke-FlameAttack }
+                    'launch' { $script:MadeNoise = $true; Start-Sfx 'rocket'; Add-PlayerProjectile 'procket' }
+                    'throw'  { Start-Sfx 'knife'; Add-PlayerProjectile 'tknife' }          # silent: no noise
+                }
             }
+            elseif ($action -notlike 'fire*' -and $action -notlike 'flame*') { Start-Sfx 'noway' }
         }
         $p.AttackTics += $cur[0]
         $p.AttackFrame++
@@ -286,7 +323,13 @@ function Add-Ammo([int]$Count) {
 
 function Add-Weapon([int]$Index) {
     $p = $script:P
-    if ($Index -eq $script:WEAPON_FORCE) { $p.Charges += 1 } else { Add-Ammo 6 }
+    switch ($script:Weapons[$Index].Key) {                      # every weapon comes with a little to shoot
+        'forcegun' { $p.Charges = [Math]::Min(9, $p.Charges + 1) }
+        'launcher' { $p.Rockets = [Math]::Min(20, $p.Rockets + 2) }
+        'tknife'   { $p.Knives = [Math]::Min(20, $p.Knives + 5) }
+        'flamer'   { Add-Ammo 12 }
+        default    { Add-Ammo 6 }
+    }
     if (-not $p.Owned[$Index]) {
         $p.Owned[$Index] = $true
         $p.ChosenWeapon = $Index
@@ -308,6 +351,10 @@ function Invoke-Pickup([string]$Item) {
         'chaingun'   { Add-Weapon 3; Start-Sfx 'weapon'; Show-Message 'Chain gun!' }
         'pipeline'   { Add-Weapon 4; Start-Sfx 'weapon'; Show-Message 'PIPELINE CANNON!  Pierces everything in the line of fire' }
         'forcegun'   { Add-Weapon 5; Start-Sfx 'weapon'; Show-Message 'FORCE-BLASTER!  Remove-Item -Recurse -Force' }
+        'launcher'   { Add-Weapon 6; Start-Sfx 'weapon'; Show-Message 'ROCKET LAUNCHER!  Mind the blast radius' }
+        'rockets'    { if ($p.Rockets -ge 20) { return $false }; $p.Rockets = [Math]::Min(20, $p.Rockets + 3); Start-Sfx 'ammo'; if ($p.AttackFrame -lt 0) { Select-UsableWeapon } }
+        'flamer'     { Add-Weapon 7; Start-Sfx 'weapon'; Show-Message 'FLAMETHROWER!  Short range, no mercy' }
+        'tknives'    { if ($p.Owned[8] -and $p.Knives -ge 20) { return $false }; Add-Weapon 8; Start-Sfx 'ammo'; Show-Message 'Throwing knives - silent and deadly from behind' }
         'charge'     { $p.Charges++; Start-Sfx 'ammo'; Show-Message 'Force charge' ; if ($p.AttackFrame -lt 0) { Select-UsableWeapon } }
         'sudo'       { $p.SudoTics = $script:SUDO_TICS; Start-Sfx 'sudo'; Show-Message 'SUDO!  Double damage dealt, half damage taken' }
         'key_gold'   { $p.KeyGold = $true;   Start-Sfx 'key'; Show-Message 'Gold key' }

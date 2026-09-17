@@ -515,6 +515,14 @@ function Add-ThingSprites {
     $S['fx.puff1'] = New-Sprite { Add-Oval 'FFE080' 29 29 6 6; Add-Box 'FFFFFF' 31 31 2 2 }
     $S['fx.puff2'] = New-Sprite { Add-Oval 'A0A0A0' 26 26 12 12; foreach ($d in @(22, 24), @(40, 26), @(30, 20), @(36, 40)) { Add-Box 'FFD040' $d[0] $d[1] 2 2 } }
     $S['fx.puff3'] = New-Sprite { Add-Oval '707070' 24 22 16 14; Add-Oval '8A8A8A' 28 24 8 7 }
+    $S['fx.flame1'] = New-Sprite { Add-Oval 'FF5010' 22 26 20 22; Add-Oval 'FF9020' 26 30 12 14; Add-Oval 'FFE060' 29 34 6 8 }
+    $S['fx.flame2'] = New-Sprite { Add-Oval 'E04010' 16 18 32 32; Add-Oval 'FF9020' 22 24 20 22; Add-Oval 'FFE060' 28 32 8 10 }
+    $S['fx.flame3'] = New-Sprite { Add-Oval '803010' 18 12 28 30; Add-Oval 'C05010' 24 18 16 18; Add-Oval '5A5A5A' 26 8 10 10 }
+    $S['tknife'] = New-Sprite { Add-Poly 'E8ECF0' @(30, 24, 34, 24, 33, 36, 31, 36); Add-Box '3A2A1A' 30 36 4 6 }
+    $S['launcher'] = New-Sprite { Add-Box '3A4A32' 10 50 40 8; Add-Box '55683F' 10 50 40 2; Add-Oval '101410' 46 49 8 10; Add-Box 'E0C020' 22 50 2 8; Add-Box '20281A' 26 58 5 5 }
+    $S['rockets'] = New-Sprite { foreach ($x in 22, 30, 38) { Add-Box '8A929A' $x 46 5 14; Add-Poly 'C03030' @($x, 46, ($x + 5), 46, ($x + 2), 40); Add-Box 'E0C020' $x 56 5 2 } }
+    $S['flamer'] = New-Sprite { Add-Box '8A2A1A' 12 48 22 12; Add-Box 'B03A24' 12 48 22 2; Add-Box '404850' 34 52 20 4; Add-Box 'FF9020' 54 51 3 6; Add-Box 'E0C020' 12 54 22 2 }
+    $S['tknives'] = New-Sprite { foreach ($k in @(22, -2), @(30, 0), @(38, -2)) { Add-Poly 'E8ECF0' @($k[0], (44 + $k[1]), ($k[0] + 4), (44 + $k[1]), ($k[0] + 3), (56 + $k[1]), ($k[0] + 1), (56 + $k[1])); Add-Box '3A2A1A' $k[0] (56 + $k[1]) 4 6 } }
     $S['barrel_red'] = New-Sprite { Add-Oval '8A1C1C' 20 56 24 7; Add-Box '8A1C1C' 20 34 24 26; Add-Oval 'B02828' 20 31 24 7; Add-Oval '5A1010' 23 32 18 4; Add-Box '5A1010' 20 40 24 2; Add-Box '5A1010' 20 52 24 2; Add-Box 'D04040' 23 35 2 24; Add-Poly 'F0D040' @(32, 42, 38, 51, 26, 51); Add-Box '101010' 31 45 2 3; Add-Box '101010' 31 49 2 1 }
     $S['plant'] = New-Sprite { Add-Poly '9A5A2A' @(24, 50, 40, 50, 37, 62, 27, 62); Add-Box '7A4420' 23 48 18 3; foreach ($l in @(32, 48, 18, 26, 24, 22), @(32, 48, 46, 26, 40, 22), @(32, 48, 28, 16, 34, 14), @(32, 48, 14, 38, 18, 32), @(32, 48, 50, 38, 46, 32)) { Add-Poly '2A8A3A' $l }; Add-Poly '3AAA4A' @(32, 48, 30, 22, 35, 22) }
     $S['armor'] = New-Sprite { Add-Box '707880' 25 58 6 4; Add-Box '707880' 33 58 6 4; Add-Box '8A929A' 26 40 5 18; Add-Box '8A929A' 33 40 5 18; Add-Box '9AA2AA' 23 20 18 21; Add-Box 'B8C0C8' 25 22 4 16; Add-Box '8A929A' 19 21 4 16; Add-Box '8A929A' 41 21 4 16; Add-Oval '9AA2AA' 26 7 12 14; Add-Box '202020' 28 13 8 2; Add-Box 'C03030' 31 2 2 6; Add-Box '606870' 46 8 2 54; Add-Poly 'B8C0C8' @(44, 8, 50, 8, 47, 1) }
@@ -565,6 +573,23 @@ function Add-WeaponArt([string]$Key, [int]$Frame) {
             Add-Oval $(if ($Frame -eq 1) { 'C0FFC8' } else { '40FF60' }) 25 (27 + $dy) 14 10
             Add-Box '30C050' 23 (46 + $dy) 18 2; Add-Box '30C050' 23 (51 + $dy) 18 2
             Add-Poly 'E0A878' @(6, 64, 20, 64, 20, (56 + $dy), 10, (58 + $dy)); Add-Poly 'E0A878' @(44, 64, 58, 64, 54, (58 + $dy), 44, (56 + $dy))
+        }
+        'launcher' {
+            if ($flash) { Add-Oval 'FF7010' 14 (4 + $dy) 36 30; Add-Oval 'FFD040' 21 (10 + $dy) 22 18; Add-Oval 'FFFFFF' 27 (14 + $dy) 10 10 }
+            Add-Box '3A4A32' 22 (26 + $dy) 20 34; Add-Box '55683F' 22 (26 + $dy) 3 34; Add-Oval '101410' 23 (20 + $dy) 18 12; Add-Oval '2A3424' 26 (22 + $dy) 12 8
+            Add-Box 'E0C020' 22 (44 + $dy) 20 2; Add-Box '20281A' 28 (52 + $dy) 8 10
+            Add-Poly 'E0A878' @(8, 64, 22, 64, 22, (54 + $dy), 12, (56 + $dy)); Add-Poly 'E0A878' @(42, 64, 56, 64, 52, (56 + $dy), 42, (54 + $dy))
+        }
+        'flamer' {
+            if ($Frame -in 2, 3) { Add-Oval 'FF5010' 16 (0 + $dy) 32 30; Add-Oval 'FF9020' 20 (6 + $dy) 24 22; Add-Oval 'FFE060' 26 (12 + $dy) 12 12 }
+            Add-Box '404850' 29 (24 + $dy) 6 22; Add-Box '606A74' 29 (24 + $dy) 2 22; Add-Box 'FF9020' 30 (21 + $dy) 4 3
+            Add-Box '8A2A1A' 22 (44 + $dy) 20 18; Add-Box 'B03A24' 22 (44 + $dy) 3 18; Add-Box 'E0C020' 22 (52 + $dy) 20 2
+            Add-Poly 'E0A878' @(8, 64, 22, 64, 22, (56 + $dy), 12, (58 + $dy)); Add-Poly 'E0A878' @(42, 64, 56, 64, 52, (58 + $dy), 42, (56 + $dy))
+        }
+        'tknife' {
+            $t = (0, -6, 14, 6, 0)[$Frame]
+            if ($Frame -ne 2 -and $Frame -ne 3) { Add-Poly 'D8DCE0' @(30, (30 - $t), 34, (30 - $t), 33, (48 - $t), 31, (48 - $t)); Add-Box '3A2A1A' 30 (48 - $t) 4 7 }
+            Add-Poly 'E0A878' @(26, 64, 40, 64, 40, (54 - [int]($t / 2)), 27, (55 - [int]($t / 2)))
         }
         'chaingun' {
             if ($flash) { Add-Oval 'FF9020' 17 (10 + $dy) 30 26; Add-Oval 'FFE060' 22 (14 + $dy) 20 18; Add-Oval 'FFFFFF' 28 (19 + $dy) 8 8 }

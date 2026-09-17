@@ -414,9 +414,10 @@ function Show-Hud {
 # What the ammo panel shows depends on the weapon in hand.
 function Get-WeaponResource {
     $p = $script:P
-    if ($p.Weapon -eq 0) { return @{ Label = 'AMMO'; Text = '-'; Fraction = 0.0 } }
-    if ($p.Weapon -eq $script:WEAPON_FORCE) { return @{ Label = 'CHARGES'; Text = "$($p.Charges)"; Fraction = $p.Charges / 9.0 } }
-    @{ Label = 'AMMO'; Text = "$($p.Ammo)"; Fraction = $p.Ammo / [double]$script:MAX_AMMO }
+    $res = $script:Weapons[$p.Weapon].Res
+    if ($res -eq 'none') { return @{ Label = 'AMMO'; Text = '-'; Fraction = 0.0 } }
+    $count = Get-ResourceCount $res
+    @{ Label = $res.ToUpper(); Text = "$count"; Fraction = $count / [double]$script:ResourceMax[$res] }
 }
 
 # ---- automap and minimap ----------------------------------------------------------------------

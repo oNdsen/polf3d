@@ -407,6 +407,51 @@ function Invoke-ThinkProjectile([Actor]$a, [double]$Tics) {
     Set-ActorState $a 'rocket.boom1'
 }
 
+# Rockets and throwing knives of the player: fly straight, stop at the first wall or enemy.
+function Invoke-ThinkPlayerProjectile([Actor]$a, [double]$Tics) {
+    $travel = $a.Def.Speed * $Tics
+    $steps = [int][Math]::Ceiling($travel / 0.2)
+    $len = [Math]::Sqrt($a.VX * $a.VX + $a.VY * $a.VY)
+    $sx = $a.VX / $len * $travel / $steps; $sy = $a.VY / $len * $travel / $steps
+    $w = $script:MapW
+    for ($i = 0; $i -lt $steps; $i++) {
+        $a.X += $sx; $a.Y += $sy
+        $idx = [int][Math]::Floor($a.Y) * $w + [int][Math]::Floor($a.X)
+        $t = $script:Tiles[$idx]
+        $open = ($t -eq 0 -and -not $script:StaticBlock[$idx]) -or ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open')
+        $victim = $null
+        foreach ($o in $script:Actors) {
+            if ($o.Shootable -and [Math]::Abs($o.X - $a.X) -lt 0.45 -and [Math]::Abs($o.Y - $a.Y) -lt 0.45) { $victim = $o; break }
+        }
+        if ($open -and -not $victim) { continue }
+
+        $a.X -= $sx; $a.Y -= $sy                                  # impact just in front of the obstacle
+        if ($a.Kind -eq 'procket') {
+            Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $null
+            Set-ActorState $a 'rocket.boom1'
+        }
+        else {
+            if ($victim) { Invoke-ActorDamage $victim (20 + ((Get-Rnd) -shr 3)) 'knife' } else { Add-Effect 'puff' $a.X $a.Y }
+            $a.State = 'gone'
+        }
+        return
+    }
+    $a.TX = [int][Math]::Floor($a.X); $a.TY = [int][Math]::Floor($a.Y)
+}
+
+function Add-PlayerProjectile([string]$Kind) {
+    $p = $script:P
+    $rad = $p.Angle * [Math]::PI / 180.0
+    $a = [Actor]::new()
+    $a.Kind = $Kind; $a.Def = $script:MiscDefs[$Kind]
+    $a.VX = [Math]::Cos($rad); $a.VY = - [Math]::Sin($rad)
+    $a.X = $p.X + $a.VX * 0.5; $a.Y = $p.Y + $a.VY * 0.5
+    $a.TX = [int][Math]::Floor($a.X); $a.TY = [int][Math]::Floor($a.Y)
+    $a.Area = $p.Area; $a.Active = $true; $a.Corpse = $true
+    Set-ActorState $a "$Kind.fly"
+    $script:NewActors.Add($a)
+}
+
 # Phase two of the super boss: when the machine has burnt out, its pilot climbs out of the wreck.
 function Invoke-ActionSpawnPilot([Actor]$a) {
     $tx = [int][Math]::Floor($a.X); $ty = [int][Math]::Floor($a.Y)
@@ -433,6 +478,7 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
         'DogChase' { Invoke-ThinkDogChase $a $Tics }
         'BotChase' { Invoke-ThinkBotChase $a $Tics }
         'Projectile' { Invoke-ThinkProjectile $a $Tics }
+        'PlayerProjectile' { Invoke-ThinkPlayerProjectile $a $Tics }
     }
 }
 
@@ -479,7 +525,7 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
         return
     }
     $script:MadeNoise = $true
-    if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a)) {
+    if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a)) {        # flames lick around it
         Add-Effect 'puff' ($a.X + ($script:P.X - $a.X) * 0.15) ($a.Y + ($script:P.Y - $a.Y) * 0.15)
         Start-Sfx 'clang'
         if (-not $a.AttackMode) { $a.React = 0; Start-Attack $a }

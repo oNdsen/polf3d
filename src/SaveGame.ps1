@@ -88,7 +88,9 @@ function Restore-Game {
             $v = $state.Player[$k]
             $script:P[$k] = if ($v -is [long]) { [int]$v } else { $v }
         }
-        $script:P.Owned = [bool[]]$state.Player.Owned
+        $owned = New-OwnedList $false                              # older saves know fewer weapons
+        for ($i = 0; $i -lt [Math]::Min($owned.Length, @($state.Player.Owned).Count); $i++) { $owned[$i] = [bool]$state.Player.Owned[$i] }
+        $script:P.Owned = $owned
         $script:P.UseHeld = $true; $script:P.FireHeld = $true
         $script:P.RunInvalid = $true                              # a loaded game is no clean speedrun
 

@@ -172,7 +172,7 @@ function Show-TitleScreen {
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-6  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
     Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
 
     if ($script:Speedrun) {
@@ -309,7 +309,7 @@ function Start-GameLoop {
 
             'play' {
                 foreach ($h in $hits) {
-                    if ($h -ge 49 -and $h -le 54) { $script:WeaponKey = $h - 49 }
+                    if ($h -ge 49 -and $h -le 57) { $script:WeaponKey = $h - 49 }
                     elseif ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'paused' }
                     elseif ($h -eq $vk.F2) { Set-MouseLook (-not $script:MouseLook) }
                     elseif ($h -eq $vk.N) { $script:ShowMiniMap = -not $script:ShowMiniMap }

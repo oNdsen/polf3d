@@ -125,6 +125,19 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:GodMode = $true
     Write-Step "cheat test ok (GiveAll, infinite ammo, one-hit kill both ways, code word)"
 
+    # ---- new weapons: rocket, flame and throwing knife must each kill the corridor guard ----
+    foreach ($wpn in 6, 7, 8) {
+        Start-Level $false $false
+        Invoke-Cheat 'GiveAll'; $script:InfiniteAmmo = $true
+        $target = $script:Actors | Where-Object { $_.Kind -eq 'guard' -and [Math]::Floor($_.X) -eq 7 -and [Math]::Floor($_.Y) -eq 27 }
+        Set-TestCamera 7.5 $(if ($wpn -eq 7) { 29.4 } else { 31.5 }) 90
+        $script:P.Weapon = $wpn; $script:P.ChosenWeapon = $wpn
+        for ($f = 0; $f -lt 400 -and $target.Shootable; $f++) { Set-TestAim $target; Show-PlayFrame; Update-World 2.0 $(if ($f % 30 -lt 20) { $fire } else { $idle }) }
+        if ($target.Shootable) { throw "weapon test: $($script:Weapons[$wpn].Name) did not kill the guard." }
+    }
+    $script:InfiniteAmmo = $false
+    Write-Step 'weapon test ok (rocket launcher, flamethrower, throwing knives)'
+
     # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
     $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
     Start-Level $false $false
@@ -173,7 +186,7 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:LevelIndex = [Math]::Min(3, $script:MapFiles.Count - 1)
     Start-Level $false $false
     $p = $script:P
-    $p.Owned = [bool[]]($true, $true, $true, $true, $true, $true); $p.Ammo = 99; $p.Charges = 40
+    $p.Owned = (New-OwnedList $true); $p.Ammo = 99; $p.Charges = 40
     $mech = $script:Actors | Where-Object Kind -eq 'uber' | Select-Object -First 1
     if ($mech) {
         Set-TestCamera $mech.X ($mech.Y - 5) 270
@@ -181,6 +194,8 @@ function Invoke-SelfTest([string]$OutDir) {
         for ($f = 0; $f -lt 2500; $f++) {
             $in = $fire.Clone(); $in.Fire = ($f % 12 -lt 6)
             if ($f -eq 0) { $in.Weapon = 4 } elseif ($p.Ammo -lt 4 -and $p.Weapon -ne 5) { $in.Weapon = 5 }
+            $foe = $script:Actors | Where-Object { $_.Kind -in 'uber', 'pilot' -and $_.Shootable } | Select-Object -First 1
+            if ($foe) { Set-TestAim $foe }                            # the pilot is quick: keep him in the sights
             Show-PlayFrame; Update-World 2.0 $in
             if (@($script:Actors | Where-Object Kind -eq 'rocket').Count) { $sawRocket = $true }
             if (@($script:Actors | Where-Object Kind -eq 'pilot').Count) { $sawPilot = $true }
@@ -189,7 +204,10 @@ function Invoke-SelfTest([string]$OutDir) {
             if ($sawPilot -and -not @($script:Actors | Where-Object { $_.Kind -in 'uber', 'pilot' -and $_.Shootable }).Count) { break }
         }
         Write-Step "boss test: after $f frames - rocket seen: $sawRocket, pilot seen: $sawPilot, kills $($script:Stats.Kills)"
-        if (-not $sawRocket -or -not $sawPilot -or $f -ge 2500) { throw 'boss test failed.' }
+        if (-not $sawRocket -or -not $sawPilot -or $f -ge 2500) {
+            $left = @($script:Actors | Where-Object { $_.Kind -in 'uber', 'pilot' } | ForEach-Object { "$($_.Kind) $($_.State) hp=$($_.HP) at $([Math]::Round($_.X,1)),$([Math]::Round($_.Y,1)) vis=$($_.Visible)" }) -join '; '
+            throw "boss test failed. weapon=$($p.Weapon) ammo=$($p.Ammo) charges=$($p.Charges) player=$([Math]::Round($p.X,1)),$([Math]::Round($p.Y,1)) angle=$($p.Angle) | $left"
+        }
         Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-0-bossdead.png')
     }
     $script:LevelIndex = 0
@@ -197,7 +215,7 @@ function Invoke-SelfTest([string]$OutDir) {
     # ---- scripted play: walk, turn, shoot, use - everything that could throw ----
     Start-Level $false $false
     $p = $script:P
-    $p.Owned = [bool[]]($true, $true, $true, $true, $true, $true); $p.Ammo = 99; $p.Charges = 3
+    $p.Owned = (New-OwnedList $true); $p.Ammo = 99; $p.Charges = 3
     $sw.Restart()
     for ($f = 0; $f -lt 900; $f++) {
         $in = @{ Forward = 1; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = ($f % 200 -gt 100); Fire = ($f % 40 -lt 25); Use = ($f % 30 -eq 0); Weapon = -1 }
@@ -239,7 +257,7 @@ function Invoke-SelfTest([string]$OutDir) {
         }
         # bosses only react to what they see: visit each one and fight it out with the Force-Blaster
         $p = $script:P
-        $p.Owned = [bool[]]($true, $true, $true, $true, $true, $true); $p.Charges = 500; $p.Weapon = 5; $p.ChosenWeapon = 5
+        $p.Owned = (New-OwnedList $true); $p.Charges = 500; $p.Weapon = 5; $p.ChosenWeapon = 5
         foreach ($b in @($script:Actors | Where-Object { $_.Kind -in 'boss', 'uber' -and $_.Shootable })) {
             $spot = $null
             foreach ($dist in 3, 2, 4, 1) {
@@ -357,7 +375,7 @@ function Export-Screenshots([string]$OutDir) {
 
     # floor 4: pipeline cannon versus the war machine
     $p = $script:P
-    $p.Owned = [bool[]]($true, $true, $true, $true, $true, $true); $p.Ammo = 99; $p.Charges = 3; $p.Weapon = 4; $p.ChosenWeapon = 4
+    $p.Owned = (New-OwnedList $true); $p.Ammo = 99; $p.Charges = 3; $p.Weapon = 4; $p.ChosenWeapon = 4
     $mech = $script:Actors | Where-Object Kind -eq 'uber' | Select-Object -First 1
     Set-TestCamera ($mech.X + 0.4) ($mech.Y - 5.5) 270
     for ($f = 0; $f -lt 900; $f++) {
@@ -369,7 +387,7 @@ function Export-Screenshots([string]$OutDir) {
 
     # floor 5: the great hall
     $script:LevelIndex = 4; Start-Level $false $false; $script:Message = $null
-    $p = $script:P; $p.Owned = [bool[]]($true, $true, $true, $true, $false, $false); $p.Ammo = 84; $p.Weapon = 3; $p.ChosenWeapon = 3
+    $p = $script:P; $p.Owned = (New-OwnedList $false); $p.Ammo = 84; $p.Weapon = 3; $p.ChosenWeapon = 3
     Set-TestCamera 23.5 29.5 90
     for ($f = 0; $f -lt 30; $f++) { Show-PlayFrame; Update-World 2.0 $idle }
     Save-Shot $OutDir 'citadel'

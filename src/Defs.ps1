@@ -121,6 +121,7 @@ $script:ItemCodes = @{
     [char]'1' = 'coins'; [char]'2' = 'goblet'; [char]'3' = 'chest'; [char]'4' = 'crown'
     [char]'u' = 'oneup'
     [char]'p' = 'pipeline'; [char]'r' = 'forcegun'; [char]'z' = 'charge'; [char]'q' = 'sudo'
+    [char]'l' = 'launcher'; [char]'o' = 'rockets'; [char]'t' = 'flamer'; [char]'j' = 'tknives'
 }
 $script:TreasureItems = @('coins', 'goblet', 'chest', 'crown', 'oneup')
 
@@ -243,6 +244,9 @@ $script:EnemyDefs = @{
 # things that live in the actor list without being enemies
 $script:MiscDefs = @{
     rocket = @{ Speed = 0.12; Rotates = $false; Doors = $false; Pain = $false }
+    # the player's own projectiles
+    procket = @{ Speed = 0.16; Rotates = $false; Doors = $false; Pain = $false; BlastRadius = 1.9; BlastDamage = 120 }
+    tknife  = @{ Speed = 0.22; Rotates = $false; Doors = $false; Pain = $false }
     fx = @{ Rotates = $false; Doors = $false; Pain = $false }      # short-lived effects: blood, sparks
     # explosive barrel: an "inert" actor - it can be shot, but never thinks, scores or counts as a kill
     barrel = @{ Inert = $true; HP = 15; Rotates = $false; Doors = $false; Pain = $false; Points = 0; BlastRadius = 2.2; BlastDamage = 90 }
@@ -313,7 +317,9 @@ function Initialize-States {
     Add-State 'rocket.boom3' 'rocket.boom3' $false 6 $null 'Remove' 'rocket.boom3'
 
     # effects: three frames each, then gone
-    foreach ($fx in 'blood', 'puff') {
+    Add-State 'procket.fly' 'rocket' $false 0 'PlayerProjectile' $null 'procket.fly'
+    Add-State 'tknife.fly'  'tknife' $false 0 'PlayerProjectile' $null 'tknife.fly'
+    foreach ($fx in 'blood', 'puff', 'flame') {
         Add-State "fx.${fx}1" "fx.${fx}1" $false 5 $null $null "fx.${fx}2"
         Add-State "fx.${fx}2" "fx.${fx}2" $false 5 $null $null "fx.${fx}3"
         Add-State "fx.${fx}3" "fx.${fx}3" $false 5 $null 'Remove' "fx.${fx}3"
@@ -326,21 +332,30 @@ function Initialize-States {
 
 # ---------------------------------------------------------------------------------------------
 # Weapons. Each attack frame = @(tics, action, picture)
-#   none | knife | fire | repeat (loop back while trigger held) | firerepeat | beam | blast | end
+#   none | knife | fire | repeat (loop back while trigger held) | firerepeat | beam | blast |
+#   launch | flame | flamerepeat | throw | end
 # Cost = bullets per shot. The two special weapons are POLF3D's own invention:
 #   Pipeline - "|" passes everything along: the beam pierces EVERY enemy in the line of fire
 #   Force    - "Remove-Item -Recurse -Force": wipes the whole field of view, fed by rare charges
 # ---------------------------------------------------------------------------------------------
+# Res = what a shot consumes (none | ammo | charges | rockets | knives), Cost = how much of it.
 $script:Weapons = @(
-    @{ Name = 'Knife';           Short = 'KNIFE';   Key = 'knife';    Snd = 'knife';       Cost = 0; Frames = @(@(6, 'none', 1), @(6, 'knife', 2), @(6, 'none', 3), @(6, 'end', 4)) }
-    @{ Name = 'Pistol';          Short = 'PISTOL';  Key = 'pistol';   Snd = 'shot_pistol'; Cost = 1; Frames = @(@(6, 'none', 1), @(6, 'fire', 2), @(6, 'none', 3), @(6, 'end', 4)) }
-    @{ Name = 'Machine gun';     Short = 'MG';      Key = 'mgun';     Snd = 'shot_mgun';   Cost = 1; Frames = @(@(6, 'none', 1), @(6, 'fire', 2), @(6, 'repeat', 3), @(6, 'end', 4)) }
-    @{ Name = 'Chain gun';       Short = 'CHAIN';   Key = 'chaingun'; Snd = 'shot_chain';  Cost = 1; Frames = @(@(6, 'none', 1), @(6, 'fire', 2), @(6, 'firerepeat', 3), @(6, 'end', 4)) }
-    @{ Name = 'Pipeline Cannon'; Short = 'PIPE |';  Key = 'pipeline'; Snd = 'shot_pipe';   Cost = 4; Frames = @(@(8, 'none', 1), @(8, 'beam', 2), @(12, 'none', 3), @(8, 'end', 4)) }
-    @{ Name = 'Force Blaster';   Short = '-FORCE';  Key = 'forcegun'; Snd = 'shot_force';  Cost = 0; Frames = @(@(14, 'none', 1), @(10, 'blast', 2), @(16, 'none', 3), @(12, 'end', 4)) }
+    @{ Name = 'Knife';           Key = 'knife';    Snd = 'knife';       Res = 'none';    Cost = 0; Frames = @(@(6, 'none', 1), @(6, 'knife', 2), @(6, 'none', 3), @(6, 'end', 4)) }
+    @{ Name = 'Pistol';          Key = 'pistol';   Snd = 'shot_pistol'; Res = 'ammo';    Cost = 1; Frames = @(@(6, 'none', 1), @(6, 'fire', 2), @(6, 'none', 3), @(6, 'end', 4)) }
+    @{ Name = 'Machine gun';     Key = 'mgun';     Snd = 'shot_mgun';   Res = 'ammo';    Cost = 1; Frames = @(@(6, 'none', 1), @(6, 'fire', 2), @(6, 'repeat', 3), @(6, 'end', 4)) }
+    @{ Name = 'Chain gun';       Key = 'chaingun'; Snd = 'shot_chain';  Res = 'ammo';    Cost = 1; Frames = @(@(6, 'none', 1), @(6, 'fire', 2), @(6, 'firerepeat', 3), @(6, 'end', 4)) }
+    @{ Name = 'Pipeline Cannon'; Key = 'pipeline'; Snd = 'shot_pipe';   Res = 'ammo';    Cost = 4; Frames = @(@(8, 'none', 1), @(8, 'beam', 2), @(12, 'none', 3), @(8, 'end', 4)) }
+    @{ Name = 'Force Blaster';   Key = 'forcegun'; Snd = 'shot_force';  Res = 'charges'; Cost = 1; Frames = @(@(14, 'none', 1), @(10, 'blast', 2), @(16, 'none', 3), @(12, 'end', 4)) }
+    @{ Name = 'Rocket launcher'; Key = 'launcher'; Snd = 'rocket';      Res = 'rockets'; Cost = 1; Frames = @(@(10, 'none', 1), @(10, 'launch', 2), @(22, 'none', 3), @(10, 'end', 4)) }
+    @{ Name = 'Flamethrower';    Key = 'flamer';   Snd = 'flame';       Res = 'ammo';    Cost = 1; Frames = @(@(3, 'none', 1), @(4, 'flame', 2), @(4, 'flamerepeat', 3), @(4, 'end', 4)) }
+    @{ Name = 'Throwing knives'; Key = 'tknife';   Snd = 'knife';       Res = 'knives';  Cost = 1; Frames = @(@(5, 'none', 1), @(5, 'throw', 2), @(8, 'none', 3), @(6, 'end', 4)) }
 )
 $script:WEAPON_PIPELINE = 4
 $script:WEAPON_FORCE = 5
+$script:WEAPON_LAUNCHER = 6
+$script:WEAPON_FLAMER = 7
+$script:WEAPON_TKNIFE = 8
+$script:ResourceMax = @{ ammo = 99; charges = 9; rockets = 20; knives = 20 }
 $script:SUDO_TICS = 1400.0        # the "sudo" power-up lasts 20 seconds
 
 $script:Difficulties = @(
