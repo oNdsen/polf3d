@@ -4,7 +4,7 @@
 <i>Five floors and a secret one, eleven kinds of enemies, nine weapons, co-op and duels over the network,<br>
 procedurally generated graphics, sound and music – and about 150 lines of C#.</i></p>
 
-<p align="center"><img src="media/warmachine.png" alt="Pipeline Cannon versus the war machine" width="720"></p>
+<p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
 
 ```powershell
 git clone https://github.com/oNdsen/polf3d.git
@@ -64,8 +64,8 @@ map format, HUD, menus, music, network protocol.
 | Floor 3: mutants between the pillars of the catacombs | Floor 4: an elite patrol in the ring corridor of Lab Zero |
 | ![Citadel](media/citadel.png) | ![Automap](media/automap.png) |
 | Floor 5: the great hall of the citadel | Automap (hold `M`) – shows only what you have already seen |
-| ![Kennels](media/kennels.png) | |
-| The kennels | |
+| ![Kennels](media/kennels.png) | ![War machine](media/warmachine.png) |
+| The kennels | Pipeline Cannon versus the war machine and its escort |
 
 <p align="center"><img src="media/cast.png" alt="The cast" width="900"></p>
 
@@ -109,9 +109,25 @@ ends with a tally (kills, secrets, treasures, a bonus for beating the par time).
 | 4 | Lab Zero | 37 / ~5800 | A ring corridor with elite patrols around the reactor hall, windows to shoot (and be shot) through, snipers, **the first war machine** |
 | 5 | The Citadel | 40 / ~6500 | The finale: a great hall with three patrols, two commanders, and a throne hall with a war machine and its escort |
 
-\* on *Senior Engineer*. Four difficulty levels – *Intern (-WhatIf)*, *Sysadmin*, *Senior Engineer* and
-*root (-Force -Confirm:$false)* – scale the damage you take (×0.25 to ×1.3) and the bosses' hit points, and the
-harder ones put **reinforcements** on every floor.
+\* on *root*, where everybody shows up.
+
+**The difficulty really matters.** It changes how many enemies are on the floor, how tough they are, how well and how
+quickly they shoot, how far your gunfire carries and what a clip is worth:
+
+| | Intern (-WhatIf) | Sysadmin | Senior Engineer | root (-Force -Confirm:$false) |
+|---|---|---|---|---|
+| damage you take | ×0.2 | ×0.33 | ×0.6 | ×1 |
+| enemies' chance to hit | ×0.55 | ×0.7 | ×0.85 | ×1 |
+| enemies' reaction time | ×2.5 | ×1.6 | ×1 | ×0.7 |
+| rank and file on the floor | about 65 % | about 80 % | about 90 % | all, plus reinforcements (also on Senior Engineer) |
+| enemy hit points | about 55 % | about 80 % | 100 % | 100 %, bosses more |
+| gunfire wakes enemies within | 10 tiles | 13 tiles | 18 tiles | the whole connected area |
+| rounds per clip / at the start | 16 / 16 | 12 / 12 | 8 / 8 | 8 / 8 |
+
+The numbers are not guesses: `./Start-Polf3D.ps1 -BalanceTest <floor>` lets a bot play the floor on every difficulty –
+a careless bot that never takes cover, never retreats and fights every boss in the open. On *Intern* it practically
+never dies, on *Sysadmin* it beats every boss, on *Senior Engineer* it needs luck, and on *root* it has no chance at
+all: there you need cover, the special weapons and a plan.
 
 ## Enemies, weapons, items
 
@@ -119,17 +135,17 @@ harder ones put **reinforcements** on every floor.
 
 | Enemy | HP | Trait |
 |---|---|---|
-| Guard | 25 | the standard opponent, one shot per attack |
+| Guard | 15–25 | the standard opponent, one shot per attack |
 | Dog | 1 | fast, cannot open doors, leaps at you |
-| Officer | 50 | reacts almost instantly and aims very briefly |
-| Elite | 100 | four-round bursts, better aim, drops a machine gun |
-| Mutant | 45–65 | never shouts an alarm, two shots per attack – loves an ambush |
-| Sniper | 30 | slow and fragile, takes his time – and then hits hard at **any** distance. Only running helps |
-| Shield bearer | 80 | bullets and blades glance off the shield: get behind him, wait until he lowers it to shoot – or use something that does not care |
-| Kamikaze bot | 20 | rolls at you at speed and blows itself up; shooting it has the same effect (mind who stands next to it) |
-| Commander | 850–1200 | boss with twin machine guns, drops the gold key |
-| War machine | 1100–1800 | super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover) |
-| Pilot | 250–500 | phase 2: climbs out of the war machine's wreck – few hit points, but very fast |
+| Officer | 30–50 | reacts almost instantly and aims very briefly |
+| Elite | 55–100 | three-round bursts, better aim, drops a machine gun |
+| Mutant | 30–65 | never shouts an alarm, two shots per attack – loves an ambush |
+| Sniper | 15–30 | slow and fragile, takes his time – and then hits hard at **any** distance. Only running helps |
+| Shield bearer | 45–80 | bullets and blades glance off the shield: get behind him, wait until he lowers it to shoot – or use something that does not care |
+| Kamikaze bot | 10–20 | rolls at you at speed and blows itself up; shooting it has the same effect (mind who stands next to it) |
+| Commander | 350–1200 | boss with twin machine guns: three rounds per salvo, then a pause – that is your moment. Drops the gold key |
+| War machine | 550–1800 | super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover) |
+| Pilot | 140–500 | phase 2: climbs out of the war machine's wreck – few hit points, but very fast |
 
 The AI works on the tile grid: enemies patrol along waypoints, open doors, chase you in a zig-zag and have a reaction
 time. Hits throw blood or sparks, a heavy hit shakes the camera, explosions shake it more.
@@ -341,6 +357,7 @@ files, though, so you can just as well edit them by hand or in the editor. Valid
                                # loopback) and the music - plus a soak test of every floor that fights every boss
 ./tools/Test-Level.ps1         # validates all maps and prints an overview of each
 ./tools/Test-Verbs.ps1         # every function uses an approved verb
+./Start-Polf3D.ps1 -BalanceTest 1   # a bot plays floor 1 on every difficulty and duels its bosses: who wins how often?
 ```
 
 ## Origin and scope
