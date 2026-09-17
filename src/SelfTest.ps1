@@ -125,6 +125,27 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:GodMode = $true
     Write-Step "cheat test ok (GiveAll, infinite ammo, one-hit kill both ways, code word)"
 
+    # ---- stealth: sneaking up on the corridor guard goes unnoticed, walking does not, knives are silent ----
+    Start-Level $false $false
+    $target = $script:Actors | Where-Object { $_.Kind -eq 'guard' -and [Math]::Floor($_.X) -eq 7 -and [Math]::Floor($_.Y) -eq 27 }
+    Set-TestCamera 7.5 30.2 90
+    $walk = $idle.Clone(); $walk.Forward = 1; $sneak = $walk.Clone(); $sneak.Sneak = $true
+    for ($f = 0; $f -lt 25; $f++) { Update-World 2.0 $sneak }
+    $unnoticed = -not $target.AttackMode -and $target.React -le 0
+    $dist = [Math]::Round($script:P.Y - $target.Y, 2)
+    $script:P.Weapon = 0; $script:P.ChosenWeapon = 0
+    $others = @($script:Actors | Where-Object { $_.AttackMode -or $_.React -gt 0 }).Count
+    Show-PlayFrame
+    for ($f = 0; $f -lt 200 -and $target.Shootable; $f++) { Set-TestAim $target; Show-PlayFrame; Update-World 2.0 $(if ($f % 20 -lt 10) { $fire } else { $idle }) }
+    $silentKill = -not $target.Shootable -and @($script:Actors | Where-Object { $_ -ne $target -and ($_.AttackMode -or $_.React -gt 0) }).Count -eq $others
+    Start-Level $false $false
+    $target = $script:Actors | Where-Object { $_.Kind -eq 'guard' -and [Math]::Floor($_.X) -eq 7 -and [Math]::Floor($_.Y) -eq 27 }
+    Set-TestCamera 7.5 30.2 90
+    for ($f = 0; $f -lt 12; $f++) { Update-World 2.0 $walk }
+    $heard = $target.AttackMode -or $target.React -gt 0
+    Write-Step "stealth test: sneaked to $dist tiles unnoticed=$unnoticed, silent knife kill=$silentKill, walking heard=$heard"
+    if (-not $unnoticed -or -not $silentKill -or -not $heard) { throw 'stealth test failed.' }
+
     # ---- new weapons: rocket, flame and throwing knife must each kill the corridor guard ----
     foreach ($wpn in 6, 7, 8) {
         Start-Level $false $false

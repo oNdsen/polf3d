@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; T = 84; W = 87
+    A = 65; C = 67; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; T = 84; W = 87
     F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122
 }
 
@@ -108,7 +108,7 @@ function Set-Mode([string]$Mode) {
 # ---------------------------------------------------------------------------------------------
 function Get-PlayerInput {
     $k = $script:KeyDown; $vk = $script:VK
-    $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$vk.Shift]; Weapon = $script:WeaponKey
+    $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$vk.Shift]; Sneak = $k[$vk.C]; Weapon = $script:WeaponKey
         Fire = ($k[$vk.Ctrl] -or $k[$vk.LButton]); Use = ($k[$vk.Space] -or $k[$vk.E] -or $k[$vk.RButton])
     }
     if ($k[$vk.W] -or $k[$vk.Up]) { $in.Forward += 1 }
@@ -172,7 +172,7 @@ function Show-TitleScreen {
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
     Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
 
     if ($script:Speedrun) {

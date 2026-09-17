@@ -283,6 +283,28 @@ function Show-Overlays {
     }
     $cheats = @(if ($script:GodMode) { 'GOD' }; if ($script:InfiniteAmmo) { 'AMMO' }; if ($script:OneHitKill) { '1-HIT' })
     if ($cheats) { Write-HudText ("CHEAT: " + ($cheats -join ' + ')) 'Small' 'FF60FF' 2 ($viewH - 10) 120 8 }
+    # what the enemies make of you: "?" = has noticed something and is reacting, "!" = is coming for you
+    $zbuf = $script:ZBuf
+    foreach ($a in $script:Actors) {
+        if (-not $a.Visible -or -not $a.Shootable -or ($a.React -le 0 -and $a.AlertTics -le 0)) { continue }
+        $sx = $a.ScreenX
+        if ($sx -lt 0 -or $sx -ge $script:ViewW -or $zbuf[$sx] -lt $a.Depth) { continue }
+        $top = 100 - ($script:ProjH / $a.Depth) / 2 - 11
+        if ($top -lt 1) { $top = 1 }
+        $mark = if ($a.AlertTics -gt 0) { '!' } else { '?' }
+        Write-HudText $mark 'Mid' '000000' ($sx - 9.5) ($top + 0.5) 20 10
+        Write-HudText $mark 'Mid' $(if ($mark -eq '!') { 'FF4030' } else { 'FFE040' }) ($sx - 10) $top 20 10
+    }
+    # the noise you are making right now: none / footsteps / running or doors / gunfire
+    $level = if ($script:MadeNoise) { 3 } elseif ($script:StepNoise -ge $script:NOISE_DOOR) { 2 } elseif ($script:StepNoise -gt 0) { 1 } else { 0 }
+    if ($level -gt $script:NoiseShown) { $script:NoiseShown = $level; $script:NoiseShownUntil = $script:Clock.Elapsed.TotalSeconds + 0.35 }
+    elseif ($script:Clock.Elapsed.TotalSeconds -gt $script:NoiseShownUntil) { $script:NoiseShown = $level }
+    for ($i = 1; $i -le 3; $i++) {
+        $lit = $i -le $script:NoiseShown
+        Write-HudBar $(if (-not $lit) { '60101A2C' } elseif ($i -eq 3) { 'FF4030' } elseif ($i -eq 2) { 'FFC040' } else { '60FF80' }) (152 + $i * 4) ($viewH - 8 - $i * 2) 3 (2 + $i * 2)
+    }
+    if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 10) 40 8 }
+
     # progress on this floor, and the clock when speedrunning
     $st = $script:Stats
     Write-HudText ("KILLS {0}/{1}   SECRETS {2}/{3}   TREASURE {4}/{5}" -f $st.Kills, $st.KillTotal, $st.Secrets, $st.SecretTotal, $st.Treasures, $st.TreasureTotal) 'Small' 'A0B4D0' 2 ($viewH - 19) 150 8

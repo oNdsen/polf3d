@@ -53,6 +53,7 @@ function Invoke-DoorUse([int]$Index) {
     $d = $script:Doors[$Index]
     if ($d.Lock -eq 1 -and -not $script:P.KeyGold)   { Start-Sfx 'noway'; Show-Message 'Locked - you need the gold key';   return }
     if ($d.Lock -eq 2 -and -not $script:P.KeySilver) { Start-Sfx 'noway'; Show-Message 'Locked - you need the silver key'; return }
+    if ($script:NOISE_DOOR -gt $script:StepNoise) { $script:StepNoise = $script:NOISE_DOOR }      # doors creak
     if ($d.Action -in 'closed', 'closing') { Open-Door $Index } else { Close-Door $Index }
 }
 

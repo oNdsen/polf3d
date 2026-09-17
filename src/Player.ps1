@@ -4,6 +4,7 @@
 
 $script:WALK_SPEED = 0.055        # tiles per tic
 $script:RUN_SPEED  = 0.095
+$script:SNEAK_SPEED = 0.026       # slow - but nobody hears you coming
 $script:BACK_FACTOR = 0.67        # walking backwards is slower
 $script:WALK_TURN  = 1.9          # degrees per tic
 $script:RUN_TURN   = 3.2
@@ -23,7 +24,7 @@ function New-Player {
         Owned = New-OwnedList $false                              # knife and pistol from the start
         Charges = 0; Rockets = 0; Knives = 0; SudoTics = 0.0
         AttackFrame = -1; AttackTics = 0.0; WeaponFrame = 0
-        Running = $false; UseHeld = $false; FireHeld = $false
+        Running = $false; Sneaking = $false; UseHeld = $false; FireHeld = $false
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
@@ -413,7 +414,9 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
 # ---------------------------------------------------------------------------------------------
 function Update-Player([double]$Tics, [hashtable]$In) {
     $p = $script:P
-    $p.Running = [bool]$In.Run
+    $p.Sneaking = [bool]$In.Sneak
+    $p.Running = [bool]$In.Run -and -not $p.Sneaking
+    $script:StepNoise = 0.0                                      # how far this frame's footsteps and doors can be heard
 
     if ($In.Weapon -ge 0 -and $p.AttackFrame -lt 0 -and (Test-WeaponReady $In.Weapon)) {
         $p.Weapon = $In.Weapon; $p.ChosenWeapon = $In.Weapon; $script:HudDirty = $true
@@ -438,13 +441,17 @@ function Update-Player([double]$Tics, [hashtable]$In) {
     $turn = if ($p.Running) { $script:RUN_TURN } else { $script:WALK_TURN }
     $p.Angle = ($p.Angle - $In.Turn * $turn * $Tics - $In.MouseTurn + 720.0) % 360.0
 
-    $speed = $(if ($p.Running) { $script:RUN_SPEED } else { $script:WALK_SPEED }) * $Tics
+    $speed = $(if ($p.Sneaking) { $script:SNEAK_SPEED } elseif ($p.Running) { $script:RUN_SPEED } else { $script:WALK_SPEED }) * $Tics
     $rad = $p.Angle * [Math]::PI / 180.0
     $fx = [Math]::Cos($rad); $fy = - [Math]::Sin($rad)          # y grows southwards
     $fwd = $In.Forward; if ($fwd -lt 0) { $fwd *= $script:BACK_FACTOR }
     $dx = ($fx * $fwd - $fy * $In.Strafe) * $speed
     $dy = ($fy * $fwd + $fx * $In.Strafe) * $speed
-    if ($dx -ne 0 -or $dy -ne 0) { Move-Player $dx $dy }
+    if ($dx -ne 0 -or $dy -ne 0) {
+        Move-Player $dx $dy
+        $steps = if ($p.Sneaking) { 0.0 } elseif ($p.Running) { $script:NOISE_RUN } else { $script:NOISE_WALK }
+        if ($steps -gt $script:StepNoise) { $script:StepNoise = $steps }
+    }
 
     Update-Attack $Tics ([bool]$In.Fire)
     Update-Pickups

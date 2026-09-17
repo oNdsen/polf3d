@@ -50,7 +50,8 @@ function Test-LineToPlayer([double]$X1, [double]$Y1) {
 function Test-Sight([Actor]$a) {
     if (-not $script:AreaByPlayer[$a.Area]) { return $false }
     $dx = $script:P.X - $a.X; $dy = $script:P.Y - $a.Y
-    if ([Math]::Abs($dx) -lt 1.5 -and [Math]::Abs($dy) -lt 1.5) { return $true }     # too close to miss
+    $near = if ($script:P.Sneaking) { 0.7 } else { 1.5 }                                # a sneaking player can get right behind them
+    if ([Math]::Abs($dx) -lt $near -and [Math]::Abs($dy) -lt $near) { return $true }     # too close to miss
     switch ($a.Dir) {                                                                  # looking the other way?
         0 { if ($dx -lt 0) { return $false } }
         2 { if ($dy -gt 0) { return $false } }
@@ -60,7 +61,14 @@ function Test-Sight([Actor]$a) {
     Test-LineToPlayer $a.X $a.Y
 }
 
+# Footsteps and creaking doors: heard within $script:StepNoise tiles (sneaking makes none).
+function Test-Hearing([Actor]$a) {
+    $r = $script:StepNoise
+    $r -gt 0 -and [Math]::Abs($script:P.X - $a.X) -le $r -and [Math]::Abs($script:P.Y - $a.Y) -le $r
+}
+
 function Start-Attack([Actor]$a) {
+    $a.AlertTics = 50
     Start-Sfx $a.Def.AlertSnd
     Set-ActorState $a "$($a.Kind).chase1"
     $a.Speed = $a.Def.Chase
@@ -82,7 +90,7 @@ function Test-NoticePlayer([Actor]$a, [double]$Tics) {
         if (-not (Test-Sight $a)) { return $false }
         $a.Ambush = $false
     }
-    elseif (-not $script:MadeNoise -and -not (Test-Sight $a)) { return $false }
+    elseif (-not $script:MadeNoise -and -not (Test-Sight $a) -and -not (Test-Hearing $a)) { return $false }
 
     $def = $a.Def
     $a.React = $def.ReactBase + $(if ($def.ReactDiv) { (Get-Rnd) / $def.ReactDiv } else { 0 })
@@ -484,6 +492,7 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
 
 function Update-Actor([Actor]$a, [double]$Tics) {
     if ($a.Corpse -and $a.State.EndsWith('.dead')) { return }
+    if ($a.AlertTics -gt 0) { $a.AlertTics -= $Tics }
     if (-not $a.Active -and -not $script:AreaByPlayer[$a.Area]) { return }      # rooms far away sleep
 
     $w = $script:MapW
@@ -524,7 +533,7 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
         if ($a.HP -le 0) { Stop-Actor $a }
         return
     }
-    $script:MadeNoise = $true
+    if ($Source -ne 'knife') { $script:MadeNoise = $true }     # blades are silent: nobody else wakes up
     if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a)) {        # flames lick around it
         Add-Effect 'puff' ($a.X + ($script:P.X - $a.X) * 0.15) ($a.Y + ($script:P.Y - $a.Y) * 0.15)
         Start-Sfx 'clang'

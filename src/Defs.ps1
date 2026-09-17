@@ -16,6 +16,10 @@ $script:DOOR_OPEN_TICS = 64.0        # time to slide fully open
 $script:DOOR_STAY_TICS = 300.0       # open doors close again after this
 $script:PUSHWALL_TICS_PER_TILE = 128.0
 $script:EXTRA_LIFE_POINTS = 40000
+# how far the player's footsteps carry, in tiles: sneaking is silent
+$script:NOISE_WALK   = 2.5
+$script:NOISE_RUN    = 6.0
+$script:NOISE_DOOR   = 5.0
 $script:START_AMMO   = 8
 $script:MAX_AMMO     = 99
 
@@ -54,6 +58,7 @@ class Actor {
     [bool]$Ambush
     [bool]$Corpse
     [double]$React            # reaction countdown after noticing the player
+    [double]$AlertTics        # how long the "!" above the head is still shown
     [int]$ScreenX             # filled by the renderer, used for aiming
     [double]$Depth
     [double]$VX               # projectiles only: velocity in tiles per tic
