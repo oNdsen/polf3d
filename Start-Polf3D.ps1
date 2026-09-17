@@ -42,7 +42,8 @@
 param(
     [ValidateRange(2, 5)][int]$Scale = 3,
     [ValidateSet(320, 160)][int]$Columns = 320,
-    [ValidateRange(1, 4)][int]$Difficulty = 2,
+    [Alias('Difficulty')][ValidateRange(1, 4)][int]$StartDifficulty = 2,       # not named $Difficulty: the game's own
+                                                                               # $script:Difficulty (0..3) would inherit the validation
     [string]$Map,
     [ValidateRange(1, 99)][int]$Level = 1,
     [switch]$Speedrun,
@@ -72,7 +73,7 @@ if (-not $script:MapFiles) { throw 'No maps found (maps/level*.map).' }
 $script:StartLevelIndex = [Math]::Min($Level, $script:MapFiles.Count) - 1
 $script:LevelIndex = $script:StartLevelIndex
 $script:MapFile = $script:MapFiles[$script:LevelIndex]
-$script:Difficulty = $Difficulty - 1
+$script:Difficulty = $StartDifficulty - 1
 $script:GodMode = [bool]$GodMode
 $script:Speedrun = [bool]$Speedrun
 $script:InfiniteAmmo = [bool]$InfiniteAmmo
