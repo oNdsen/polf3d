@@ -270,7 +270,7 @@ function Show-Overlays {
         $blink = ($script:P.SudoTics -gt 210) -or ([int]($script:P.SudoTics / 12) % 2 -eq 0)     # flickers when running out
         if ($blink) {
             foreach ($b in @(0, 0, 320, 2), @(0, ($viewH - 2), 320, 2), @(0, 0, 2, $viewH), @(318, 0, 2, $viewH)) { Write-HudBar 'C0F0D040' $b[0] $b[1] $b[2] $b[3] }
-            Write-HudText ("SUDO {0}s" -f [Math]::Ceiling($script:P.SudoTics / 70)) 'Mid' 'F0D040' 250 4 66 10
+            Write-HudText ("SUDO {0}s" -f [Math]::Ceiling($script:P.SudoTics / 70)) 'Mid' 'F0D040' 190 4 66 10
         }
     }
     if ($script:DamageFlash -gt 0) {
@@ -342,37 +342,79 @@ function Show-Hud {
     $script:HudDirty = $false
 }
 
-# ---- automap ------------------------------------------------------------------------------------
-function Show-AutoMap {
-    $g = $script:BackG; $s = $script:Scale
-    $mw = $script:MapW; $mh = $script:MapH
-    $cell = [Math]::Floor([Math]::Min(320 * $s / $mw, 200 * $s / $mh))
-    $ox = (320 * $s - $cell * $mw) / 2; $oy = (200 * $s - $cell * $mh) / 2
+# ---- automap and minimap ----------------------------------------------------------------------
+# Both draw from one bitmap of everything seen so far (8 pixels per tile, padded so the minimap
+# can crop around the player without leaving the image). It is updated incrementally twice a
+# second: only tiles that are new or have changed are painted.
+$script:MAP_CELL = 8
+$script:MAP_PAD = 10
+$script:MapColors = @{ 1 = '8A8A8A'; 2 = '8A8A8A'; 3 = '8A8A8A'; 4 = '3048B8'; 5 = '3048B8'; 6 = '8A5A28'; 7 = '8A5A28'; 8 = '8A5A28'; 9 = 'A43828'; 10 = 'A43828'; 11 = '7A8A9A'; 12 = 'D02020'; 13 = '20C040'; 19 = '5A7A4A'; 20 = '5A7A4A'; 21 = '4A6A80'; 22 = '4A6A80' }
+
+function Update-MapBitmap {
     $now = $script:Clock.Elapsed.TotalSeconds
-    if ($null -eq $script:MapBmp -or $now -gt $script:MapBmpTime + 0.5) {
-        if ($script:MapBmp) { $script:MapBmp.Dispose() }
-        $script:MapBmp = [System.Drawing.Bitmap]::new([int]($cell * $mw), [int]($cell * $mh), [System.Drawing.Imaging.PixelFormat]::Format32bppPArgb)
-        $mg = [System.Drawing.Graphics]::FromImage($script:MapBmp)
-        $mg.Clear([System.Drawing.Color]::FromArgb(200, 0, 0, 0))
-        $colors = @{ 1 = '8A8A8A'; 2 = '8A8A8A'; 3 = '8A8A8A'; 4 = '3048B8'; 5 = '3048B8'; 6 = '8A5A28'; 7 = '8A5A28'; 8 = '8A5A28'; 9 = 'A43828'; 10 = 'A43828'; 11 = '7A8A9A'; 12 = 'D02020'; 13 = '20C040'; 19 = '5A7A4A'; 20 = '5A7A4A'; 21 = '4A6A80'; 22 = '4A6A80' }
-        for ($y = 0; $y -lt $mh; $y++) {
-            for ($x = 0; $x -lt $mw; $x++) {
-                $idx = $y * $mw + $x
-                if ($script:Vis[$idx] -eq 0) { continue }                      # never seen
-                $t = $script:Tiles[$idx]
-                $c = if ($t -eq 0) { '303030' } elseif ($t -ge 200) { '8A8A8A' } elseif ($t -ge 100) { ('40E0E0', 'E8C020', 'D0D8E0', 'FFFFFF')[$script:Doors[$t - 100].Lock] } else { $colors[$t] }
-                $mg.FillRectangle((Get-Brush $c), [int]($x * $cell), [int]($y * $cell), [int]$cell - 1, [int]$cell - 1)
-            }
-        }
-        $mg.Dispose()
-        $script:MapBmpTime = $now
+    if ($script:MapBmp -and $now -lt $script:MapBmpTime + 0.5) { return }
+    $script:MapBmpTime = $now
+    $mw = $script:MapW; $mh = $script:MapH; $cell = $script:MAP_CELL; $pad = $script:MAP_PAD
+    if ($null -eq $script:MapBmp) {
+        $script:MapBmp = [System.Drawing.Bitmap]::new(($mw + 2 * $pad) * $cell, ($mh + 2 * $pad) * $cell, [System.Drawing.Imaging.PixelFormat]::Format32bppPArgb)
+        $script:MapDrawn = [int[]]::new($mw * $mh)
     }
-    $g.DrawImageUnscaled($script:MapBmp, [int]$ox, [int]$oy)
+    $mg = $null
+    $vis = $script:Vis; $tiles = $script:Tiles; $drawn = $script:MapDrawn
+    for ($i = 0; $i -lt $drawn.Length; $i++) {
+        if ($vis[$i] -eq 0) { continue }                                     # never seen
+        $t = $tiles[$i]
+        if ($drawn[$i] -eq $t + 1) { continue }                              # already painted like this
+        if ($null -eq $mg) { $mg = [System.Drawing.Graphics]::FromImage($script:MapBmp) }
+        $c = if ($t -eq 0) { '5A5A5A' } elseif ($t -ge 200) { '8A8A8A' } elseif ($t -ge 100) { ('40E0E0', 'E8C020', 'D0D8E0', 'FFFFFF', 'E040E0')[[Math]::Min(4, $script:Doors[$t - 100].Lock)] } else { $script:MapColors[$t] }
+        if (-not $c) { $c = '8A8A8A' }
+        $x = $i % $mw; $y = [int][Math]::Floor($i / $mw)
+        $mg.FillRectangle((Get-Brush $c), ($x + $pad) * $cell, ($y + $pad) * $cell, $cell - 1, $cell - 1)
+        $drawn[$i] = $t + 1
+    }
+    if ($mg) { $mg.Dispose() }
+}
+
+function Show-AutoMap {
+    Update-MapBitmap
+    $g = $script:BackG; $s = $script:Scale; $cell = $script:MAP_CELL; $pad = $script:MAP_PAD
+    $mw = $script:MapW; $mh = $script:MapH
+    $zoom = [Math]::Min(320.0 * $s / ($mw * $cell), 200.0 * $s / ($mh * $cell))
+    $w = $mw * $cell * $zoom; $h = $mh * $cell * $zoom
+    $ox = (320 * $s - $w) / 2; $oy = (200 * $s - $h) / 2
+    Write-HudBar 'C8000000' 0 0 320 200
+    $src = [System.Drawing.RectangleF]::new($pad * $cell, $pad * $cell, $mw * $cell, $mh * $cell)
+    $g.DrawImage($script:MapBmp, [System.Drawing.RectangleF]::new($ox, $oy, $w, $h), $src, [System.Drawing.GraphicsUnit]::Pixel)
     # the player: a dot with a nose
-    $p = $script:P; $rad = $p.Angle * [Math]::PI / 180.0
-    $cx = $ox + $p.X * $cell; $cy = $oy + $p.Y * $cell
-    $g.FillEllipse((Get-Brush '40FF40'), [single]($cx - $cell / 3), [single]($cy - $cell / 3), [single]($cell / 1.5), [single]($cell / 1.5))
+    $p = $script:P; $rad = $p.Angle * [Math]::PI / 180.0; $tile = $cell * $zoom
+    $cx = $ox + $p.X * $tile; $cy = $oy + $p.Y * $tile
+    $g.FillEllipse((Get-Brush '40FF40'), [single]($cx - $tile / 3), [single]($cy - $tile / 3), [single]($tile / 1.5), [single]($tile / 1.5))
     $pen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 64, 255, 64), [single]2)
-    $g.DrawLine($pen, [single]$cx, [single]$cy, [single]($cx + [Math]::Cos($rad) * $cell), [single]($cy - [Math]::Sin($rad) * $cell))
+    $g.DrawLine($pen, [single]$cx, [single]$cy, [single]($cx + [Math]::Cos($rad) * $tile), [single]($cy - [Math]::Sin($rad) * $tile))
+    $pen.Dispose()
+}
+
+# The minimap in the corner of the view: the surroundings within 9 tiles, north up, plus a
+# radar - every enemy that is hunting you shows up as a red dot, seen or not.
+function Show-MiniMap {
+    Update-MapBitmap
+    $g = $script:BackG; $s = $script:Scale; $cell = $script:MAP_CELL; $pad = $script:MAP_PAD
+    $p = $script:P; $radius = 9
+    $size = 50 * $s; $x0 = (320 - 53) * $s; $y0 = 3 * $s
+    Write-HudBar '90000000' (320 - 54) 2 52 52
+    $src = [System.Drawing.RectangleF]::new(($p.X + $pad - $radius) * $cell, ($p.Y + $pad - $radius) * $cell, 2 * $radius * $cell, 2 * $radius * $cell)
+    $g.DrawImage($script:MapBmp, [System.Drawing.RectangleF]::new($x0, $y0, $size, $size), $src, [System.Drawing.GraphicsUnit]::Pixel)
+    $unit = $size / (2.0 * $radius); $cx = $x0 + $size / 2; $cy = $y0 + $size / 2
+    $dot = [single][Math]::Max(3, $unit * 0.9)
+    foreach ($a in $script:Actors) {
+        if (-not $a.AttackMode -or -not $a.Shootable) { continue }
+        $dx = $a.X - $p.X; $dy = $a.Y - $p.Y
+        if ([Math]::Abs($dx) -ge $radius -or [Math]::Abs($dy) -ge $radius) { continue }
+        $g.FillEllipse((Get-Brush 'FF3030'), [single]($cx + $dx * $unit - $dot / 2), [single]($cy + $dy * $unit - $dot / 2), $dot, $dot)
+    }
+    $rad = $p.Angle * [Math]::PI / 180.0
+    $g.FillEllipse((Get-Brush '40FF40'), [single]($cx - $dot / 2), [single]($cy - $dot / 2), $dot, $dot)
+    $pen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 64, 255, 64), [single]2)
+    $g.DrawLine($pen, [single]$cx, [single]$cy, [single]($cx + [Math]::Cos($rad) * $unit * 2), [single]($cy - [Math]::Sin($rad) * $unit * 2))
     $pen.Dispose()
 }

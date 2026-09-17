@@ -273,6 +273,7 @@ function Export-Screenshots([string]$OutDir) {
     $script:KeyDown = [bool[]]::new(256)
     $script:KeyHit = [System.Collections.Generic.Queue[int]]::new()
     $script:Mode = 'play'
+    $script:ShowMiniMap = $true
     $idle = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $false; Fire = $false; Use = $false; Weapon = -1 }
     $fire = $idle.Clone(); $fire.Fire = $true
 

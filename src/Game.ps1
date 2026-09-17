@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; D = 68; E = 69; L = 76; M = 77; P = 80; Q = 81; S = 83; W = 87
+    A = 65; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; W = 87
     F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122
 }
 
@@ -146,6 +146,7 @@ function Show-PlayFrame {
     Copy-ViewToBack
     Show-Overlays
     if ($script:KeyDown[$script:VK.M] -and $script:Mode -eq 'play') { Show-AutoMap }
+    elseif ($script:ShowMiniMap) { Show-MiniMap }
     if ($script:HudDirty) { Show-Hud }
 }
 
@@ -171,7 +172,7 @@ function Show-TitleScreen {
     Write-HudText "${load}Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-6  weapon    M  map    P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-6  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
     Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
 
     Write-HudText 'HIGH SCORES' 'Small' '8FB0FF' 160 138 160 8
@@ -234,6 +235,7 @@ function Show-DoneScreen {
 function Start-GameLoop {
     $script:Running = $true
     $script:MouseLook = $false
+    $script:ShowMiniMap = $true
     $script:WeaponKey = -1
     $script:HighScores = Get-HighScores
     $vk = $script:VK
@@ -296,6 +298,7 @@ function Start-GameLoop {
                     if ($h -ge 49 -and $h -le 54) { $script:WeaponKey = $h - 49 }
                     elseif ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'paused' }
                     elseif ($h -eq $vk.F2) { Set-MouseLook (-not $script:MouseLook) }
+                    elseif ($h -eq $vk.N) { $script:ShowMiniMap = -not $script:ShowMiniMap }
                     elseif ($h -eq $vk.F6) { Invoke-Cheat 'GiveAll' }
                     elseif ($h -eq $vk.F7) { Invoke-Cheat 'Ammo' }
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }
