@@ -373,8 +373,9 @@ function Invoke-Explosion([double]$X, [double]$Y, [double]$Radius, [double]$Dama
     $px = $script:P.X - $X; $py = $script:P.Y - $Y
     $d = [Math]::Sqrt($px * $px + $py * $py)
     if ($d -lt $Radius) { Invoke-PlayerDamage ([int]($Damage * 0.6 * (1 - $d / $Radius))) $Owner }
+    if ($script:NetLive) { Invoke-NetBlast $X $Y $Radius $Damage $Owner }      # ... and the second player
     foreach ($a in @($script:Actors)) {
-        if (-not $a.Shootable -or $a -eq $Owner) { continue }
+        if (-not $a.Shootable -or $a -eq $Owner -or $a.Kind -eq 'peer') { continue }
         $ax = $a.X - $X; $ay = $a.Y - $Y
         $d = [Math]::Sqrt($ax * $ax + $ay * $ay)
         if ($d -lt $Radius) { Invoke-ActorDamage $a ([int]($Damage * (1 - $d / $Radius))) 'explosion' }
@@ -388,7 +389,7 @@ function Invoke-Explosion([double]$X, [double]$Y, [double]$Radius, [double]$Dama
             if (-not $script:Breakable[$idx]) { continue }
             $bx = $tx + 0.5 - $X; $by = $ty + 0.5 - $Y
             if ([Math]::Sqrt($bx * $bx + $by * $by) -gt $reach) { continue }
-            $script:Tiles[$idx] = 0; $script:Breakable[$idx] = $false
+            Set-MapTile $idx 0; $script:Breakable[$idx] = $false
             $script:Stats.Secrets++
             foreach ($o in @(-0.25, -0.2), @(0.2, 0.1), @(0.0, 0.3)) { Add-Effect 'puff' ($tx + 0.5 + $o[0]) ($ty + 0.5 + $o[1]) }
             Show-Message 'The wall crumbles!'
@@ -452,7 +453,8 @@ function Invoke-ThinkPlayerProjectile([Actor]$a, [double]$Tics) {
 
         $a.X -= $sx; $a.Y -= $sy                                  # impact just in front of the obstacle
         if ($a.Kind -eq 'procket') {
-            Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $null
+            $script:NetBlastByPlayer = $true                     # network games: who gets the blame
+            try { Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $null } finally { $script:NetBlastByPlayer = $false }
             Set-ActorState $a 'rocket.boom1'
         }
         else {
@@ -466,6 +468,7 @@ function Invoke-ThinkPlayerProjectile([Actor]$a, [double]$Tics) {
 
 function Add-PlayerProjectile([string]$Kind) {
     $p = $script:P
+    if ($script:NetClient) { Send-NetMessage "P|$Kind|$([Math]::Round($p.X, 3))|$([Math]::Round($p.Y, 3))|$([Math]::Round($p.Angle, 2))"; return }      # projectiles fly on the host
     $rad = $p.Angle * [Math]::PI / 180.0
     $a = [Actor]::new()
     $a.Kind = $Kind; $a.Def = $script:MiscDefs[$Kind]
@@ -544,6 +547,10 @@ function Update-Actor([Actor]$a, [double]$Tics) {
 # ---------------------------------------------------------------------------------------------
 # Source: bullet | knife | beam | blast | explosion
 function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet') {
+    if ($script:NetLive) {
+        if ($a.Kind -eq 'peer') { Invoke-PeerDamage $a $Damage $Source; return }
+        if ($script:NetClient) { Send-NetMessage "D|$($a.NetId)|$Damage|$Source"; return }       # the host decides what that does
+    }
     if ($a.Def.Inert) {                                       # barrels and the like: no AI, no noise, just hit points
         if ($Source -in 'bullet', 'knife', 'beam') { Add-HitEffect $a }
         $a.HP -= $Damage
@@ -604,12 +611,23 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
 # Runs every actor once. Actors born during the frame (rockets, the pilot) join afterwards,
 # finished ones (exploded rockets) are dropped.
 function Update-Actors([double]$Tics) {
-    foreach ($a in $script:Actors) { Update-Actor $a $Tics }
+    if ($script:NetLive) {
+        # hosting a network game: some actors deal with the remote player instead (see Network.ps1)
+        $script:NetFrame++
+        foreach ($a in $script:Actors) {
+            if (Test-PeerTarget $a) { Enter-PeerContext; try { Update-Actor $a $Tics } finally { Exit-PeerContext } }
+            else { Update-Actor $a $Tics }
+        }
+    }
+    else { foreach ($a in $script:Actors) { Update-Actor $a $Tics } }
     if ($script:NewActors.Count) {
-        foreach ($n in $script:NewActors) { $script:Actors.Add($n) }
+        foreach ($n in $script:NewActors) { $n.NetId = ++$script:NextNetId; $script:Actors.Add($n) }
         $script:NewActors.Clear()
     }
     for ($i = $script:Actors.Count - 1; $i -ge 0; $i--) {
-        if ($script:Actors[$i].State -eq 'gone') { $script:Actors.RemoveAt($i) }
+        if ($script:Actors[$i].State -eq 'gone') {
+            if ($script:NetLive) { $script:Net.Gone.Add($script:Actors[$i].NetId) }
+            $script:Actors.RemoveAt($i)
+        }
     }
 }

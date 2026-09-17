@@ -39,6 +39,7 @@ $script:CheatCodes = @{ GIVEALL = 'GiveAll'; NOLIMIT = 'Ammo'; ROOT = 'God'; ONE
 
 function Invoke-Cheat([string]$Name) {
     $p = $script:P
+    if ($script:NetLive -and $script:Net.Mode -eq 'duel') { Show-Message 'No cheating in a duel!'; return }
     $onOff = { param($flag) if ($flag) { 'ON' } else { 'OFF' } }
     switch ($Name) {
         'GiveAll' {
@@ -88,11 +89,16 @@ function Reset-PlayerKit {
 }
 
 function Show-Message([string]$Text) {
+    if ($script:NetLive -and $script:NetScope -in 'world', 'peer') {
+        Send-NetMessage "X|$Text"                                 # network game: meant for the other player (as well)
+        if ($script:NetScope -eq 'peer') { return }
+    }
     $script:Message = $Text
     $script:MessageUntil = $script:Clock.Elapsed.TotalSeconds + 2.5
 }
 
 function Add-Score([int]$Points) {
+    if ($script:NetAsPeer) { Send-NetMessage "S|$Points"; return }      # earned by the remote player
     $p = $script:P
     $p.Score += $Points
     while ($p.Score -ge $p.NextExtra) {
@@ -155,17 +161,23 @@ function Invoke-Use {
     $quad = [int][Math]::Floor((($p.Angle + 45.0) % 360.0) / 90.0) % 4          # 0 E, 1 N, 2 W, 3 S
     $dx = (1, 0, -1, 0)[$quad]; $dy = (0, -1, 0, 1)[$quad]
     $tx = [int][Math]::Floor($p.X) + $dx; $ty = [int][Math]::Floor($p.Y) + $dy
+    if ($script:NetClient) { Send-NetMessage "U|$tx|$ty|$dx|$dy"; return }      # the world belongs to the host
+    Invoke-UseAt $tx $ty $dx $dy
+}
+
+function Invoke-UseAt([int]$tx, [int]$ty, [int]$dx, [int]$dy) {
+    if ($tx -lt 0 -or $ty -lt 0 -or $tx -ge $script:MapW -or $ty -ge $script:MapH) { return }
     $idx = $ty * $script:MapW + $tx
     $t = $script:Tiles[$idx]
     if ($script:PushTex[$idx] -ne 0) { Start-PushWall $tx $ty $dx $dy }
     elseif ($t -eq $script:TEX_LEVER_OFF) { Invoke-Lever $idx }
     elseif ($t -eq $script:TEX_SWITCH_OFF) {
-        $script:Tiles[$idx] = $script:TEX_SWITCH_ON
+        Set-MapTile $idx $script:TEX_SWITCH_ON
         Start-Sfx 'level_done'
         $script:LevelDone = $true
     }
     elseif ($t -eq $script:TEX_SECRET_OFF) {
-        $script:Tiles[$idx] = $script:TEX_SECRET_ON
+        Set-MapTile $idx $script:TEX_SECRET_ON
         Start-Sfx 'level_done'
         $script:LevelDone = $true; $script:SecretExit = $true         # this lift goes somewhere else ...
     }
@@ -382,11 +394,13 @@ function Invoke-Pickup([string]$Item) {
 }
 
 function Update-Pickups {
+    if ($script:P.Health -le 0) { return }                        # network games go on while one player lies dead
     $px = $script:P.X; $py = $script:P.Y
-    foreach ($s in $script:Items) {
+    for ($i = 0; $i -lt $script:Items.Count; $i++) {
+        $s = $script:Items[$i]
         if ($s.Removed) { continue }
         if ([Math]::Abs($px - ($s.X + 0.5)) -lt 0.6 -and [Math]::Abs($py - ($s.Y + 0.5)) -lt 0.6) {
-            if (Invoke-Pickup $s.Item) { $s.Removed = $true }
+            if (Invoke-Pickup $s.Item) { $s.Removed = $true; if ($script:NetLive) { Register-NetPickup $i $true } }
         }
     }
 }
@@ -395,6 +409,7 @@ function Update-Pickups {
 # Damage taken
 # ---------------------------------------------------------------------------------------------
 function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
+    if ($script:NetAsPeer) { Send-NetMessage "H|$Points|$(if ($Attacker) { $Attacker.NetId } else { 0 })"; return }      # it hit the remote player
     $p = $script:P
     if ($p.Health -le 0) { return }                              # already dead
     $Points = [int][Math]::Floor($Points * $script:Difficulties[$script:Difficulty].DamageScale)
@@ -410,6 +425,7 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
         $p.Health = 0
         $script:Killer = $Attacker
         $script:PlayerDied = $true
+        if ($script:NetLive -and $Attacker -and $Attacker.Kind -eq 'peer') { $script:Net.PeerFrags++; Send-NetMessage 'F' }
         Start-Sfx 'player_die'
     }
     else { Start-Sfx 'pain' }

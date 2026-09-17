@@ -8,11 +8,11 @@
 function Update-AreaByPlayer {
     $n = $script:AreaCount
     $reach = [bool[]]::new($n)
-    $start = $script:P.Area
-    if ($start -ge 0) {
-        $reach[$start] = $true
-        $queue = [System.Collections.Generic.Queue[int]]::new()
-        $queue.Enqueue($start)
+    $starts = @($script:P.Area)
+    if ($script:NetLive -and -not $script:NetClient) { $starts += $script:Net.Home.Area, $script:Net.Proxy.Area }      # the host thinks for both players
+    $queue = [System.Collections.Generic.Queue[int]]::new()
+    foreach ($start in $starts) { if ($start -ge 0 -and -not $reach[$start]) { $reach[$start] = $true; $queue.Enqueue($start) } }
+    if ($queue.Count) {
         while ($queue.Count) {
             $a = $queue.Dequeue()
             for ($b = 0; $b -lt $n; $b++) {
@@ -96,7 +96,7 @@ function Update-Doors([double]$Tics) {
 # The player pulled a wall lever: every remote door on its channel opens and stays open.
 function Invoke-Lever([int]$TileIndex) {
     $channel = $script:LeverAt[$TileIndex]
-    $script:Tiles[$TileIndex] = $script:TEX_LEVER_ON
+    Set-MapTile $TileIndex $script:TEX_LEVER_ON
     Start-Sfx 'lever'
     $count = 0
     for ($i = 0; $i -lt $script:Doors.Count; $i++) {
@@ -104,6 +104,12 @@ function Invoke-Lever([int]$TileIndex) {
         if ($d.Lock -eq 4 -and $d.Channel -eq $channel) { $d.Unlocked = $true; Open-Door $i; $count++ }
     }
     Show-Message $(if ($count) { 'A door opens somewhere ...' } else { 'Nothing happens' })
+}
+
+# A wall changes its face or disappears (switches, levers, cracked walls). In a network game the guest is told.
+function Set-MapTile([int]$Index, [int]$Value) {
+    $script:Tiles[$Index] = $Value
+    if ($script:NetLive -and -not $script:NetClient) { Send-NetMessage "T|$Index|$Value" }
 }
 
 # ---- push-walls -------------------------------------------------------------------------------
@@ -120,6 +126,7 @@ function Start-PushWall([int]$X, [int]$Y, [int]$DX, [int]$DY) {
     $tex = $script:PushTex[$idx]
     if ($tex -eq 0) { return }
     if (-not (Test-TileFree ($X + $DX) ($Y + $DY))) { Start-Sfx 'noway'; return }
+    if ($script:NetLive -and -not $script:NetClient) { Send-NetMessage "W|$X|$Y|$DX|$DY" }      # the guest moves his copy of the wall himself
 
     $script:Tiles[($Y + $DY) * $script:MapW + ($X + $DX)] = $tex   # reserve the destination right away
     $script:Tiles[$idx] = $script:TILE_PUSHWALL

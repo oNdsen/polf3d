@@ -64,6 +64,10 @@ class Actor {
     [double]$Depth
     [double]$VX               # projectiles only: velocity in tiles per tic
     [double]$VY
+    [int]$NetId               # network games: the same actor carries the same id on both machines (0 = local only)
+    [double]$NX               # ... where the host says it is (the client glides there)
+    [double]$NY
+    [bool]$FromPeer           # ... a projectile fired by the remote player
 }
 
 class Door {
@@ -269,6 +273,7 @@ $script:MiscDefs = @{
     procket = @{ Speed = 0.16; Rotates = $false; Doors = $false; Pain = $false; BlastRadius = 1.9; BlastDamage = 120 }
     tknife  = @{ Speed = 0.22; Rotates = $false; Doors = $false; Pain = $false }
     fx = @{ Rotates = $false; Doors = $false; Pain = $false }      # short-lived effects: blood, sparks
+    peer = @{ Rotates = $true; Doors = $false; Pain = $false; Points = 0 }      # the other player of a network game
     # explosive barrel: an "inert" actor - it can be shot, but never thinks, scores or counts as a kill
     barrel = @{ Inert = $true; HP = 15; Rotates = $false; Doors = $false; Pain = $false; Points = 0; BlastRadius = 2.2; BlastDamage = 90 }
 }
@@ -345,6 +350,11 @@ function Initialize-States {
         Add-State "fx.${fx}2" "fx.${fx}2" $false 5 $null $null "fx.${fx}3"
         Add-State "fx.${fx}3" "fx.${fx}3" $false 5 $null 'Remove' "fx.${fx}3"
     }
+
+    # the other player in a network game: never thinks, Network.ps1 picks the frame
+    Add-State 'peer.stand' 'peer.s' $true 0 $null $null 'peer.stand'
+    foreach ($i in 1..4) { Add-State "peer.w$i" "peer.w$i" $true 0 $null $null "peer.w$i" }
+    foreach ($pose in 'fire', 'pain', 'die1', 'die2', 'die3', 'dead') { Add-State "peer.$pose" "peer.$pose" $false 0 $null $null "peer.$pose" }
 
     # explosive barrels: a short fuse (so chain reactions ripple through a room), then the blast
     Add-State 'barrel.idle' 'barrel_red' $false 0 $null $null 'barrel.idle'

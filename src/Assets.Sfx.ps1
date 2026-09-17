@@ -115,6 +115,11 @@ function Initialize-Sounds {
 }
 
 function Start-Sfx([string]$Name) {
+    if ($script:NetLive -and $Name) {
+        # network game: the other player hears the world as well - and the louder things this one does
+        if ($script:NetScope -eq 'peer') { Send-NetMessage "Q|$Name"; return }
+        if ($script:NetScope -eq 'world' -or ($script:NetScope -eq 'local' -and $script:NetLoud.Contains($Name))) { Send-NetMessage "Q|$Name" }
+    }
     if (-not $script:SfxEnabled -or -not $Name) { return }
     $s = $script:Sfx[$Name]
     if ($null -eq $s) { return }

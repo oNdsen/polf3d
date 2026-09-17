@@ -331,6 +331,7 @@ $script:Palettes = @{
     pilot   = @{ Skin = 'E0A878'; Hair = '1A1A1A'; Uniform = '8A1C1C'; UniformDark = '641212'; Pants = '2A2A2A'; PantsDark = '181818'; Boots = '101010'; Belt = 'C0A030'; Hat = '2A2A2A'; HatDark = '101010'; HatStyle = 'cap'; Gun = 'mg' }
     sniper  = @{ Skin = 'D8A070'; Hair = '2A2A1A'; Uniform = '4A5A32'; UniformDark = '36432A'; Pants = '3E4A2A'; PantsDark = '2C361E'; Boots = '1A1A12'; Belt = '20281A'; Hat = '3A4628'; HatDark = '262E1A'; HatStyle = 'cap'; Gun = 'rifle' }
     shield  = @{ Skin = 'E0A878'; Hair = '101010'; Uniform = '3A3E46'; UniformDark = '282C32'; Pants = '30343A'; PantsDark = '202428'; Boots = '101010'; Belt = '181818'; Hat = '2A2E36'; HatDark = '181C22'; HatStyle = 'helmet'; Gun = 'pistol' }
+    peer    = @{ Skin = 'E0A878'; Hair = '6A3A1A'; Uniform = 'E07818'; UniformDark = 'B05A10'; Pants = '2A4A6A'; PantsDark = '1C3450'; Boots = '181818'; Belt = '202020'; Hat = 'E8E8E8'; HatDark = 'B0B0B0'; HatStyle = 'helmet'; Gun = 'mg' }
     boss    = @{ Skin = 'E0A878'; Hair = '3A2A1A'; Uniform = '5A7AA0'; UniformDark = '3E5A7C'; Pants = '4A6688'; PantsDark = '364E6A'; Boots = '202830'; Belt = 'C0A030'; Hat = '3A4A6A'; HatDark = '2A3650'; HatStyle = 'helmet'; Gun = 'twin' }
 }
 
@@ -717,7 +718,7 @@ function Add-WeaponSprites {
 
 function Initialize-Sprites {
     $script:Spr = @{}
-    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield') { Add-SoldierSprites $k }
+    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield', 'peer') { Add-SoldierSprites $k }
     Add-ShieldOverlay
     Add-BossSprites
     Add-UberSprites

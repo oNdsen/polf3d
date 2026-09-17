@@ -23,6 +23,13 @@
     Show the speedrun clock (floor time, par, total run) and keep records in saves/speedrun.json.
 .PARAMETER FlatFloors
     Plain coloured floor and ceiling instead of textures (the 1992 look, a little faster).
+.PARAMETER HostGame
+    Host a network game for a second player: Coop (the campaign, together) or Duel (one against one,
+    no monsters). The game starts as soon as the other player has joined and the host presses Enter.
+.PARAMETER JoinGame
+    Join the network game hosted on this computer (name or IP address).
+.PARAMETER Port
+    TCP port of the network game (default 27500). The host's firewall must let it in.
 .PARAMETER NoGamepad
     Do not look for an XInput game pad.
 .PARAMETER NoSound
@@ -41,6 +48,8 @@
     No window: simulate and render a number of frames, write PNGs to ./selftest and print timings.
 .EXAMPLE
     ./Start-Polf3D.ps1 -Scale 4
+.EXAMPLE
+    ./Start-Polf3D.ps1 -HostGame Coop          # ... and on the other computer:  ./Start-Polf3D.ps1 -JoinGame 192.168.1.20
 #>
 [CmdletBinding()]
 param(
@@ -50,6 +59,9 @@ param(
                                                                                # $script:Difficulty (0..3) would inherit the validation
     [string]$Map,
     [ValidateRange(1, 99)][int]$Level = 1,
+    [ValidateSet('Coop', 'Duel')][string]$HostGame,
+    [string]$JoinGame,
+    [ValidateRange(1024, 65535)][int]$Port = 27500,
     [switch]$Speedrun,
     [switch]$FlatFloors,
     [switch]$NoGamepad,
@@ -128,7 +140,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Network', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo
@@ -156,12 +168,16 @@ if ($SelfTest) {
     return
 }
 
+if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.' }
 Write-Step 'ready.'
 try {
+    if ($HostGame) { Initialize-Network 'host' $HostGame.ToLower() '' $Port; Write-Step "hosting a $HostGame game on port $Port" }
+    elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port; Write-Step "joining the game on ${JoinGame}:$Port" }
     New-GameWindow
     Start-GameLoop
 }
 finally {
+    Stop-Network
     Stop-Music
     if ($script:Form -and -not $script:Form.IsDisposed) { $script:Form.Close(); $script:Form.Dispose() }
     [System.Windows.Forms.Cursor]::Show()

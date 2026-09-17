@@ -102,6 +102,7 @@ function Initialize-Level([string]$Path) {
     $script:Traps = [System.Collections.Generic.List[hashtable]]::new()
     $script:Teleporters = [System.Collections.Generic.List[hashtable]]::new()
     $script:TeleLock = $false
+    $script:NextNetId = 0
     $script:Stats = @{ KillTotal = 0; Kills = 0; SecretTotal = 0; Secrets = 0; TreasureTotal = 0; Treasures = 0; Tics = 0.0 }
     $script:PW = @{ Active = $false; X = 0; Y = 0; DX = 0; DY = 0; Pos = 0.0; Moved = 0; TexId = 0 }
     for ($i = 0; $i -lt $n; $i++) { $script:TurnAt[$i] = -1; $script:AreaOf[$i] = -1 }
@@ -243,6 +244,7 @@ function Add-Item([string]$Name, [int]$X, [int]$Y) {
     $s.X = $X; $s.Y = $Y; $s.Item = $Name
     $s.Sprite = $script:Spr[$(if ($Name -eq 'clip_small') { 'clip' } else { $Name })]
     $script:Statics.Add($s); $script:Items.Add($s)
+    if ($script:NetLive -and -not $script:NetClient) { Send-NetMessage "A|$Name|$X|$Y" }      # dropped during a network game
 }
 
 function New-Enemy([string]$Kind, [int]$X, [int]$Y, [int]$Dir, [string]$Mode) {
@@ -273,12 +275,14 @@ function Add-InertActor([string]$Kind, [int]$X, [int]$Y) {
     $a.HP = $a.Def.HP; $a.Shootable = $true
     $a.Area = $script:AreaOf[$Y * $script:MapW + $X]
     $a.State = "$Kind.idle"
+    $a.NetId = ++$script:NextNetId
     $script:ActorAt[$Y * $script:MapW + $X] = $a
     $script:Actors.Add($a)
 }
 
 function Add-Enemy([string]$Kind, [int]$X, [int]$Y, [int]$Dir, [string]$Mode) {
     $a = New-Enemy $Kind $X $Y $Dir $Mode
+    $a.NetId = ++$script:NextNetId
     $script:ActorAt[$a.TY * $script:MapW + $a.TX] = $a
     $script:Actors.Add($a)
     $script:Stats.KillTotal++

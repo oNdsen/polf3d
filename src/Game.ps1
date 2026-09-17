@@ -76,6 +76,7 @@ function Reset-ScreenEffects {
 # KeepPlayer: score and lives survive (after a death).  KeepKit: weapons, ammo and health survive
 # as well (riding the lift to the next floor). Keys never leave their floor.
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
+    $script:NetLive = $false; $script:NetClient = $false
     $script:MapFile = if ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
     $script:LevelSeed = if ($script:NextSeed) { $script:NextSeed } else { [int]($script:Clock.ElapsedTicks % 1000000) + 1 }
     $script:NextSeed = $null
@@ -94,7 +95,8 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:Message = $null
     $script:ShowWeapon = $true
     $script:HudDirty = $true
-    if ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
+    if ($script:Net -and $script:Net.Connected) { Initialize-NetLevel $KeepPlayer $KeepKit }
+    elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
     $script:MusicWanted = if ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
@@ -104,6 +106,8 @@ function Set-Mode([string]$Mode) {
     $script:Mode = $Mode
     $script:ModeTics = 0.0
     $script:KeyHit.Clear()
+    if ($Mode -eq 'title' -and $script:NetLive) { Send-NetMessage 'B' }                # takes the other player along
+    if ($Mode -in 'title', 'done', 'gameover') { $script:NetLive = $false; $script:NetClient = $false }
     if ($Mode -ne 'play') { Set-MouseLook $false; if ($script:Recording) { Stop-DemoRecording } }
     if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame }
     if ($Mode -eq 'load') { $script:SaveList = @(Get-SaveList) }
@@ -178,12 +182,30 @@ function Add-GamepadInput([hashtable]$In) {
 
 function Update-World([double]$Tics, [hashtable]$In) {
     $script:MadeNoise = $false
-    Update-Doors $Tics
-    Update-PushWall $Tics
-    Update-Traps $Tics
-    Update-Teleporters $Tics
-    Update-Player $Tics $In          # the player acts first: enemies hear this frame's shots
-    Update-Actors $Tics
+    if ($script:NetClient) {
+        # guest of a network game: doors and enemies come from the host's snapshots
+        Update-PushWall $Tics
+        Update-Traps $Tics
+        Update-Teleporters $Tics
+        Update-Player $Tics $In
+        Update-ClientActors $Tics
+    }
+    else {
+        if ($script:NetLive) { $script:NetScope = 'world' }       # what the world does, both players hear
+        Update-Doors $Tics
+        Update-PushWall $Tics
+        $script:NetScope = 'local'
+        Update-Traps $Tics
+        Update-Teleporters $Tics
+        Update-Player $Tics $In          # the player acts first: enemies hear this frame's shots
+        if ($script:NetLive) {
+            if ($script:Net.PeerNoise) { $script:MadeNoise = $true; $script:Net.PeerNoise = $false }
+            $script:NetScope = 'world'
+        }
+        Update-Actors $Tics
+        $script:NetScope = 'local'
+    }
+    if ($script:NetLive) { Update-NetGhost $Tics }
     if ($script:DamageFlash -gt 0) { $script:DamageFlash = [Math]::Max(0.0, $script:DamageFlash - $Tics) }
     if ($script:BonusFlash -gt 0) { $script:BonusFlash = [Math]::Max(0.0, $script:BonusFlash - $Tics) }
     if ($script:BeamFlash -gt 0) { $script:BeamFlash = [Math]::Max(0.0, $script:BeamFlash - $Tics) }
@@ -221,6 +243,7 @@ function Show-TitleScreen {
         Write-HudText "$($i + 1)  $($script:Difficulties[$i].Name)" 'Mid' $(if ($sel) { 'FFFFFF' } else { '7080A0' }) 80 (76 + $i * 11) 160 10
     }
     $load = if ($script:HasSaves) { 'L = load a saved game     ' } else { '' }
+    if ($script:Net) { $load = ''; Write-HudText (Get-NetStatus) 'Small' '60FF80' 0 131 320 8 }
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
@@ -253,6 +276,7 @@ function Get-Percent([int]$Count, [int]$Total) { if ($Total -le 0) { 100 } else 
 function Complete-Level {
     $st = $script:Stats
     $seconds = [int]($st.Tics / $script:TICRATE)
+    if ($script:NetLive -and -not $script:NetClient) { Send-NetMessage "L|$([int][bool]$script:SecretExit)" }
     $r = @{
         Seconds = $seconds
         Kills = Get-Percent $st.Kills $st.KillTotal
@@ -294,7 +318,8 @@ function Show-DoneScreen {
         }
         $y += 14
     }
-    $foot = if ($r.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
+    if ($script:Net -and $script:Net.Mode -eq 'duel') { Write-HudText "FRAGS     you $($script:Net.Frags) : $($script:Net.PeerFrags) opponent" 'Mid' '60C0FF' 0 180 320 12 }
+    $foot = if ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected -and -not $r.Last) { 'Waiting for the host to call the lift ...' } elseif ($r.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
     Write-HudText $foot 'Small' 'FFE860' 0 200 320 10
 }
 
@@ -343,6 +368,7 @@ function Start-GameLoop {
         if ($hits -contains $vk.F3) { $script:ShowFps = -not $script:ShowFps }
         if ($hits -contains $vk.F4) { Switch-Music }
         Update-Music
+        Update-Network $tics
 
         if ($script:AutoQuit -lt 0) {
             # test aid: watch the attract demo for -AutoQuit seconds, then leave
@@ -362,8 +388,13 @@ function Start-GameLoop {
                 $shotG = [System.Drawing.Graphics]::FromImage($script:BackBmp)
                 $script:Buffered.Render($shotG); $shotG.Dispose()
                 $null = New-Item -ItemType Directory -Path (Join-Path $script:SaveDir '../selftest') -Force
-                $script:BackBmp.Save((Join-Path $script:SaveDir '../selftest/window.png'))
+                $script:BackBmp.Save((Join-Path $script:SaveDir "../selftest/window$(if ($script:Net) { "-$($script:Net.Role)" }).png"))
                 Write-Step ('Window test: {0:0.0} fps on average, mode {1}, health {2}' -f ($autoFrames / ($now - $autoStart)), $script:Mode, $script:P.Health)
+                if ($script:Net) {
+                    $net = $script:Net
+                    Write-Step ("Network test ({0}, {1}): connected {2}, live {3}, {4} messages received, other player at {5:0.0},{6:0.0} with health {7}, {8} actors, {9} kills, status '{10}'" -f
+                        $net.Role, $net.Mode, $net.Connected, $script:NetLive, $net.Received, $net.Ghost.X, $net.Ghost.Y, $net.PeerHealth, $script:Actors.Count, $script:Stats.Kills, $net.Status)
+                }
                 $script:Running = $false
             }
         }
@@ -374,18 +405,19 @@ function Start-GameLoop {
                     if ($h -eq $vk.Up) { $script:Difficulty = ($script:Difficulty + 3) % 4 }
                     elseif ($h -eq $vk.Down) { $script:Difficulty = ($script:Difficulty + 1) % 4 }
                     elseif ($h -ge 49 -and $h -le 52) { $script:Difficulty = $h - 49 }
+                    elseif ($h -eq $vk.Enter -and -not (Test-NetStart)) { }          # network game: the host starts, once the guest is there
                     elseif ($h -eq $vk.Enter) {
                         $script:LevelIndex = $script:StartLevelIndex; $script:BonusMap = $null; Start-Level $false $false; Set-Mode 'play'
                         if ($script:CheatAllWeapons) { Invoke-Cheat 'GiveAll' }
                     }
-                    elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
+                    elseif ($h -eq $vk.L -and -not $script:Net -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
                 if ($script:Mode -eq 'title') {
                     Show-TitleScreen
                     # nobody home? after a while the attract demo starts
-                    if ($script:ModeTics -gt 70 * 14 -and (Test-Path -LiteralPath $script:AttractDemo)) {
+                    if ($script:ModeTics -gt 70 * 14 -and -not $script:Net -and (Test-Path -LiteralPath $script:AttractDemo)) {
                         $keep = $script:Difficulty
                         if (Start-DemoPlayback $script:AttractDemo) { Set-Mode 'demo'; $script:DemoKeepDifficulty = $keep } else { $script:ModeTics = 0.0 }
                     }
@@ -418,6 +450,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.F7) { Invoke-Cheat 'Ammo' }
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }
                     elseif ($h -eq $vk.F11) { Invoke-Cheat 'OneHit' }
+                    elseif ($script:Net -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in a network game' }
                     elseif ($h -eq $vk.F12) { if ($script:Recording) { Stop-DemoRecording } else { Start-DemoRecording } }
                     elseif ($h -eq $vk.F5) { Save-Game }
                     elseif ($h -eq $vk.F9) { $null = Restore-Game }
@@ -436,15 +469,20 @@ function Start-GameLoop {
                 foreach ($h in $hits) {
                     if ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'play'; $script:HudDirty = $true }
                     elseif ($h -eq $vk.Q) { Set-Mode 'title' }
+                    elseif ($script:Net) { }                                   # no saving or loading in a network game
                     elseif ($h -ge 49 -and $h -le 51) { Save-Game "$($h - 48)" }
                     elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'paused'; Set-Mode 'load' }
                     elseif ($h -eq $vk.F9) { if (Restore-Game) { Set-Mode 'play' } }
                 }
+                if ($script:Mode -eq 'paused' -and $script:NetLive) {
+                    Update-World $tics (New-IdleInput)                       # nobody can stop a world that is shared
+                    if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
+                }
                 if ($script:Mode -eq 'paused') {
                     Show-PlayFrame
                     Write-HudBar 'A0000000' 0 0 320 200
-                    Write-HudText 'PAUSE' 'Big' 'FFFFFF' 0 70 320 24
-                    Write-HudText 'Esc / P = resume     1-3 = save to slot     L = load     Q = main menu' 'Small' 'FFE860' 0 100 320 10
+                    Write-HudText $(if ($script:NetLive) { 'MENU' } else { 'PAUSE' }) 'Big' 'FFFFFF' 0 70 320 24
+                    Write-HudText $(if ($script:NetLive) { 'Esc / P = resume     Q = leave the game (the world does not wait!)' } else { 'Esc / P = resume     1-3 = save to slot     L = load     Q = main menu' }) 'Small' 'FFE860' 0 100 320 10
                     if ($script:Message -and $script:Clock.Elapsed.TotalSeconds -lt $script:MessageUntil) { Write-HudText $script:Message 'Mid' '60FF80' 0 116 320 10 }
                 }
             }
@@ -458,12 +496,13 @@ function Start-GameLoop {
                     $stepA = [Math]::Min([Math]::Abs($diff), 3.0 * $tics)
                     $p.Angle = ($p.Angle + [Math]::Sign($diff) * $stepA + 360.0) % 360.0
                 }
-                Update-Actors $tics
+                if ($script:NetLive) { Update-World $tics (New-IdleInput) } else { Update-Actors $tics }
                 $script:DamageFlash = 0
                 Show-PlayFrame
                 $alpha = [int][Math]::Min(255, [Math]::Max(0, ($script:ModeTics - 40) * 3))
                 Write-HudBar ('{0:X2}A00000' -f $alpha) 0 0 320 200
-                if ($script:ModeTics -gt 170) {
+                if ($script:ModeTics -gt 170 -and $script:NetLive) { Reset-NetPlayer; Set-Mode 'play' }      # no lives: back into the fray
+                elseif ($script:ModeTics -gt 170) {
                     $p.Lives--
                     if ($p.Lives -lt 0) {
                         $p.Lives = 0
@@ -503,6 +542,7 @@ function Start-GameLoop {
                 Show-DoneScreen
                 if ($script:ModeTics -gt 50 -and ($hits -contains $vk.Enter -or $hits -contains $vk.Esc)) {
                     if ($script:Result.Last) { Set-Mode 'title' }
+                    elseif ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected) { }      # the host calls the lift
                     elseif ($script:Result.ToBonus) { $script:BonusMap = $script:Result.BonusPath; Start-Level $true $true; Set-Mode 'play' }
                     else { $script:BonusMap = $null; $script:LevelIndex++; Start-Level $true $true; Set-Mode 'play' }
                 }

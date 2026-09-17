@@ -41,6 +41,20 @@ function Set-TestAim([Actor]$Target) {
     $script:P.Angle = ([Math]::Atan2(- ($Target.Y - $script:P.Y), $Target.X - $script:P.X) * 180 / [Math]::PI + 360) % 360
 }
 
+# Whatever the other end of a test connection has sent by now, as lines.
+function Read-NetTestLines([System.Net.Sockets.TcpClient]$Tcp) {
+    Start-Sleep -Milliseconds 150
+    $stream = $Tcp.GetStream(); $buf = [byte[]]::new(65536); $text = ''
+    while ($stream.DataAvailable) { $text += [System.Text.Encoding]::UTF8.GetString($buf, 0, $stream.Read($buf, 0, $buf.Length)) }
+    @($text.Split("`n", [System.StringSplitOptions]::RemoveEmptyEntries))
+}
+
+function Send-NetTestLines([System.Net.Sockets.TcpClient]$Tcp, [string[]]$Lines) {
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($Lines -join "`n") + "`n")
+    $Tcp.GetStream().Write($bytes, 0, $bytes.Length)
+    Start-Sleep -Milliseconds 150
+}
+
 function Invoke-SelfTest([string]$OutDir) {
     $null = New-Item -ItemType Directory -Path $OutDir -Force
     $script:SaveDir = Join-Path $OutDir 'saves'
@@ -449,6 +463,59 @@ function Invoke-SelfTest([string]$OutDir) {
         Write-Step "game pad test: XInput bridge loaded, pad connected: $([bool]$state)"
     }
     else { Write-Step 'game pad test: bridge not available (skipped)' }
+
+    # ---- network: the host against a scripted guest, then the guest against a scripted host ----
+    $port = 27631; $keepGod = $script:GodMode; $script:GodMode = $false
+    if (-not $script:KeyHit) { $script:KeyHit = [System.Collections.Generic.Queue[int]]::new() }
+    Initialize-Network 'host' 'coop' '' $port
+    $guest = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port)
+    try {
+        Start-Sleep -Milliseconds 100; Update-Network 1.0
+        $hello = Read-NetTestLines $guest
+        $script:LevelIndex = 0; $script:BonusMap = $null; $script:Difficulty = 1
+        Start-Level $false $false
+        Update-Network 1.0
+        $go = @(Read-NetTestLines $guest | Where-Object { $_ -like 'G|*' })[0]
+        if ($hello -notcontains 'V|1|coop' -or $go -notlike 'G|1|0||1|*') { throw "network test failed: handshake was '$hello' / '$go'." }
+        $victim = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and $_.Kind -ne 'peer' } | Select-Object -First 1
+        $door = $script:Doors | Where-Object { $_.Lock -eq 0 } | Select-Object -First 1
+        $health = $script:P.Health
+        Send-NetTestLines $guest "R|1", "M|$($victim.X + 1)|$($victim.Y)|180|4|100|0|$($victim.Area)", "D|$($victim.NetId)|500|bullet", "U|$($door.X)|$($door.Y)|1|0"
+        Update-Network 1.0
+        # a look at the partner: two tiles away, walking past
+        Set-TestCamera ($victim.X + 3) $victim.Y 180; $script:Net.Ghost.X = $victim.X + 1; $script:Net.Ghost.Y = $victim.Y; $script:Net.Ghost.State = 'peer.w2'; $script:Net.Ghost.Dir = 2
+        Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-network-partner.png')
+        Enter-PeerContext; Invoke-PlayerDamage 10 $null; Exit-PeerContext              # an enemy hits the guest, not the host
+        for ($i = 0; $i -lt 6; $i++) { Update-World 2.0 $idle; Update-Network 2.0 }
+        $lines = Read-NetTestLines $guest
+        $snap = @($lines | Where-Object { $_ -like "Z|*" -and $_ -like "*$($victim.NetId),$($victim.Kind).die*" }).Count
+        Write-Step "network test (host): guest at $($script:Net.Proxy.X),$($script:Net.Proxy.Y); his shot killed the $($victim.Kind): $(-not $victim.Shootable); door $($door.Action); $($lines.Count) lines sent, $snap snapshots show the death"
+        if ($victim.Shootable -or $door.Action -eq 'closed' -or -not $snap -or $lines -notcontains "S|$($victim.Def.Points)" -or $lines -notcontains 'H|10|0' -or
+            $script:P.Health -ne $health -or @($lines | Where-Object { $_ -like 'M|*' }).Count -eq 0) { throw 'network test failed on the host side.' }
+    }
+    finally { $guest.Dispose(); Stop-Network }
+
+    $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port + 1); $listener.Start()
+    Initialize-Network 'client' 'coop' '127.0.0.1' ($port + 1)
+    $server = $null
+    try {
+        for ($i = 0; $i -lt 40 -and -not $script:Net.Connected; $i++) { Update-Network 1.0; Start-Sleep -Milliseconds 50 }
+        $server = $listener.AcceptTcpClient()
+        Send-NetTestLines $server 'V|1|duel', "G|7|0||2|4711|0|0|$(Get-MapHash $script:MapFiles[0])"
+        Update-Network 1.0
+        $enemies = @($script:Actors | Where-Object { -not $_.Def.Inert -and $_.Kind -ne 'peer' }).Count
+        $health = $script:P.Health
+        Send-NetTestLines $server 'Z|0|0|0||900,rocket.fly,5.5,5.5,0,4|', 'H|10|P', "M|$($script:P.X + 1)|$($script:P.Y)|90|8|0|0|0"
+        Update-Network 1.0
+        for ($i = 0; $i -lt 4; $i++) { Update-View; Update-World 2.0 $idle; Update-Network 2.0 }
+        $lines = Read-NetTestLines $server
+        Write-Step "network test (guest): mode $($script:Net.Mode), difficulty $($script:Difficulty + 1), seed $($script:LevelSeed), $enemies monsters left in the duel, health $health -> $($script:P.Health), ghost $($script:Net.Ghost.State), $($lines.Count) lines sent"
+        if (-not $script:NetClient -or $script:Net.Mode -ne 'duel' -or $script:Difficulty -ne 2 -or $script:LevelSeed -ne 4711 -or $enemies -ne 0 -or
+            -not $script:Net.ById[900] -or $script:P.Health -ge $health -or $script:Net.Ghost.State -notlike 'peer.d*' -or
+            $lines -notcontains 'V|1' -or $lines -notcontains 'R|7') { throw 'network test failed on the guest side.' }
+    }
+    finally { if ($server) { $server.Dispose() }; Stop-Network; $listener.Stop() }
+    $script:GodMode = $keepGod; $script:Difficulty = 1; $script:PlayerDied = $false
 
     # ---- music: every style must render, stay within 16 bits and differ from the others ----
     $lengths = foreach ($track in 0, 1, 2, 3, 4, 5, $script:MUSIC_BONUS) {
