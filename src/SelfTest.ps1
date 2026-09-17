@@ -174,6 +174,23 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     $script:LevelIndex = 0
 
+    # ---- traps: standing on spikes through a full cycle must hurt; a crusher must block its tile ----
+    $script:LevelIndex = [Math]::Min(3, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    $spike = $script:Traps | Where-Object Kind -eq 'spikes' | Select-Object -First 1
+    $crusher = $script:Traps | Where-Object Kind -eq 'crusher' | Select-Object -First 1
+    if ($spike -and $crusher) {
+        $script:GodMode = $false; $script:P.Health = 100
+        Set-TestCamera ($spike.X + 0.5) ($spike.Y + 0.5) 0
+        $blocked = $false
+        for ($f = 0; $f -lt 130; $f++) { Update-World 2.0 $idle; if ($script:StaticBlock[$crusher.Y * $script:MapW + $crusher.X]) { $blocked = $true } }
+        $script:GodMode = $true
+        Write-Step "trap test: spikes left the player at $($script:P.Health) health, crusher blocked its tile: $blocked"
+        if ($script:P.Health -ge 100 -or -not $blocked) { throw 'trap test failed.' }
+        $script:PlayerDied = $false
+    }
+    $script:LevelIndex = 0
+
     # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
     $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
     Start-Level $false $false

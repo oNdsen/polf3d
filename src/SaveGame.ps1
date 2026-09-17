@@ -27,6 +27,7 @@ function Save-Game {
         Tiles      = $script:Tiles
         PushTex    = $script:PushTex
         Seen       = @($seen)
+        Traps      = @(foreach ($t in $script:Traps) { $t.Phase })
         Doors      = @(foreach ($d in $script:Doors) { @{ Action = $d.Action; Open = $d.Open; Timer = $d.Timer; Unlocked = $d.Unlocked } })
         Items      = @(foreach ($s in $script:Items) { if (-not $s.Removed) { @{ Item = $s.Item; X = $s.X; Y = $s.Y } } })
         Actors     = @(foreach ($a in $script:Actors) { $h = @{}; foreach ($n in $script:ActorSaveProps) { $h[$n] = $a.$n }; $h })
@@ -67,6 +68,8 @@ function Restore-Game {
             $d.Action = $sd.Action; $d.Open = $sd.Open; $d.Timer = $sd.Timer; $d.Unlocked = [bool]$sd.Unlocked
             if ($d.Action -ne 'closed') { $script:AreaConnect[$d.Area1, $d.Area2]++; $script:AreaConnect[$d.Area2, $d.Area1]++ }
         }
+
+        for ($i = 0; $i -lt [Math]::Min($script:Traps.Count, @($state.Traps).Count); $i++) { $script:Traps[$i].Phase = [double]$state.Traps[$i]; $script:Traps[$i].State = -1 }
 
         # items: drop the map's own, take the saved ones (includes what enemies dropped)
         $null = $script:Statics.RemoveAll([Predicate[Static]] { param($s) $null -ne $s.Item })

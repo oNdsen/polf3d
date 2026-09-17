@@ -16,6 +16,7 @@
 #   g d e o m s h k b u  +  ^>v< | nesw | NESW   enemy: standing | standing & deaf (ambush) | patrolling
 #                                            (guard dog elite officer mutant sniper shield-bearer kamikaze-bot boss super-boss)
 #   :^ :> :v :<                              patrol turning point
+#   ~s ~c                                    traps: spikes, crusher (both cycle on a timer)
 #   +x                                       item,       see $ItemCodes
 #   *x                                       decoration, see $DecoCodes  (*e = explosive barrel)
 #
@@ -72,6 +73,7 @@ function Initialize-Level([string]$Path) {
     $script:Items = [System.Collections.Generic.List[Static]]::new()
     $script:Actors = [System.Collections.Generic.List[Actor]]::new()
     $script:NewActors = [System.Collections.Generic.List[Actor]]::new()
+    $script:Traps = [System.Collections.Generic.List[hashtable]]::new()
     $script:Stats = @{ KillTotal = 0; Kills = 0; SecretTotal = 0; Secrets = 0; TreasureTotal = 0; Treasures = 0; Tics = 0.0 }
     $script:PW = @{ Active = $false; X = 0; Y = 0; DX = 0; DY = 0; Pos = 0.0; Moved = 0; TexId = 0 }
     for ($i = 0; $i -lt $n; $i++) { $script:TurnAt[$i] = -1; $script:AreaOf[$i] = -1 }
@@ -146,6 +148,10 @@ function Initialize-Level([string]$Path) {
                 $playerSet = $true
             }
             elseif ($a -ceq ':') { $script:TurnAt[$idx] = Get-DirFromChar $b }
+            elseif ($a -ceq '~') {
+                if (-not $script:TrapCodes.ContainsKey($b)) { throw "Unknown trap '~$b' at $x,$y" }
+                Add-Trap $script:TrapCodes[$b] $x $y
+            }
             elseif ($a -ceq '+') {
                 if (-not $script:ItemCodes.ContainsKey($b)) { throw "Unknown item '+$b' at $x,$y" }
                 Add-Item $script:ItemCodes[$b] $x $y

@@ -13,9 +13,11 @@
 [CmdletBinding()]
 param([string[]]$Map)
 
+$ErrorActionPreference = 'Stop'
 $src = Join-Path $PSScriptRoot '../src'
 . (Join-Path $src 'Defs.ps1')
 . (Join-Path $src 'Map.ps1')
+. (Join-Path $src 'Mechanics.ps1')
 $script:Spr = @{}; $script:Difficulty = 2
 Initialize-States
 if (-not $Map) { $Map = Get-ChildItem (Join-Path $PSScriptRoot '../maps') -Filter 'level*.map' | Sort-Object { [int]($_.BaseName -replace '\D') } | ForEach-Object FullName }

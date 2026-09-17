@@ -103,7 +103,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $script:SfxEnabled = -not $NoSound -and -not $SelfTest -and -not $Screenshots

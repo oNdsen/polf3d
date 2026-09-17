@@ -130,6 +130,7 @@ function Update-World([double]$Tics, [hashtable]$In) {
     $script:MadeNoise = $false
     Update-Doors $Tics
     Update-PushWall $Tics
+    Update-Traps $Tics
     Update-Player $Tics $In          # the player acts first: enemies hear this frame's shots
     Update-Actors $Tics
     if ($script:DamageFlash -gt 0) { $script:DamageFlash = [Math]::Max(0.0, $script:DamageFlash - $Tics) }
