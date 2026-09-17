@@ -37,6 +37,10 @@ function Test-LevelFile([string]$Path) {
     $reach[$start] = $true; $queue.Enqueue($start)
     while ($queue.Count) {
         $c = $queue.Dequeue()
+        foreach ($pad in $script:Teleporters) {                          # a pad also leads to its partner
+            if ($pad.Y * $w + $pad.X -ne $c) { continue }
+            foreach ($other in $script:Teleporters) { $o = $other.Y * $w + $other.X; if ($other.Id -eq $pad.Id -and -not $reach[$o]) { $reach[$o] = $true; $queue.Enqueue($o) } }
+        }
         foreach ($d in -1, 1, (-$w), $w) {
             $n = $c + $d
             if ($n -lt 0 -or $n -ge $w * $h -or $reach[$n]) { continue }
@@ -78,6 +82,7 @@ function Test-LevelFile([string]$Path) {
     for ($i = 0; $i -lt $w * $h; $i++) {
         if ($script:LeverAt[$i] -gt 0 -and -not ($reach[$i - 1] -or $reach[$i + 1] -or $reach[$i - $w] -or $reach[$i + $w])) { $problems.Add("Lever X$($script:LeverAt[$i]) cannot be reached.") }
     }
+    foreach ($group in ($script:Teleporters | Group-Object { $_.Id })) { if ($group.Count -ne 2) { $problems.Add("Teleporter @$($group.Name) needs exactly two pads, found $($group.Count).") } }
     $itemNames = @($script:Items | ForEach-Object { $_.Item })      # not $Items.Item: that is the list's indexer
     $kinds = @($script:Actors | ForEach-Object { $_.Kind })
     foreach ($door in $script:Doors) {

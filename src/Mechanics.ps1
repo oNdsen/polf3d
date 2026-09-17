@@ -52,3 +52,33 @@ function Update-Traps([double]$Tics) {
         }
     }
 }
+
+# ---------------------------------------------------------------------------------------------
+# Teleporters ("@1".."@9"): two pads with the same number form a pair. Stepping on one puts the
+# player on the other; he has to step off the pad before it works again.
+# ---------------------------------------------------------------------------------------------
+function Add-Teleporter([int]$Id, [int]$X, [int]$Y) {
+    $s = [Static]::new()
+    $s.X = $X; $s.Y = $Y; $s.Sprite = $script:Spr['telepad']
+    $script:Statics.Add($s)
+    $script:Teleporters.Add(@{ Id = $Id; X = $X; Y = $Y })
+}
+
+function Update-Teleporters([double]$Tics) {
+    if ($script:Teleporters.Count -eq 0) { return }
+    $p = $script:P
+    $tx = [int][Math]::Floor($p.X); $ty = [int][Math]::Floor($p.Y)
+    $pad = $null
+    foreach ($t in $script:Teleporters) { if ($t.X -eq $tx -and $t.Y -eq $ty) { $pad = $t; break } }
+    if (-not $pad) { $script:TeleLock = $false; return }          # stepping off a pad re-arms the teleporters
+    if ($script:TeleLock) { return }                              # still standing where he arrived
+    $exit = $script:Teleporters | Where-Object { $_.Id -eq $pad.Id -and ($_.X -ne $pad.X -or $_.Y -ne $pad.Y) } | Select-Object -First 1
+    if (-not $exit) { return }
+    $p.X = $exit.X + 0.5; $p.Y = $exit.Y + 0.5
+    $area = $script:AreaOf[$exit.Y * $script:MapW + $exit.X]
+    if ($area -ge 0) { $p.Area = $area }
+    Update-AreaByPlayer
+    $script:TeleLock = $true
+    $script:BonusFlash = 30.0
+    Start-Sfx 'teleport'
+}

@@ -533,6 +533,7 @@ function Add-ThingSprites {
     $S['rockets'] = New-Sprite { foreach ($x in 22, 30, 38) { Add-Box '8A929A' $x 46 5 14; Add-Poly 'C03030' @($x, 46, ($x + 5), 46, ($x + 2), 40); Add-Box 'E0C020' $x 56 5 2 } }
     $S['flamer'] = New-Sprite { Add-Box '8A2A1A' 12 48 22 12; Add-Box 'B03A24' 12 48 22 2; Add-Box '404850' 34 52 20 4; Add-Box 'FF9020' 54 51 3 6; Add-Box 'E0C020' 12 54 22 2 }
     $S['tknives'] = New-Sprite { foreach ($k in @(22, -2), @(30, 0), @(38, -2)) { Add-Poly 'E8ECF0' @($k[0], (44 + $k[1]), ($k[0] + 4), (44 + $k[1]), ($k[0] + 3), (56 + $k[1]), ($k[0] + 1), (56 + $k[1])); Add-Box '3A2A1A' $k[0] (56 + $k[1]) 4 6 } }
+    $S['telepad'] = New-Sprite { Add-Oval '1A3A6A' 10 53 44 10; Add-Oval '40E0FF' 14 54 36 8; Add-Oval '0A1A3A' 18 55 28 6; Add-Oval 'A0F0FF' 26 56 12 4; foreach ($x in 20, 31, 42) { Add-Box '80F0FF' $x 38 1 14; Add-Box 'FFFFFF' $x 44 1 3 } }
     # traps
     $S['spikes.0'] = New-Sprite { Add-Oval '3A3A3A' 12 55 40 8; foreach ($h in @(18, 57), @(26, 59), @(34, 57), @(42, 59), @(30, 56)) { Add-Oval '101010' $h[0] $h[1] 4 2 } }
     $S['spikes.1'] = New-Sprite { Add-Oval '3A3A3A' 12 55 40 8; foreach ($h in @(18, 57, 30), @(26, 59, 24), @(34, 57, 28), @(42, 59, 32), @(30, 56, 20)) { Add-Poly 'C8CCD0' @($h[0], $h[1], ($h[0] + 4), $h[1], ($h[0] + 2), $h[2]); Add-Poly 'F0F4F8' @($h[0], $h[1], ($h[0] + 1), $h[1], ($h[0] + 2), $h[2]) }; Add-Box 'B01010' 27 30 2 5 }

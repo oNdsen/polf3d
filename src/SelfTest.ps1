@@ -191,6 +191,19 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     $script:LevelIndex = 0
 
+    # ---- teleporter: step on a pad, arrive on its partner, and do not bounce back ----
+    $script:LevelIndex = [Math]::Min(2, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    if ($script:Teleporters.Count -ge 2) {
+        $pad = $script:Teleporters[0]; $other = $script:Teleporters | Where-Object { $_.Id -eq $pad.Id -and $_ -ne $pad } | Select-Object -First 1
+        Set-TestCamera ($pad.X + 0.5) ($pad.Y + 0.5) 0
+        for ($f = 0; $f -lt 5; $f++) { Update-World 2.0 $idle }
+        $arrived = [Math]::Floor($script:P.X) -eq $other.X -and [Math]::Floor($script:P.Y) -eq $other.Y
+        Write-Step "teleporter test: from $($pad.X),$($pad.Y) to $([Math]::Floor($script:P.X)),$([Math]::Floor($script:P.Y)) (partner $($other.X),$($other.Y))"
+        if (-not $arrived) { throw 'teleporter test failed.' }
+    }
+    $script:LevelIndex = 0
+
     # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
     $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
     Start-Level $false $false
