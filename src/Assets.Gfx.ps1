@@ -234,6 +234,8 @@ $script:Palettes = @{
     elite   = @{ Skin = 'E0A878'; Hair = 'C0A050'; Uniform = '3A5A9A'; UniformDark = '2A4478'; Pants = '34508A'; PantsDark = '243C6C'; Boots = '101018'; Belt = '101010'; Hat = '2A3A5A'; HatDark = '1A2A44'; HatStyle = 'helmet'; Gun = 'mg' }
     mutant  = @{ Skin = '7AA070'; Hair = '5A7A50'; Uniform = 'B0A880'; UniformDark = '8A8460'; Pants = '9A9470'; PantsDark = '7A7458'; Boots = '282820'; Belt = '403828'; Hat = '000000'; HatDark = '000000'; HatStyle = 'none'; Gun = 'chest' }
     pilot   = @{ Skin = 'E0A878'; Hair = '1A1A1A'; Uniform = '8A1C1C'; UniformDark = '641212'; Pants = '2A2A2A'; PantsDark = '181818'; Boots = '101010'; Belt = 'C0A030'; Hat = '2A2A2A'; HatDark = '101010'; HatStyle = 'cap'; Gun = 'mg' }
+    sniper  = @{ Skin = 'D8A070'; Hair = '2A2A1A'; Uniform = '4A5A32'; UniformDark = '36432A'; Pants = '3E4A2A'; PantsDark = '2C361E'; Boots = '1A1A12'; Belt = '20281A'; Hat = '3A4628'; HatDark = '262E1A'; HatStyle = 'cap'; Gun = 'rifle' }
+    shield  = @{ Skin = 'E0A878'; Hair = '101010'; Uniform = '3A3E46'; UniformDark = '282C32'; Pants = '30343A'; PantsDark = '202428'; Boots = '101010'; Belt = '181818'; Hat = '2A2E36'; HatDark = '181C22'; HatStyle = 'helmet'; Gun = 'pistol' }
     boss    = @{ Skin = 'E0A878'; Hair = '3A2A1A'; Uniform = '5A7AA0'; UniformDark = '3E5A7C'; Pants = '4A6688'; PantsDark = '364E6A'; Boots = '202830'; Belt = 'C0A030'; Hat = '3A4A6A'; HatDark = '2A3650'; HatStyle = 'helmet'; Gun = 'twin' }
 }
 
@@ -310,6 +312,7 @@ function Add-SoldierArt([hashtable]$p, [string]$View, [string]$Pose) {
             'pistol' { Add-Box '181818' 34 (34 + $bob) 7 3; Add-Box '181818' 34 (36 + $bob) 2 3 }
             'mg'     { Add-Box '181818' 31 (33 + $bob) 17 3; Add-Box '181818' 36 (36 + $bob) 2 4; Add-Box '4A3018' 28 (33 + $bob) 4 4 }
             'chest'  { Add-Box '202020' 36 (27 + $bob) 5 5 }
+            'rifle'  { Add-Box '181818' 30 (32 + $bob) 28 2; Add-Box '4A3018' 26 (31 + $bob) 8 5; Add-Box '181818' 38 (29 + $bob) 6 3 }
         }
         return
     }
@@ -343,7 +346,8 @@ function Add-SoldierArt([hashtable]$p, [string]$View, [string]$Pose) {
         Add-Box $p.Uniform 19 22 5 9; Add-Box $p.Uniform 40 22 5 9
         Add-Box $p.Uniform 21 29 9 4; Add-Box $p.Uniform 34 29 9 4
         Add-Box $p.Skin 28 28 8 6
-        if ($p.Gun -eq 'mg') { Add-Box '101010' 29 25 6 9; Add-Box '404040' 31 27 2 2 } else { Add-Box '101010' 30 26 4 7; Add-Box '404040' 31 27 2 2 }
+        if ($p.Gun -eq 'rifle') { Add-Box '101010' 29 23 6 11; Add-Oval '303030' 28 18 8 8; Add-Oval 'FF2020' 30 20 4 4; Add-Box 'FFA0A0' 31 21 1 1 }
+        elseif ($p.Gun -eq 'mg') { Add-Box '101010' 29 25 6 9; Add-Box '404040' 31 27 2 2 } else { Add-Box '101010' 30 26 4 7; Add-Box '404040' 31 27 2 2 }
         if ($Pose -eq 'fire') { Add-Oval 'FF9020' 24 19 16 16; Add-Oval 'FFD040' 26 21 12 12; Add-Oval 'FFFFD0' 29 24 6 6 }
     }
     elseif ($Pose -eq 'pain') {
@@ -357,6 +361,7 @@ function Add-SoldierArt([hashtable]$p, [string]$View, [string]$Pose) {
         if ($View -eq 'f') {
             switch ($p.Gun) {
                 'pistol' { Add-Box '181818' 42 (38 + $bob) 3 6 }
+                'rifle'  { Add-Box '181818' 43 (14 + $bob) 2 30; Add-Box '4A3018' 42 (34 + $bob) 4 10 }
                 'mg'     { Add-Box '181818' 27 (32 + $bob) 19 3; Add-Box '4A3018' 24 (31 + $bob) 4 5; Add-Box '181818' 38 (35 + $bob) 2 4 }
             }
         }
@@ -584,11 +589,13 @@ function Add-WeaponSprites {
 
 function Initialize-Sprites {
     $script:Spr = @{}
-    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot') { Add-SoldierSprites $k }
+    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield') { Add-SoldierSprites $k }
+    Add-ShieldOverlay
     Add-BossSprites
     Add-UberSprites
     Add-DogSprites
     Add-ThingSprites
+    Add-BotSprites              # after the things: the bot dies in the rocket's explosion frames
     Add-WeaponSprites
 }
 
@@ -646,4 +653,50 @@ function Add-UberSprites {
         $ps = if ($pose -in 's', 'aim') { 'stand' } else { $pose }
         $script:Spr["uber.$pose"] = New-Sprite { Add-MechArt $ps }
     }
+}
+
+# ---- shield bearer: the soldier sprites get a riot shield painted over them -------------------------
+function Add-ShieldArt([string]$View, [string]$Pose) {
+    switch ($View) {
+        'f' {
+            if ($Pose -in 'aim', 'fire') { Add-Box '50585F' 8 20 9 36; Add-Box '7A848C' 8 20 2 36; return }      # lowered to the side
+            Add-Poly '50585F' @(18, 18, 46, 18, 46, 54, 40, 60, 24, 60, 18, 54)
+            Add-Poly '6A747C' @(20, 20, 44, 20, 44, 53, 39, 58, 25, 58, 20, 53)
+            Add-Box '101418' 25 24 14 4; Add-Box '9AA4AC' 20 20 24 1; Add-Box 'E0C020' 30 40 4 8
+        }
+        's' { Add-Box '50585F' 38 18 4 42; Add-Box '7A848C' 41 18 1 42 }
+        'b' { Add-Box '50585F' 17 22 3 34; Add-Box '50585F' 44 22 3 34 }
+    }
+}
+
+function Add-ShieldOverlay {
+    $p = $script:Palettes.shield
+    foreach ($pose in 's', 'w1', 'w2', 'w3', 'w4') {
+        $ps = if ($pose -eq 's') { 'stand' } else { $pose }
+        $f = New-Sprite { Add-SoldierArt $p 'f' $ps; Add-ShieldArt 'f' $ps }
+        $b = New-Sprite { Add-SoldierArt $p 'b' $ps; Add-ShieldArt 'b' $ps }
+        $r = New-Sprite { Add-SoldierArt $p 's' $ps; Add-ShieldArt 's' $ps }
+        $l = New-Sprite { Add-SoldierArt $p 's' $ps; Add-ShieldArt 's' $ps } -FlipX
+        $script:Spr["shield.$pose"] = @($f, $l, $b, $r)
+    }
+    foreach ($pose in 'aim', 'fire') { $script:Spr["shield.$pose"] = New-Sprite { Add-SoldierArt $p 'f' $pose; Add-ShieldArt 'f' $pose } }
+}
+
+# ---- kamikaze bot: a rolling ball with a bad attitude -------------------------------------------------
+function Add-BotArt([string]$Pose) {
+    $blink = $Pose -in 'w2', 'w4'
+    $roll = switch ($Pose) { 'w1' { 0 } 'w2' { 2 } 'w3' { 4 } 'w4' { 6 } default { 0 } }
+    Add-Oval '101010' 22 56 20 6
+    Add-Oval '3A4450' 20 36 24 24; Add-Oval '56626F' 23 38 12 10
+    Add-Box '242B33' 20 47 24 3
+    for ($i = 0; $i -lt 3; $i++) { Add-Box '101418' (22 + (($roll + $i * 8) % 22)) 47 2 3 }
+    Add-Oval '101418' 27 40 10 8; Add-Oval $(if ($blink) { 'FF2020' } else { '801010' }) 29 41 6 6
+    if ($blink) { Add-Oval 'FFA0A0' 31 42 2 2 }
+    Add-Box '8A929A' 31 30 2 7; Add-Oval $(if ($blink) { 'FFD040' } else { 'C03030' }) 30 27 4 4
+}
+
+function Add-BotSprites {
+    foreach ($pose in 's', 'w1', 'w2', 'w3', 'w4') { $script:Spr["bot.$pose"] = New-Sprite { Add-BotArt $pose } }
+    foreach ($i in 1, 2, 3) { $script:Spr["bot.die$i"] = $script:Spr["rocket.boom$i"] }
+    $script:Spr['bot.dead'] = New-Sprite { Add-Oval '101010' 18 56 28 6; Add-Poly '2E3640' @(22, 60, 26, 50, 34, 47, 42, 52, 44, 60); Add-Box '56626F' 28 51 5 3; Add-Oval '5A5A5A' 28 38 8 8; Add-Oval '6A6A6A' 32 30 7 7 }
 }

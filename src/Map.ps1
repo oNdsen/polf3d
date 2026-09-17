@@ -12,8 +12,8 @@
 #   DD DG DS DL                              door: normal / gold lock / silver lock / lift door
 #   ..                                       floor
 #   P^ P> Pv P<                              player start + view direction
-#   g d e o m b u  +  ^>v<  |  nesw  |  NESW enemy: standing | standing & deaf (ambush) | patrolling
-#                                            (guard dog elite officer mutant boss super boss)
+#   g d e o m s h k b u  +  ^>v< | nesw | NESW   enemy: standing | standing & deaf (ambush) | patrolling
+#                                            (guard dog elite officer mutant sniper shield-bearer kamikaze-bot boss super-boss)
 #   :^ :> :v :<                              patrol turning point
 #   +x                                       item,       see $ItemCodes
 #   *x                                       decoration, see $DecoCodes  (*e = explosive barrel)

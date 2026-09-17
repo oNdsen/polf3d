@@ -284,6 +284,15 @@ function Invoke-ThinkDogChase([Actor]$a, [double]$Tics) {
     Invoke-Walk $a $Tics 'Dodge'
 }
 
+function Invoke-ThinkBotChase([Actor]$a, [double]$Tics) {
+    if ($a.Dir -eq $script:DIR_NONE) {
+        Select-ChaseDir $a
+        if ($a.Dir -eq $script:DIR_NONE) { return }
+    }
+    if ([Math]::Abs($script:P.X - $a.X) -le 1.1 -and [Math]::Abs($script:P.Y - $a.Y) -le 1.1) { Stop-Actor $a $true; return }   # close enough: boom
+    Invoke-Walk $a $Tics 'Chase'
+}
+
 # ---------------------------------------------------------------------------------------------
 # Actions (called once when their state runs out)
 # ---------------------------------------------------------------------------------------------
@@ -292,6 +301,10 @@ function Invoke-ActionShoot([Actor]$a) {
     if (-not (Test-LineToPlayer $a.X $a.Y)) { return }
     Start-Sfx $a.Def.ShotSnd
 
+    if ($a.Def.Marksman) {                                     # snipers: distance means nothing, only your speed helps
+        if ((Get-Rnd) -lt $(if ($script:P.Running) { 110 } else { 225 })) { Invoke-PlayerDamage (25 + ((Get-Rnd) -shr 3)) $a }
+        return
+    }
     $dist = [Math]::Max([Math]::Abs($script:P.X - $a.X), [Math]::Abs($script:P.Y - $a.Y))
     $dist = [Math]::Floor($dist / $a.Def.Accuracy)             # good marksmen "stand closer"
     $base = if ($script:P.Running) { 160 } else { 256 }        # a running target is harder to hit
@@ -418,6 +431,7 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
         'Path'     { Invoke-ThinkPath $a $Tics }
         'Chase'    { Invoke-ThinkChase $a $Tics }
         'DogChase' { Invoke-ThinkDogChase $a $Tics }
+        'BotChase' { Invoke-ThinkBotChase $a $Tics }
         'Projectile' { Invoke-ThinkProjectile $a $Tics }
     }
 }
@@ -459,11 +473,19 @@ function Update-Actor([Actor]$a, [double]$Tics) {
 # Source: bullet | knife | beam | blast | explosion
 function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet') {
     if ($a.Def.Inert) {                                       # barrels and the like: no AI, no noise, just hit points
+        if ($Source -in 'bullet', 'knife', 'beam') { Add-HitEffect $a }
         $a.HP -= $Damage
         if ($a.HP -le 0) { Stop-Actor $a }
         return
     }
     $script:MadeNoise = $true
+    if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a)) {
+        Add-Effect 'puff' ($a.X + ($script:P.X - $a.X) * 0.15) ($a.Y + ($script:P.Y - $a.Y) * 0.15)
+        Start-Sfx 'clang'
+        if (-not $a.AttackMode) { $a.React = 0; Start-Attack $a }
+        return
+    }
+    if ($Source -in 'bullet', 'knife', 'beam') { Add-HitEffect $a }
     if (-not $a.AttackMode) { $Damage *= 2 }                  # caught off guard: double damage
     if ($script:P.SudoTics -gt 0) { $Damage *= 2 }            # sudo: elevated damage
     if ($script:OneHitKill) { $Damage = [Math]::Max($Damage, $a.HP) }
@@ -473,7 +495,16 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
     if ($a.Def.Pain) { Set-ActorState $a "$($a.Kind).pain" }
 }
 
-function Stop-Actor([Actor]$a) {                              # killed
+# The shield covers the front (about 140 degrees) - unless it is lowered for shooting.
+function Test-ShieldBlocks([Actor]$a) {
+    if ($a.State -like '*.shoot*') { return $false }
+    if ($a.Dir -eq $script:DIR_NONE) { return $true }
+    $toPlayer = [Math]::Atan2(- ($script:P.Y - $a.Y), $script:P.X - $a.X) * 180.0 / [Math]::PI
+    $diff = [Math]::Abs((($toPlayer - $a.Dir * 45.0 + 540.0) % 360.0) - 180.0)
+    $diff -lt 70
+}
+
+function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
     $tx = [int][Math]::Floor($a.X); $ty = [int][Math]::Floor($a.Y)
     if ($a.Def.Inert) {
         Set-ActorState $a "$($a.Kind).fuse"
@@ -482,7 +513,7 @@ function Stop-Actor([Actor]$a) {                              # killed
         if ($script:ActorAt[$idx] -eq $a) { $script:ActorAt[$idx] = $null }
         return
     }
-    Add-Score $a.Def.Points
+    if (-not $NoScore) { Add-Score $a.Def.Points }
     Set-ActorState $a "$($a.Kind).die1"
     switch ($a.Def.Drop) {
         'clip_small'   { Add-Item 'clip_small' $tx $ty }

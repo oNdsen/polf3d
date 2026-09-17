@@ -144,6 +144,7 @@ $script:DecoCodes = @{
 $script:EnemyCodes = @{
     [char]'g' = 'guard'; [char]'d' = 'dog'; [char]'e' = 'elite'
     [char]'o' = 'officer'; [char]'m' = 'mutant'; [char]'b' = 'boss'; [char]'u' = 'uber'
+    [char]'s' = 'sniper'; [char]'h' = 'shield'; [char]'k' = 'bot'
 }
 
 $script:EnemyDefs = @{
@@ -193,6 +194,31 @@ $script:EnemyDefs = @{
                 @(, @('aim', 10, $true)) + @(, @('aim', 10, $false))
         DieTics = 15
     }
+    # Sniper: fragile and slow, but takes his time to aim and then hits hard at ANY distance. Never shouts.
+    sniper = @{
+        HP = @(30, 30, 30, 30); Points = 600; Patrol = 0.0078; Chase = 0.012
+        ReactBase = 1; ReactDiv = 6; Doors = $true; Pain = $true; Rotates = $true
+        Accuracy = 1.0; Marksman = $true; Drop = 'clip_small'; AlertSnd = $null; ShotSnd = 'shot_sniper'; DieSnd = 'die_a'
+        Shoot = @(, @('aim', 60, $false)) + @(, @('aim', 10, $true)) + @(, @('fire', 25, $false))
+        DieTics = 12
+    }
+    # Shield bearer: bullets and blades glance off the shield. He is only vulnerable from behind,
+    # while he lowers the shield to shoot - or to anything that does not care (beam, blast, explosions).
+    shield = @{
+        HP = @(80, 80, 80, 80); Points = 500; Patrol = 0.0078; Chase = 0.0195
+        ReactBase = 1; ReactDiv = 6; Doors = $true; Pain = $false; Rotates = $true
+        Accuracy = 1.0; Shield = $true; Drop = 'clip_small'; AlertSnd = 'alert_elite'; ShotSnd = 'shot_enemy'; DieSnd = 'die_b'
+        Shoot = @(, @('aim', 25, $false)) + @(, @('aim', 12, $true)) + @(, @('fire', 12, $false)) + @(, @('aim', 12, $false))
+        DieTics = 15
+    }
+    # Kamikaze bot: rolls at you at speed and blows itself up - shooting it has the same effect. No doors.
+    bot = @{
+        HP = @(20, 20, 20, 20); Points = 300; Patrol = 0.02; Chase = 0.06
+        ReactBase = 1; ReactDiv = 8; Doors = $false; Pain = $false; Rotates = $false
+        Accuracy = 1.0; Drop = $null; AlertSnd = 'bot_beep'; ShotSnd = $null; DieSnd = $null
+        Shoot = @(); ChaseThink = 'BotChase'; DieScream = 'Explode'; BlastRadius = 1.9; BlastDamage = 75
+        DieTics = 4
+    }
     # The super boss, phase 1: a walking war machine - bursts of gunfire, then a salvo of rockets.
     uber = @{
         HP = @(1100, 1300, 1500, 1800); Points = 10000; Patrol = 0.0078; Chase = 0.0195
@@ -241,7 +267,7 @@ function Initialize-States {
     foreach ($kind in $script:EnemyDefs.Keys) {
         $def = $script:EnemyDefs[$kind]
         $rot = [bool]$def.Rotates
-        $chaseThink = if ($kind -eq 'dog') { 'DogChase' } else { 'Chase' }
+        $chaseThink = if ($def.ChaseThink) { $def.ChaseThink } elseif ($kind -eq 'dog') { 'DogChase' } else { 'Chase' }
 
         Add-State "$kind.stand" "$kind.s" $rot 0 'Stand' $null "$kind.stand"
 
@@ -267,7 +293,7 @@ function Initialize-States {
         }
 
         $t = $def.DieTics
-        Add-State "$kind.die1" "$kind.die1" $false $t $null 'DeathScream' "$kind.die2"
+        Add-State "$kind.die1" "$kind.die1" $false $t $null $(if ($def.DieScream) { $def.DieScream } else { 'DeathScream' }) "$kind.die2"
         Add-State "$kind.die2" "$kind.die2" $false $t $null $null "$kind.die3"
         Add-State "$kind.die3" "$kind.die3" $false $t $null $def.DieAction "$kind.dead"
         Add-State "$kind.dead" "$kind.dead" $false 0 $null $null "$kind.dead"

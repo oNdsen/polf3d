@@ -185,7 +185,6 @@ function Invoke-GunAttack {
             if (((Get-Rnd) / 12) -lt $dist) { break }           # long shots may simply miss
             $damage = $r / 6
         }
-        Add-HitEffect $a
         Invoke-ActorDamage $a ([int][Math]::Floor($damage))
         return
     }
@@ -197,7 +196,6 @@ function Invoke-KnifeAttack {
     Start-Sfx 'knife'
     $targets = Get-AimedTargets
     if ($targets.Count -eq 0 -or $targets[0].Depth -gt 1.5) { return }
-    Add-HitEffect $targets[0]
     Invoke-ActorDamage $targets[0] ((Get-Rnd) -shr 4) 'knife'
 }
 
@@ -207,7 +205,7 @@ function Invoke-BeamAttack {
     Start-Sfx 'shot_pipe'
     $script:BeamFlash = 10.0
     foreach ($a in (Get-AimedTargets)) {
-        if (Test-LineToPlayer $a.X $a.Y) { Add-HitEffect $a; Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) 'beam' }
+        if (Test-LineToPlayer $a.X $a.Y) { Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) 'beam' }
     }
 }
 

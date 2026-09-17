@@ -139,6 +139,25 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     $script:LevelIndex = 0
 
+    # ---- shield bearer: bullets bounce off the front, not off the back; kamikaze bots blow up ----
+    $script:LevelIndex = [Math]::Min(4, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    $sb = $script:Actors | Where-Object Kind -eq 'shield' | Select-Object -First 1
+    if ($sb) {
+        $sb.Dir = 6; $hp = $sb.HP                                    # he faces south
+        Set-TestCamera $sb.X ($sb.Y + 2) 90; Invoke-ActorDamage $sb 10 'bullet'; $front = $hp - $sb.HP
+        Set-TestCamera $sb.X ($sb.Y - 2) 270; $sb.Dir = 6; $sb.State = 'shield.stand'; Invoke-ActorDamage $sb 10 'bullet'; $back = $hp - $sb.HP - $front
+        $bot = $script:Actors | Where-Object Kind -eq 'bot' | Select-Object -First 1
+        $script:GodMode = $false; $script:P.Health = 100
+        Set-TestCamera ($bot.X + 0.6) ($bot.Y + 0.6) 0; $bot.Active = $true; Start-Attack $bot
+        for ($f = 0; $f -lt 30; $f++) { Update-World 2.0 $idle }
+        $script:GodMode = $true
+        Write-Step "enemy test: shield front damage $front, back damage $back; bot blast left the player at $($script:P.Health) health"
+        if ($front -ne 0 -or $back -le 0 -or $script:P.Health -ge 100) { throw 'enemy test failed.' }
+        $script:PlayerDied = $false
+    }
+    $script:LevelIndex = 0
+
     # ---- a dog must complete its leap (jump1..jump5) and bite ----
     Start-Level $false $false
     $dog = $script:Actors | Where-Object Kind -eq 'dog' | Select-Object -First 1
@@ -356,9 +375,9 @@ function Export-Screenshots([string]$OutDir) {
     Save-Shot $OutDir 'citadel'
 
     # the cast: front views of every enemy, 3x
-    $cast = 'guard.s', 'dog.s', 'officer.s', 'elite.s', 'mutant.s', 'boss.s', 'uber.s', 'pilot.s'
-    $names = 'Guard', 'Dog', 'Officer', 'Elite', 'Mutant', 'Commander', 'War machine', 'Pilot'
-    $cell = 200
+    $cast = 'guard.s', 'dog.s', 'officer.s', 'elite.s', 'mutant.s', 'sniper.s', 'shield.s', 'bot.s', 'boss.s', 'uber.s', 'pilot.s'
+    $names = 'Guard', 'Dog', 'Officer', 'Elite', 'Mutant', 'Sniper', 'Shield bearer', 'Kamikaze bot', 'Commander', 'War machine', 'Pilot'
+    $cell = 160
     $bmp = [System.Drawing.Bitmap]::new($cell * $cast.Count, 236)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.Clear([System.Drawing.Color]::FromArgb(255, 10, 16, 32))
@@ -372,7 +391,7 @@ function Export-Screenshots([string]$OutDir) {
         $tile = [System.Drawing.Bitmap]::new(64, 64, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
         $bd = $tile.LockBits([System.Drawing.Rectangle]::new(0, 0, 64, 64), 'WriteOnly', $tile.PixelFormat)
         [System.Runtime.InteropServices.Marshal]::Copy([int[]]$px, 0, $bd.Scan0, 4096); $tile.UnlockBits($bd)
-        $g.DrawImage($tile, [System.Drawing.Rectangle]::new($i * $cell + 4, 8, 192, 192)); $tile.Dispose()
+        $g.DrawImage($tile, [System.Drawing.Rectangle]::new($i * $cell - 16, 8, 192, 192)); $tile.Dispose()
         $g.DrawString($names[$i], $font, [System.Drawing.Brushes]::White, [System.Drawing.RectangleF]::new($i * $cell, 212, $cell, 22), $fmt)
     }
     $bmp.Save((Join-Path $OutDir 'cast.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
