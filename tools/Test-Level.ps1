@@ -82,15 +82,15 @@ function Test-LevelFile([string]$Path) {
         $line = for ($x = 0; $x -lt $w; $x++) {
             $i = $y * $w + $x; $t = $script:Tiles[$i]
             if ($script:PushTex[$i]) { '?' } elseif ($t -eq $script:TEX_SWITCH_OFF) { 'X' } elseif ($t -ge 100) { '+' } elseif ($t -gt 0) { '#' }
-            elseif ($script:ActorAt[$i]) { $script:ActorAt[$i].Kind[0] } elseif ($script:StaticBlock[$i]) { 'o' }
+            elseif ($script:ActorAt[$i]) { if ($script:ActorAt[$i].Def.Inert) { '*' } else { $script:ActorAt[$i].Kind[0] } } elseif ($script:StaticBlock[$i]) { 'o' }
             elseif ($reach[$i]) { '.' } else { '!' }
         }
         Write-Host (-join $line)
     }
     $st = $script:Stats
-    $hp = ($script:Actors | ForEach-Object { $_.HP } | Measure-Object -Sum).Sum
+    $hp = ($script:Actors | Where-Object { -not $_.Def.Inert } | ForEach-Object { $_.HP } | Measure-Object -Sum).Sum
     Write-Host ("{0}: {1}x{2}, {3} doors, {4} areas, {5} enemies with {6} HP in total ({7}), {8} treasures, {9} push-walls" -f $script:LevelName, $w, $h,
-        $script:Doors.Count, $script:AreaCount, $script:Actors.Count, $hp, (($script:Actors | Group-Object Kind | Sort-Object Name | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '), $st.TreasureTotal, $st.SecretTotal)
+        $script:Doors.Count, $script:AreaCount, @($script:Actors | Where-Object { -not $_.Def.Inert }).Count, $hp, (($script:Actors | Group-Object Kind | Sort-Object Name | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '), $st.TreasureTotal, $st.SecretTotal)
     foreach ($p in $problems) { Write-Host "PROBLEM: $p" -ForegroundColor Red }
     Write-Host ''
     $problems.Count

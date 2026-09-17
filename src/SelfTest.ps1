@@ -125,6 +125,20 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:GodMode = $true
     Write-Step "cheat test ok (GiveAll, infinite ammo, one-hit kill both ways, code word)"
 
+    # ---- barrels: shooting one must set off its neighbour and hurt whoever stands close ----
+    $script:LevelIndex = [Math]::Min(1, $script:MapFiles.Count - 1)
+    Start-Level $false $false
+    $barrels = @($script:Actors | Where-Object Kind -eq 'barrel')
+    if ($barrels.Count -ge 2) {
+        $victims = @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and [Math]::Abs($_.X - $barrels[0].X) -lt 4 -and [Math]::Abs($_.Y - $barrels[0].Y) -lt 4 })
+        Invoke-ActorDamage $barrels[0] 100
+        for ($f = 0; $f -lt 40; $f++) { Update-World 2.0 $idle }
+        $left = @($script:Actors | Where-Object Kind -eq 'barrel').Count
+        Write-Step "barrel test: $($barrels.Count) barrels -> $left left, bystanders hurt: $(@($victims | Where-Object { $_.HP -lt $_.Def.HP[$script:Difficulty] }).Count) of $($victims.Count)"
+        if ($left -gt $barrels.Count - 2) { throw 'barrel test: no chain reaction.' }
+    }
+    $script:LevelIndex = 0
+
     # ---- a dog must complete its leap (jump1..jump5) and bite ----
     Start-Level $false $false
     $dog = $script:Actors | Where-Object Kind -eq 'dog' | Select-Object -First 1

@@ -135,6 +135,7 @@ $script:DecoCodes = @{
     [char]'u' = @('puddle', $false);       [char]'k' = @('guard.dead', $false)
     [char]'B' = @('bed', $true);           [char]'m' = @('console', $true)
     [char]'g' = @('stalagmite', $true)
+    [char]'e' = @('barrel_red', $true)     # explosive - spawned as a shootable actor, see Map.ps1
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -216,6 +217,8 @@ $script:EnemyDefs = @{
 # things that live in the actor list without being enemies
 $script:MiscDefs = @{
     rocket = @{ Speed = 0.12; Rotates = $false; Doors = $false; Pain = $false }
+    # explosive barrel: an "inert" actor - it can be shot, but never thinks, scores or counts as a kill
+    barrel = @{ Inert = $true; HP = 15; Rotates = $false; Doors = $false; Pain = $false; Points = 0; BlastRadius = 2.2; BlastDamage = 90 }
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -281,6 +284,10 @@ function Initialize-States {
     Add-State 'rocket.boom1' 'rocket.boom1' $false 6 $null $null 'rocket.boom2'
     Add-State 'rocket.boom2' 'rocket.boom2' $false 6 $null $null 'rocket.boom3'
     Add-State 'rocket.boom3' 'rocket.boom3' $false 6 $null 'Remove' 'rocket.boom3'
+
+    # explosive barrels: a short fuse (so chain reactions ripple through a room), then the blast
+    Add-State 'barrel.idle' 'barrel_red' $false 0 $null $null 'barrel.idle'
+    Add-State 'barrel.fuse' 'barrel_red' $false 5 $null 'Explode' 'rocket.boom1'
 }
 
 # ---------------------------------------------------------------------------------------------

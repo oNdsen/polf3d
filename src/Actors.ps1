@@ -309,6 +309,22 @@ function Invoke-ActionBite([Actor]$a) {
     if ((Get-Rnd) -lt 180) { Invoke-PlayerDamage ((Get-Rnd) -shr 4) $a }
 }
 
+# A blast: hurts the player and every shootable actor within $Radius, fading with distance.
+# Exploding barrels set each other off, which is where the chain reactions come from.
+function Invoke-Explosion([double]$X, [double]$Y, [double]$Radius, [double]$Damage, [Actor]$Owner) {
+    Start-Sfx 'boom'
+    $script:MadeNoise = $true
+    $px = $script:P.X - $X; $py = $script:P.Y - $Y
+    $d = [Math]::Sqrt($px * $px + $py * $py)
+    if ($d -lt $Radius) { Invoke-PlayerDamage ([int]($Damage * 0.6 * (1 - $d / $Radius))) $Owner }
+    foreach ($a in @($script:Actors)) {
+        if (-not $a.Shootable -or $a -eq $Owner) { continue }
+        $ax = $a.X - $X; $ay = $a.Y - $Y
+        $d = [Math]::Sqrt($ax * $ax + $ay * $ay)
+        if ($d -lt $Radius) { Invoke-ActorDamage $a ([int]($Damage * (1 - $d / $Radius))) 'explosion' }
+    }
+}
+
 # The super boss launches a rocket: a separate actor that flies straight at where the player is now.
 function Invoke-ActionRocket([Actor]$a) {
     if (-not $script:AreaByPlayer[$a.Area]) { return }
@@ -339,11 +355,9 @@ function Invoke-ThinkProjectile([Actor]$a, [double]$Tics) {
     $hitWall = $t -ne 0 -and -not ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open')
     if (-not $hitPlayer -and -not $hitWall) { return }
     if ($hitWall) { $a.X -= $a.VX * $Tics; $a.Y -= $a.VY * $Tics }  # explode in front of the wall, not inside it
-    # splash damage, strongest on a direct hit
-    $dist = [Math]::Max([Math]::Abs($a.X - $script:P.X), [Math]::Abs($a.Y - $script:P.Y))
-    if ($hitPlayer) { Invoke-PlayerDamage (((Get-Rnd) -shr 3) + 30) $a }
-    elseif ($dist -lt 1.5) { Invoke-PlayerDamage (((Get-Rnd) -shr 4) + 8) $a }
-    Start-Sfx 'boom'
+    # a direct hit hurts on top of the blast, which also catches bystanders and barrels
+    if ($hitPlayer) { Invoke-PlayerDamage (((Get-Rnd) -shr 3) + 20) $a }
+    Invoke-Explosion $a.X $a.Y 1.6 40 $a
     Set-ActorState $a 'rocket.boom1'
 }
 
@@ -392,6 +406,7 @@ function Update-Actor([Actor]$a, [double]$Tics) {
                 'DeathScream' { Start-Sfx $a.Def.DieSnd }
                 'Rocket'      { Invoke-ActionRocket $a }
                 'SpawnPilot'  { Invoke-ActionSpawnPilot $a }
+                'Explode'     { Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $a }
                 'Remove'      { $a.State = 'gone'; return }
             }
             if ($a.State -eq $st.Name) { $a.State = $st.Next }               # unless the action changed it
@@ -408,7 +423,13 @@ function Update-Actor([Actor]$a, [double]$Tics) {
 # ---------------------------------------------------------------------------------------------
 # Damage dealt BY the player
 # ---------------------------------------------------------------------------------------------
-function Invoke-ActorDamage([Actor]$a, [int]$Damage) {
+# Source: bullet | knife | beam | blast | explosion
+function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet') {
+    if ($a.Def.Inert) {                                       # barrels and the like: no AI, no noise, just hit points
+        $a.HP -= $Damage
+        if ($a.HP -le 0) { Stop-Actor $a }
+        return
+    }
     $script:MadeNoise = $true
     if (-not $a.AttackMode) { $Damage *= 2 }                  # caught off guard: double damage
     if ($script:P.SudoTics -gt 0) { $Damage *= 2 }            # sudo: elevated damage
@@ -421,6 +442,13 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage) {
 
 function Stop-Actor([Actor]$a) {                              # killed
     $tx = [int][Math]::Floor($a.X); $ty = [int][Math]::Floor($a.Y)
+    if ($a.Def.Inert) {
+        Set-ActorState $a "$($a.Kind).fuse"
+        $a.Shootable = $false; $a.Corpse = $true; $a.Active = $true
+        $idx = $a.TY * $script:MapW + $a.TX
+        if ($script:ActorAt[$idx] -eq $a) { $script:ActorAt[$idx] = $null }
+        return
+    }
     Add-Score $a.Def.Points
     Set-ActorState $a "$($a.Kind).die1"
     switch ($a.Def.Drop) {

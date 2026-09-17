@@ -16,7 +16,7 @@
 #                                            (guard dog elite officer mutant boss super boss)
 #   :^ :> :v :<                              patrol turning point
 #   +x                                       item,       see $ItemCodes
-#   *x                                       decoration, see $DecoCodes
+#   *x                                       decoration, see $DecoCodes  (*e = explosive barrel)
 #
 # Unlike the 1992 format there are no hand-numbered "areas": rooms are found by flood fill.
 
@@ -148,6 +148,7 @@ function Initialize-Level([string]$Path) {
             }
             elseif ($a -ceq '*') {
                 if (-not $script:DecoCodes.ContainsKey($b)) { throw "Unknown decoration '*$b' at $x,$y" }
+                if ($b -ceq 'e') { Add-InertActor 'barrel' $x $y; continue }      # explosive barrels are shootable actors
                 $deco = $script:DecoCodes[$b]
                 $s = [Static]::new(); $s.X = $x; $s.Y = $y; $s.Sprite = $script:Spr[$deco[0]]; $s.Block = $deco[1]
                 $script:Statics.Add($s)
@@ -190,6 +191,18 @@ function New-Enemy([string]$Kind, [int]$X, [int]$Y, [int]$Dir, [string]$Mode) {
     $t = $script:States[$a.State].Tics
     $a.Tics = if ($t -gt 0) { $script:Rng.NextDouble() * $t } else { 0 }
     $a
+}
+
+# Shootable scenery without a mind of its own (explosive barrels).
+function Add-InertActor([string]$Kind, [int]$X, [int]$Y) {
+    $a = [Actor]::new()
+    $a.Kind = $Kind; $a.Def = $script:MiscDefs[$Kind]
+    $a.X = $X + 0.5; $a.Y = $Y + 0.5; $a.TX = $X; $a.TY = $Y
+    $a.HP = $a.Def.HP; $a.Shootable = $true
+    $a.Area = $script:AreaOf[$Y * $script:MapW + $X]
+    $a.State = "$Kind.idle"
+    $script:ActorAt[$Y * $script:MapW + $X] = $a
+    $script:Actors.Add($a)
 }
 
 function Add-Enemy([string]$Kind, [int]$X, [int]$Y, [int]$Dir, [string]$Mode) {
