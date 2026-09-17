@@ -57,6 +57,7 @@ param(
     [switch]$OneHitKill,
     [switch]$AllWeapons,
     [switch]$SelfTest,
+    [Parameter(DontShow)][string]$RecordAttractDemo,     # maintenance: let the bot play floor 1 and save the demo to this file
     [Parameter(DontShow)][string]$Screenshots,           # maintenance: stage and save the README pictures into this folder
     [Parameter(DontShow)][int]$AutoQuitSeconds = 0      # test aid: play by script in the real window, then quit
 )
@@ -117,11 +118,13 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
-$script:SfxEnabled = -not $NoSound -and -not $SelfTest -and -not $Screenshots
-$script:MusicEnabled = -not $NoMusic -and -not $SelfTest -and -not $Screenshots
+$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo
+$script:SfxEnabled = -not $NoSound -and -not $headless
+$script:MusicEnabled = -not $NoMusic -and -not $headless
+$script:AttractDemo = Join-Path $PSScriptRoot 'demos/attract.json'
 
 Write-Step 'compiling scaler (C#) ...';       Initialize-Scaler
 Write-Step 'building state tables ...';        Initialize-States
@@ -130,6 +133,10 @@ Write-Step 'painting sprites ...';             Initialize-Sprites
 Write-Step 'synthesising sounds ...';          Initialize-Sounds
 Initialize-Renderer $Scale ([int](320 / $Columns))
 
+if ($RecordAttractDemo) {
+    Export-AttractDemo $RecordAttractDemo
+    return
+}
 if ($Screenshots) {
     Export-Screenshots $Screenshots
     return

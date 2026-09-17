@@ -28,7 +28,8 @@ $script:DIR_NONE = 8
 $script:DirDX = [int[]](1, 1, 0, -1, -1, -1, 0, 1, 0)
 $script:DirDY = [int[]](0, -1, -1, -1, 0, 1, 1, 1, 0)
 
-$script:Rng = [System.Random]::new()
+$script:Rng = [System.Random]::new()            # game logic - re-seeded at every floor start so demos can be replayed
+$script:FxRng = [System.Random]::new()          # cosmetics only (camera shake), never touches the simulation
 function Get-Rnd { $script:Rng.Next(256) }     # 0..255, the classic random byte
 
 # ---------------------------------------------------------------------------------------------

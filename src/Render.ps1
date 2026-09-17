@@ -255,7 +255,8 @@ function Copy-ViewToBack {
         # camera shake: draw the view slightly enlarged and offset, clipped to its own area
         $amp = [int](1 + $script:Shake / 2)
         $r = $script:ViewDest
-        $shaken = [System.Drawing.Rectangle]::new($r.X - 8 + $script:Rng.Next(-$amp, $amp + 1), $r.Y - 8 + $script:Rng.Next(-$amp, $amp + 1), $r.Width + 16, $r.Height + 16)
+        # cosmetic randomness has its own generator: the game's must stay in step with recorded demos
+        $shaken = [System.Drawing.Rectangle]::new($r.X - 8 + $script:FxRng.Next(-$amp, $amp + 1), $r.Y - 8 + $script:FxRng.Next(-$amp, $amp + 1), $r.Width + 16, $r.Height + 16)
         $script:BackG.SetClip($r)
         $script:BackG.DrawImage($script:ViewBmp, $shaken)
         $script:BackG.ResetClip()

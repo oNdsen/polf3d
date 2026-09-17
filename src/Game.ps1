@@ -9,7 +9,7 @@ $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
     A = 65; C = 67; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; T = 84; W = 87
-    F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122
+    F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
 }
 
 function New-GameWindow {
@@ -77,6 +77,9 @@ function Reset-ScreenEffects {
 # as well (riding the lift to the next floor). Keys never leave their floor.
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:MapFile = if ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
+    $script:LevelSeed = if ($script:NextSeed) { $script:NextSeed } else { [int]($script:Clock.ElapsedTicks % 1000000) + 1 }
+    $script:NextSeed = $null
+    $script:Rng = [System.Random]::new($script:LevelSeed)
     $script:SecretExit = $false
     Initialize-Level $script:MapFile
     if (-not $KeepPlayer) { New-Player }
@@ -100,7 +103,7 @@ function Set-Mode([string]$Mode) {
     $script:Mode = $Mode
     $script:ModeTics = 0.0
     $script:KeyHit.Clear()
-    if ($Mode -ne 'play') { Set-MouseLook $false }
+    if ($Mode -ne 'play') { Set-MouseLook $false; if ($script:Recording) { Stop-DemoRecording } }
     if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0 }
 }
 
@@ -175,7 +178,7 @@ function Show-TitleScreen {
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
     Write-HudText $help 'Small' 'C0C8D8' 4 146 156 68
 
     if ($script:Speedrun) {
@@ -282,6 +285,15 @@ function Start-GameLoop {
         if ($hits -contains $vk.F4) { Switch-Music }
         Update-Music
 
+        if ($script:AutoQuit -lt 0) {
+            # test aid: watch the attract demo for -AutoQuit seconds, then leave
+            if ($script:Mode -eq 'title' -and $script:ModeTics -lt 70 * 14) { $script:ModeTics = 70 * 14 + 1 }
+            $autoFrames++
+            if ($now - $autoStart -gt - $script:AutoQuit) {
+                Write-Step ('Demo window test: {0:0.0} fps on average, mode {1}, frame {2} of {3}' -f ($autoFrames / ($now - $autoStart)), $script:Mode, $script:Playback.Index, $script:Playback.Frames.Count)
+                $script:Running = $false
+            }
+        }
         if ($script:AutoQuit -gt 0) {
             # test aid: no human at the keyboard - start at once, wander about firing, then leave
             if ($script:Mode -eq 'title') { $hits = @($vk.Enter) }
@@ -311,7 +323,30 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
-                if ($script:Mode -eq 'title') { Show-TitleScreen }
+                if ($script:Mode -eq 'title') {
+                    Show-TitleScreen
+                    # nobody home? after a while the attract demo starts
+                    if ($script:ModeTics -gt 70 * 14 -and (Test-Path -LiteralPath $script:AttractDemo)) {
+                        $keep = $script:Difficulty
+                        if (Start-DemoPlayback $script:AttractDemo) { Set-Mode 'demo'; $script:DemoKeepDifficulty = $keep } else { $script:ModeTics = 0.0 }
+                    }
+                }
+            }
+
+            'demo' {
+                $frame = Get-DemoFrame
+                if ($hits.Count -or -not $frame -or $script:PlayerDied -or $script:LevelDone) {
+                    $script:Playback = $null; $script:Difficulty = $script:DemoKeepDifficulty
+                    Set-Mode 'title'
+                }
+                else {
+                    Update-World $frame.Tics $frame.In
+                    Show-PlayFrame
+                    if ([int]($now * 2) % 2 -eq 0) { Write-HudText 'DEMO  -  press any key' 'Mid' 'FFFFFF' 0 186 320 10 }
+                    # a demo was recorded with its own tics per frame: do not play it faster than that
+                    $wait = $frame.Tics / $script:TICRATE - ($script:Clock.Elapsed.TotalSeconds - $now)
+                    if ($wait -gt 0.002) { [System.Threading.Thread]::Sleep([int]($wait * 1000)) }
+                }
             }
 
             'play' {
@@ -324,12 +359,15 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.F7) { Invoke-Cheat 'Ammo' }
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }
                     elseif ($h -eq $vk.F11) { Invoke-Cheat 'OneHit' }
+                    elseif ($h -eq $vk.F12) { if ($script:Recording) { Stop-DemoRecording } else { Start-DemoRecording } }
                     elseif ($h -eq $vk.F5) { Save-Game }
                     elseif ($h -eq $vk.F9) { $null = Restore-Game }
                 }
                 if ($script:Mode -ne 'play') { break }
                 foreach ($h in $hits) { Add-CheatKey $h }
-                Update-World $tics (Get-PlayerInput)
+                $in = Get-PlayerInput
+                if ($script:Recording) { Add-DemoFrame $tics $in }
+                Update-World $tics $in
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
                 elseif ($script:LevelDone) { Complete-Level }

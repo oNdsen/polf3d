@@ -385,6 +385,17 @@ function Invoke-SelfTest([string]$OutDir) {
     $never = @($script:States.Keys | Where-Object { $_ -notin $script:StatesSeen } | Sort-Object)
     Write-Step "states visited: $(@($script:StatesSeen | Sort-Object -Unique).Count) of $($script:States.Count); never seen: $($never -join ', ')"
 
+    # ---- demos: what the bot records must play back to exactly the same end state ----
+    $demoFile = Join-Path $OutDir 'bot-demo.json'
+    Export-AttractDemo $demoFile 12 1
+    $script:GodMode = $false
+    if (-not (Start-DemoPlayback $demoFile)) { throw "demo test: $($script:Message)" }
+    while ($null -ne ($frame = Get-DemoFrame)) { Update-View; Update-World $frame.Tics $frame.In }
+    $sync = Test-DemoInSync
+    Write-Step "demo test: playback of $($script:Playback.Frames.Count) frames ended in sync with the recording: $sync"
+    $script:Playback = $null; $script:GodMode = $true; $script:Difficulty = 1; $script:PlayerDied = $false
+    if (-not $sync) { throw 'demo test failed: playback diverged from the recording.' }
+
     # ---- reinforcements: harder difficulties put more enemies on the floor ----
     $counts = foreach ($d in 0, 2, 3) { $script:Difficulty = $d; $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Stats.KillTotal }
     $script:Difficulty = 1
