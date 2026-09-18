@@ -177,15 +177,10 @@ function Invoke-SelfTest([string]$OutDir) {
     $frozen = $script:WhatIfTics -gt 0
     Stop-WhatIf
     $untouched = (& $print) -eq $before
-    # -Confirm: the patrol covers a third of the ground
-    $walker = $script:Actors | Where-Object { $_.State -like '*.path*' } | Select-Object -First 1
-    $from = "$($walker.X),$($walker.Y)"; $start = @($walker.X, $walker.Y)
-    for ($f = 0; $f -lt 30; $f++) { Update-World 2.0 $idle }
-    $normal = [Math]::Abs($walker.X - $start[0]) + [Math]::Abs($walker.Y - $start[1]); $start = @($walker.X, $walker.Y)
+    # -Confirm: the world gets a third of the time, the player all of it
     $confirm = $idle.Clone(); $confirm.Ability = 2
-    Update-World 0.01 $confirm
-    for ($f = 0; $f -lt 30; $f++) { Update-World 2.0 $idle }
-    $slow = [Math]::Abs($walker.X - $start[0]) + [Math]::Abs($walker.Y - $start[1])
+    $normal = Update-Abilities 2.0 $idle
+    $slow = Update-Abilities 2.0 $confirm
     $script:ConfirmTics = 0.0
     # -Force: the gold door has no chance
     $gold = $script:Doors | Where-Object { $_.Lock -eq 1 } | Select-Object -First 1
@@ -200,9 +195,9 @@ function Invoke-SelfTest([string]$OutDir) {
     Invoke-PlayerDamage 200 $null; $hurt = $script:P.Health
     $undo = $idle.Clone(); $undo.Ability = 5
     Update-World 1.0 $undo
-    Write-Step ("ability test: snapshot restores exactly={0} (world had changed={1}); -WhatIf: {2} ghosts, time frozen={3}, world untouched={4}; -Confirm: patrol moved {5:0.00} instead of {6:0.00} tiles; -Force: gold door '{7}'; Undo: health {8} -> {9}, privilege left {10:0}" -f
+    Write-Step ("ability test: snapshot restores exactly={0} (world had changed={1}); -WhatIf: {2} ghosts, time frozen={3}, world untouched={4}; -Confirm: the world advances {5:0.00} instead of {6:0.00} tics; -Force: gold door '{7}'; Undo: health {8} -> {9}, privilege left {10:0}" -f
         $same, $changed, $marks, $frozen, $untouched, $slow, $normal, $forced, $hurt, $script:P.Health, $script:P.Privilege)
-    if (-not $same -or -not $changed -or $marks -lt 1 -or -not $frozen -or -not $untouched -or $normal -lt 0.2 -or $slow -gt $normal * 0.6 -or $forced -eq 'closed' -or
+    if (-not $same -or -not $changed -or $marks -lt 1 -or -not $frozen -or -not $untouched -or $normal -ne 2.0 -or [Math]::Abs($slow - 0.6) -gt 0.001 -or $forced -eq 'closed' -or
         $script:P.Health -le $hurt -or $script:P.Privilege -gt 45) { throw 'ability test failed.' }
     $script:GodMode = $keepGod; $script:PlayerDied = $false
     Start-Level $false $false
