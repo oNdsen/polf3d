@@ -149,6 +149,7 @@ function Import-CSharpClass([string]$File, [string]$ClassName) {
         $dll = Join-Path $binDir "$name.dll"
         try {
             if (-not (Test-Path $dll)) {
+                Write-Step "compiling $File (once - it is cached in bin/ until the source changes) ..."
                 $null = New-Item -ItemType Directory -Path $binDir -Force
                 Get-ChildItem $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
                 Add-Type -TypeDefinition $code -OutputAssembly $dll -OutputType Library
@@ -195,7 +196,7 @@ if (-not $headless) {
     if (-not $PSBoundParameters.ContainsKey('Scale')) { $Scale = [int]$script:Settings.Scale }
     if ($FlatFloors) { $script:Settings.FlatFloors = $true }
 }
-Write-Step 'compiling scaler (C#) ...';       Initialize-Scaler
+Write-Step 'loading the C# helpers ...';       Initialize-Scaler
 if (-not $headless) { Update-Settings }
 Write-Step 'building state tables ...';        Initialize-States
 Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initialize-Flats
