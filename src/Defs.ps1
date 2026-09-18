@@ -68,6 +68,7 @@ class Actor {
     [double]$NX               # ... where the host says it is (the client glides there)
     [double]$NY
     [bool]$FromPeer           # ... a projectile fired by the remote player
+    [double]$Stun             # Suspend-Enemy (the console): frozen for this many tics
 }
 
 class Door {
@@ -83,6 +84,7 @@ class Door {
     [int]$Area1
     [int]$Area2
     [int]$TexId
+    [double]$Jam              # Lock-Door (the console): nobody opens it for this many tics
 }
 
 class Static {

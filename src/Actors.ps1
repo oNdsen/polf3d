@@ -521,6 +521,7 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
 function Update-Actor([Actor]$a, [double]$Tics) {
     if ($a.Corpse -and $a.State.EndsWith('.dead')) { return }
     if ($a.AlertTics -gt 0) { $a.AlertTics -= $Tics }
+    if ($a.Stun -gt 0) { $a.Stun -= $Tics; return }                             # suspended from the console
     if (-not $a.Active -and -not $script:AreaByPlayer[$a.Area]) { return }      # rooms far away sleep
 
     $w = $script:MapW

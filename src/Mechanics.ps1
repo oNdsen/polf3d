@@ -23,6 +23,10 @@ function Update-Traps([double]$Tics) {
     $p = $script:P; $w = $script:MapW
     $ptx = [int][Math]::Floor($p.X); $pty = [int][Math]::Floor($p.Y)
     foreach ($t in $script:Traps) {
+        if ($t.Disabled) {                                          # switched off from the console: stays down for good
+            if ($t.State -ne 0) { $t.State = 0; $t.Static.Sprite = $script:Spr["$($t.Kind).0"]; $script:StaticBlock[$t.Y * $w + $t.X] = $false }
+            continue
+        }
         $t.Phase += $Tics
         if ($t.Kind -eq 'spikes') { $state = if (($t.Phase % 150) -ge 90) { 1 } else { 0 } }
         else { $m = $t.Phase % 230; $state = if ($m -lt 130) { 0 } elseif ($m -lt 160) { 1 } else { 2 } }

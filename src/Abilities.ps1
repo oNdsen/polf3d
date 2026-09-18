@@ -63,8 +63,8 @@ function New-WorldSnapshot {
         P = $p; Stats = $script:Stats.Clone(); PW = $script:PW.Clone()
         Tiles = $script:Tiles.Clone(); PushTex = $script:PushTex.Clone(); Breakable = $script:Breakable.Clone(); StaticBlock = $script:StaticBlock.Clone()
         AreaConnect = $script:AreaConnect.Clone()
-        Doors = @(foreach ($d in $script:Doors) { , @($d.Action, $d.Open, $d.Timer, $d.Unlocked, $d.Lock, $d.TexId) })
-        Traps = @(foreach ($t in $script:Traps) { , @($t.Phase, $t.State, $t.Hurt, $t.Static.Sprite) })
+        Doors = @(foreach ($d in $script:Doors) { , @($d.Action, $d.Open, $d.Timer, $d.Unlocked, $d.Lock, $d.TexId, $d.Jam) })
+        Traps = @(foreach ($t in $script:Traps) { , @($t.Phase, $t.State, $t.Hurt, $t.Static.Sprite, [bool]$t.Disabled) })
         Items = $script:Items.ToArray(); Statics = $script:Statics.ToArray()          # what lies around (enemies drop things) ...
         Removed = @(foreach ($item in $script:Items) { [bool]$item.Removed })              # ... and what has been picked up
         Actors = $actors; Killer = $killer; NextNetId = $script:NextNetId
@@ -79,11 +79,11 @@ function Restore-WorldSnapshot([hashtable]$s) {
     $script:AreaConnect = $s.AreaConnect
     for ($i = 0; $i -lt $script:Doors.Count; $i++) {
         $d = $script:Doors[$i]; $v = $s.Doors[$i]
-        $d.Action = $v[0]; $d.Open = $v[1]; $d.Timer = $v[2]; $d.Unlocked = $v[3]; $d.Lock = $v[4]; $d.TexId = $v[5]
+        $d.Action = $v[0]; $d.Open = $v[1]; $d.Timer = $v[2]; $d.Unlocked = $v[3]; $d.Lock = $v[4]; $d.TexId = $v[5]; $d.Jam = $v[6]
     }
     for ($i = 0; $i -lt $script:Traps.Count; $i++) {
         $t = $script:Traps[$i]; $v = $s.Traps[$i]
-        $t.Phase = $v[0]; $t.State = $v[1]; $t.Hurt = $v[2]; $t.Static.Sprite = $v[3]
+        $t.Phase = $v[0]; $t.State = $v[1]; $t.Hurt = $v[2]; $t.Static.Sprite = $v[3]; $t.Disabled = $v[4]
     }
     # whatever has been dropped since then was never dropped
     $script:Items.Clear(); $script:Items.AddRange($s.Items)

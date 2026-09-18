@@ -26,6 +26,7 @@ function Update-AreaByPlayer {
 # ---- doors ----------------------------------------------------------------------------------
 function Open-Door([int]$Index) {
     $d = $script:Doors[$Index]
+    if ($d.Jam -gt 0) { return }                                  # jammed from the console (Lock-Door)
     if ($d.Action -eq 'open') { $d.Timer = 0 }
     elseif ($d.Action -ne 'opening') { $d.Action = 'opening' }
 }
@@ -54,6 +55,7 @@ function Invoke-DoorUse([int]$Index) {
     if ($d.Lock -eq 4 -and -not $d.Unlocked) { Start-Sfx 'noway'; Show-Message 'This door is opened from somewhere else'; return }
     if ($d.Lock -eq 1 -and -not $script:P.KeyGold)   { Start-Sfx 'noway'; Show-Message 'Locked - you need the gold key';   return }
     if ($d.Lock -eq 2 -and -not $script:P.KeySilver) { Start-Sfx 'noway'; Show-Message 'Locked - you need the silver key'; return }
+    $d.Jam = 0.0                                                   # whoever jammed it can also free it
     if ($script:NOISE_DOOR -gt $script:StepNoise) { $script:StepNoise = $script:NOISE_DOOR }      # doors creak
     if ($d.Action -in 'closed', 'closing') { Open-Door $Index } else { Close-Door $Index }
 }
@@ -62,6 +64,7 @@ function Update-Doors([double]$Tics) {
     $step = $Tics / $script:DOOR_OPEN_TICS
     for ($i = 0; $i -lt $script:Doors.Count; $i++) {
         $d = $script:Doors[$i]
+        if ($d.Jam -gt 0) { $d.Jam -= $Tics }
         switch ($d.Action) {
             'open' {
                 if ($d.Lock -eq 4) { break }                              # lever doors stay open for good

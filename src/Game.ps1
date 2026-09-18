@@ -32,8 +32,10 @@ function New-GameWindow {
                 if (-not $script:KeyDown[$c]) { $script:KeyHit.Enqueue($c) }
                 $script:KeyDown[$c] = $true
             }
-            $e.Handled = $true; $e.SuppressKeyPress = $true
+            $e.Handled = $true; $e.SuppressKeyPress = $script:Mode -ne 'console'      # the console wants the characters as well
         })
+    $form.Add_KeyPress({ param($s, $e) if ($script:Mode -eq 'console' -and $script:CharQueue) { $script:CharQueue.Enqueue($e.KeyChar) }; $e.Handled = $true })
+    $form.Add_PreviewKeyDown({ param($s, $e) if ($e.KeyCode -eq 'Tab') { $e.IsInputKey = $true } })
     $form.Add_KeyUp({ param($s, $e) $c = [int]$e.KeyCode; if ($c -lt 256) { $script:KeyDown[$c] = $false } })
     $form.Add_MouseDown({ param($s, $e) if ($e.Button -eq 'Left') { $script:KeyDown[1] = $true } elseif ($e.Button -eq 'Right') { $script:KeyDown[2] = $true } })
     $form.Add_MouseUp({ param($s, $e) if ($e.Button -eq 'Left') { $script:KeyDown[1] = $false } elseif ($e.Button -eq 'Right') { $script:KeyDown[2] = $false } })
@@ -258,8 +260,8 @@ function Show-TitleScreen {
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nZ -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
-    Write-HudText $help 'Small' 'C0C8D8' 4 146 156 80
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nZ -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo`nT / Tab  PowerShell console (or use a terminal)`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    Write-HudText $help 'Small' 'C0C8D8' 4 144 156 88
 
     if ($script:Speedrun) {
         Write-HudText 'FASTEST RUNS' 'Small' '8FB0FF' 160 138 160 8
@@ -401,6 +403,7 @@ function Start-GameLoop {
                 $null = New-Item -ItemType Directory -Path (Join-Path $script:SaveDir '../selftest') -Force
                 $script:BackBmp.Save((Join-Path $script:SaveDir "../selftest/window$(if ($script:Net) { "-$($script:Net.Role)" }).png"))
                 Write-Step ('Window test: {0:0.0} fps on average, mode {1}, health {2}' -f ($autoFrames / ($now - $autoStart)), $script:Mode, $script:P.Health)
+                if ($script:Con) { Write-Step "Console test: $(($script:Con.Lines | Select-Object -Last 5 | ForEach-Object { $_[0] }) -join ' / ')" }
                 if ($script:Net) {
                     $net = $script:Net
                     Write-Step ("Network test ({0}, {1}): connected {2}, live {3}, {4} messages received, other player at {5:0.0},{6:0.0} with health {7}, {8} actors, {9} kills, status '{10}'" -f
@@ -457,6 +460,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'paused' }
                     elseif ($h -eq $vk.F2) { Set-MouseLook (-not $script:MouseLook) }
                     elseif ($h -eq $vk.N) { $script:ShowMiniMap = -not $script:ShowMiniMap }
+                    elseif ($h -in 9, $vk.T) { Open-Console }                          # Tab or T: the PowerShell console
                     elseif ($h -eq $vk.Z) { $script:AbilityKey = 1 }
                     elseif ($h -eq $vk.X) { $script:AbilityKey = 2 }
                     elseif ($h -eq $vk.V) { $script:AbilityKey = 3 }
@@ -479,6 +483,11 @@ function Start-GameLoop {
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
                 elseif ($script:LevelDone) { Complete-Level }
+            }
+
+            'console' {
+                Update-Console $hits
+                if ($script:Mode -eq 'console') { Show-PlayFrame; Show-Console }
             }
 
             'paused' {

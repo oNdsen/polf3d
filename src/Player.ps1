@@ -163,6 +163,7 @@ function Invoke-Use {
     $quad = [int][Math]::Floor((($p.Angle + 45.0) % 360.0) / 90.0) % 4          # 0 E, 1 N, 2 W, 3 S
     $dx = (1, 0, -1, 0)[$quad]; $dy = (0, -1, 0, 1)[$quad]
     $tx = [int][Math]::Floor($p.X) + $dx; $ty = [int][Math]::Floor($p.Y) + $dy
+    if ($script:TerminalAt[$ty * $script:MapW + $tx] -and -not $script:NetLive) { Open-Console ($ty * $script:MapW + $tx); return }      # a terminal: log on
     if ($script:NetClient) { Send-NetMessage "U|$tx|$ty|$dx|$dy"; return }      # the world belongs to the host
     Invoke-UseAt $tx $ty $dx $dy
 }

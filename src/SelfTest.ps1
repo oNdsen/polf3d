@@ -207,6 +207,25 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:GodMode = $keepGod; $script:PlayerDied = $false
     Start-Level $false $false
 
+    # ---- the console: real pipelines act on the game, and nothing gets out of the sandbox ----
+    if (-not $script:KeyHit) { $script:KeyHit = [System.Collections.Generic.Queue[int]]::new() }
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    Set-TestCamera 20.5 24.5 45; $script:P.Privilege = 100.0
+    Open-Console
+    $kills = $script:Stats.Kills
+    $canary = Join-Path $OutDir 'canary.txt'; Set-Content -LiteralPath $canary -Value 'still here'
+    foreach ($line in 'Get-Enemy | Sort-Object Distance | Select-Object -First 3', 'Get-Enemy | sort Distance | select -First 1 | Stop-Enemy -WhatIf',
+        'Get-Enemy | sort Distance | select -First 1 | Stop-Enemy', "Get-Door | ? Lock -eq 'gold' | Open-Door", 'Get-Door | Stop-Enemy',
+        "Remove-Item '$canary' -Force", "[System.IO.File]::Delete('$canary')", "cmd /c del `"$canary`"", 'while ($true) { }', 'Get-Player') { Invoke-ConsoleLine $line }
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"
+    Show-PlayFrame; Show-Console; Save-BackBuffer (Join-Path $OutDir 'view-console.png')
+    $gold = $script:Doors | Where-Object { $_.TexId -eq $script:TEX_DOOR -and $_.Action -ne 'closed' } | Select-Object -First 1
+    Close-Console
+    Write-Step "console test: $($script:Con.Lines.Count) lines of output, kills $kills -> $($script:Stats.Kills), privilege left $([int]$script:P.Privilege), canary file alive: $(Test-Path -LiteralPath $canary)"
+    if ($script:Stats.Kills -ne $kills + 1 -or -not (Test-Path -LiteralPath $canary) -or $text -notmatch 'What if: Performing' -or $text -notmatch 'that is no enemy' -or
+        $text -notmatch 'sandbox' -or $text -notmatch 'two seconds' -or $text -notmatch 'terminated' -or -not $gold -or $script:Mode -ne 'play') { throw "console test failed:`n$text" }
+    Remove-Item -LiteralPath $canary
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

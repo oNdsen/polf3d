@@ -102,6 +102,7 @@ function Initialize-Level([string]$Path) {
     $script:Traps = [System.Collections.Generic.List[hashtable]]::new()
     $script:Teleporters = [System.Collections.Generic.List[hashtable]]::new()
     $script:TeleLock = $false
+    $script:TerminalAt = @{}; $script:TerminalUsed = @{}          # scenery that opens the console when "used"
     $script:NextNetId = 0
     $script:Stats = @{ KillTotal = 0; Kills = 0; SecretTotal = 0; Secrets = 0; TreasureTotal = 0; Treasures = 0; Tics = 0.0 }
     $script:PW = @{ Active = $false; X = 0; Y = 0; DX = 0; DY = 0; Pos = 0.0; Moved = 0; TexId = 0 }
@@ -215,6 +216,7 @@ function Initialize-Level([string]$Path) {
                 $s = [Static]::new(); $s.X = $x; $s.Y = $y; $s.Sprite = $script:Spr[$deco[0]]; $s.Block = $deco[1]
                 $script:Statics.Add($s)
                 if ($s.Block) { $script:StaticBlock[$idx] = $true }
+                if ($deco[0] -in 'crt', 'rack', 'console') { $script:TerminalAt[$idx] = $true }
             }
             elseif ($script:EnemyCodes.ContainsKey($a)) {
                 $dir = Get-DirFromChar $b
