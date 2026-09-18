@@ -446,8 +446,10 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     if (-not $script:GodMode) { $p.Health -= $Points }
     if ($p.Health -lt $script:Run.MinHealth) { $script:Run.MinHealth = $p.Health }
     if ($before -gt 25 -and $p.Health -le 25 -and $p.Health -gt 0) { Add-TranscriptLine "health is down to $($p.Health)" 'WARNING' }
-    $script:DamageFlash += $Points
-    $script:Shake = [Math]::Min(14.0, $script:Shake + $Points / 2.0)      # the view jolts with every hit
+    # the red flash and the jolt follow what the hit really cost (god mode: a token), and the flash never outlasts a second
+    $felt = if ($script:GodMode) { 6 } else { [Math]::Min($Points, $before) }
+    $script:DamageFlash = [Math]::Min(60.0, $script:DamageFlash + $felt)
+    $script:Shake = [Math]::Min(14.0, $script:Shake + $felt / 2.0)
     $p.GrinTics = 0
     $p.PainTics = 22.0                                           # the face in the status bar winces ...
     if ($Attacker) {                                             # ... and then looks to where it came from

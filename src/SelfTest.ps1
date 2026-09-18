@@ -299,6 +299,15 @@ function Invoke-SelfTest([string]$OutDir) {
     Remove-Item -LiteralPath $canary -ErrorAction SilentlyContinue
     $script:Con.Runspace.Dispose(); $script:Con = $null
 
+    # ---- god mode and the one-hit cheat together: a hit must not leave the screen red ----
+    $keepGod = $script:GodMode; $keepOne = $script:OneHitKill
+    $script:GodMode = $true; $script:OneHitKill = $true; $script:DamageFlash = 0.0; $script:P.Health = 100
+    foreach ($hit in 1..5) { Invoke-PlayerDamage 10 $null }
+    $flash = $script:DamageFlash
+    $script:GodMode = $keepGod; $script:OneHitKill = $keepOne; $script:DamageFlash = 0.0; $script:Shake = 0.0; $script:PlayerDied = $false
+    Write-Step "cheat flash test: five fatal hits in god mode leave health $($script:P.Health) and a flash of $flash tics"
+    if ($script:P.Health -ne 100 -or $flash -gt 60) { throw 'cheat flash test failed.' }
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
