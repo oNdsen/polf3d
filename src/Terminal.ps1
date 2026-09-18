@@ -149,8 +149,10 @@ function Show-TerminalFrame {
         $null = $sb.Append("$pad`e[97m$(Get-TerminalFace) $hpColor$([char]0x2665) $($p.Health.ToString().PadLeft(3)) $(Get-TerminalBar ($p.Health / 100.0) 10)`e[97m  $($res.Label) $($res.Text)  `e[38;2;64;224;255m$($script:Weapons[$p.Weapon].Name.ToUpper())`e[97m  $keys`e[38;2;143;176;255mPRIV $(Get-TerminalBar ($p.Privilege / 100.0) 8)`e[0m`e[K`n")
         $floor = if ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }
         $null = $sb.Append("$pad`e[38;2;160;180;208m$floor  SCORE $('{0:000000}' -f $p.Score)  LIVES $($p.Lives)   KILLS $($st.Kills)/$($st.KillTotal)  SECRETS $($st.Secrets)/$($st.SecretTotal)  TREASURE $($st.Treasures)/$($st.TreasureTotal)$(if ($script:ShowFps) { "   $([int]$script:Fps) fps" })`e[0m`e[K`n")
+        $bossLine = ''
+        foreach ($a in $script:Actors) { if ($a.Shootable -and $a.AttackMode -and $script:BossNames.ContainsKey($a.Kind)) { $bossLine = "$($script:BossNames[$a.Kind])  $(Get-TerminalBar ($a.HP / [double]$a.Def.HP[$script:Difficulty]) 20)"; break } }
         $msg = if ($mode -eq 'paused') { 'PAUSE   Esc/P = resume   1-3 = save to slot   L = load   Q = main menu' } elseif ($mode -eq 'demo') { 'DEMO - press any key' }
-               elseif ($script:Message -and $now -lt $script:MessageUntil) { $script:Message } else { '' }
+               elseif ($script:Message -and $now -lt $script:MessageUntil) { $script:Message } elseif ($bossLine) { $bossLine } else { '' }
         $null = $sb.Append("$pad`e[38;2;255;232;96m$msg`e[0m`e[K`n")
         $cheats = @(if ($script:GodMode) { 'GOD' }; if ($script:InfiniteAmmo) { 'AMMO' }; if ($script:OneHitKill) { '1-HIT' }; if ($p.Sneaking) { 'SNEAKING' }; if ($p.SudoTics -gt 0) { "SUDO $([Math]::Ceiling($p.SudoTics / 70))s" }) -join '  '
         $null = $sb.Append("$pad`e[38;2;255;96;255m$cheats`e[0m`e[K`n`e[J")

@@ -276,6 +276,13 @@ $script:EnemyDefs = @{
     }
 }
 
+# Who the bosses are in this building. Shown over their health bar once they have noticed you.
+$script:BossNames = @{
+    boss  = 'LEGACY.BAT  -  runs as SYSTEM, nobody dares to touch it'
+    uber  = 'THE PRINTER  -  PC LOAD LETTER'
+    pilot = 'THE PRINTER DRIVER  -  unsigned'
+}
+
 # things that live in the actor list without being enemies
 $script:MiscDefs = @{
     rocket = @{ Speed = 0.09; Rotates = $false; Doors = $false; Pain = $false }

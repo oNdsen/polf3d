@@ -5,7 +5,7 @@
 # so that it sits well next to the synthesised effects; after that the lines are ordinary sounds.
 # No speech engine, no English voice, -NoVoices: then everybody just beeps as before.
 
-$script:VOICE_VERSION = 1
+$script:VOICE_VERSION = 2
 $script:Voices = @{}                 # kind -> names of alert lines;  "kind.die" -> names of last words
 
 # kind, line, pitch (-10..10), rate (-10..10), voice wanted ('m' or 'f'), priority
@@ -18,7 +18,7 @@ $script:VoiceLines = @(
     @('shield',  'Permission denied!',                    -8,  0, 'm', 6), @('shield',  'Firewall up!',                      -8,  1, 'm', 6)
     , @('pilot',   'Eject! Eject!',                           5,  5, 'm', 7)
     , @('boss',    'I am the administrator here!',          -10, -1, 'm', 8)
-    , @('uber',    'Terminating process.',                  -10, -3, 'f', 9)
+    @('uber',    'Terminating process.',                  -10, -3, 'f', 9), @('uber',    'P C load letter.',                    -10, -3, 'f', 9)
     @('guard.die',   'Null reference!',                   -2,  3, 'm', 5), @('guard.die',   'Unexpected token!',              0,  3, 'm', 5)
     , @('officer.die', 'Roll back! Roll back!',               4,  4, 'm', 5)
     @('elite.die',   'Stack overflow!',                   -6,  2, 'm', 5), @('shield.die',  'Connection reset.',              -8,  0, 'm', 5)
