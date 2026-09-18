@@ -30,6 +30,12 @@
     Join the network game hosted on this computer (name or IP address).
 .PARAMETER Port
     TCP port of the network game (default 27500). The host's firewall must let it in.
+.PARAMETER Terminal
+    No window: draw the game into the terminal with half-block characters and 24 bit colours. Wants a terminal
+    that understands ANSI sequences (Windows Terminal) - and the bigger its window, the finer the picture.
+.PARAMETER TerminalKeys
+    Terminal mode: take the key presses the terminal delivers instead of asking Windows which keys are down.
+    Needed over SSH (where it is switched on automatically); fire is J then.
 .PARAMETER NoGamepad
     Do not look for an XInput game pad.
 .PARAMETER NoSound
@@ -62,6 +68,8 @@ param(
     [ValidateSet('Coop', 'Duel')][string]$HostGame,
     [string]$JoinGame,
     [ValidateRange(1024, 65535)][int]$Port = 27500,
+    [switch]$Terminal,
+    [switch]$TerminalKeys,
     [switch]$Speedrun,
     [switch]$FlatFloors,
     [switch]$NoGamepad,
@@ -141,7 +149,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Network', 'Abilities', 'Console', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest
@@ -178,10 +186,11 @@ Write-Step 'ready.'
 try {
     if ($HostGame) { Initialize-Network 'host' $HostGame.ToLower() '' $Port; Write-Step "hosting a $HostGame game on port $Port" }
     elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port; Write-Step "joining the game on ${JoinGame}:$Port" }
-    New-GameWindow
+    if ($Terminal -or $TerminalKeys) { Initialize-Terminal ([bool]$TerminalKeys) } else { New-GameWindow }
     Start-GameLoop
 }
 finally {
+    Stop-Terminal
     Stop-Network
     Stop-Music
     if ($script:Form -and -not $script:Form.IsDisposed) { $script:Form.Close(); $script:Form.Dispose() }

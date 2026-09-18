@@ -625,6 +625,15 @@ function Invoke-SelfTest([string]$OutDir) {
     finally { if ($server) { $server.Dispose() }; Stop-Network; $listener.Stop() }
     $script:GodMode = $keepGod; $script:Difficulty = 1; $script:PlayerDied = $false
 
+    # ---- terminal mode: the frame buffer as half-block characters ----
+    $termClass = Import-CSharpClass 'src/Terminal.cs' 'PolfTerminal'
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; Set-TestCamera 20.5 24.5 45; Update-View
+    $ansi = [System.Text.StringBuilder]::new()
+    $termClass::Ansi($script:FB, $script:ViewW, $script:ViewH, 100, 31, 2, 0, $ansi)
+    $text = $ansi.ToString(); $rowsOut = $text.Split("`n").Count - 1; $cells = ($text.ToCharArray() | Where-Object { $_ -eq [char]0x2580 }).Count
+    Write-Step "terminal test: $rowsOut rows, $cells half-block cells, $([int]($text.Length / 1024)) KB for one frame"
+    if ($rowsOut -ne 31 -or $cells -ne 3100 -or $text -notmatch '\e\[38;2;\d+;\d+;\d+m') { throw 'terminal test failed.' }
+
     # ---- music: every style must render, stay within 16 bits and differ from the others ----
     $lengths = foreach ($track in 0, 1, 2, 3, 4, 5, $script:MUSIC_BONUS) {
         $wav = Join-Path $OutDir "music-$track.wav"
@@ -775,6 +784,32 @@ function Export-Screenshots([string]$OutDir) {
         $g.DrawString($names[$i], $font, [System.Drawing.Brushes]::White, [System.Drawing.RectangleF]::new($i * $cell, 212, $cell, 22), $fmt)
     }
     $bmp.Save((Join-Path $OutDir 'cast.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
+
+    # the same hall the way -Terminal shows it: 150 x 47 character cells, two pixels each, status lines as text
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    Set-TestCamera 20.5 24.5 45; Update-View
+    $cols = 150; $rows = 47; $cellW = 8; $cellH = 16
+    $small = [System.Drawing.Bitmap]::new($cols, $rows * 2, [System.Drawing.Imaging.PixelFormat]::Format32bppRgb)
+    $px = [int[]]::new($cols * $rows * 2)
+    for ($r = 0; $r -lt $rows * 2; $r++) { $sy = [int][Math]::Floor($r * $script:ViewH / ($rows * 2)); for ($c = 0; $c -lt $cols; $c++) { $px[$r * $cols + $c] = $script:FB[$sy * $script:ViewW + [int][Math]::Floor($c * $script:ViewW / $cols)] -band 0xFFF8F8F8 } }
+    $bd = $small.LockBits([System.Drawing.Rectangle]::new(0, 0, $cols, $rows * 2), 'WriteOnly', $small.PixelFormat)
+    [System.Runtime.InteropServices.Marshal]::Copy($px, 0, $bd.Scan0, $px.Length); $small.UnlockBits($bd)
+    $term = [System.Drawing.Bitmap]::new($cols * $cellW + 32, ($rows + 5) * $cellH + 52)
+    $tg = [System.Drawing.Graphics]::FromImage($term)
+    $tg.Clear([System.Drawing.Color]::FromArgb(255, 12, 12, 12))
+    $tg.FillRectangle((Get-Brush 'FF2B2B2B'), 0, 0, $term.Width, 30); $tg.FillRectangle((Get-Brush 'FF0C0C0C'), 8, 4, 250, 26)
+    $tg.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::ClearTypeGridFit
+    $ui = [System.Drawing.Font]::new('Segoe UI', 9); $mono = [System.Drawing.Font]::new('Consolas', 10.5)
+    $tg.DrawString('PowerShell  -  ./Start-Polf3D.ps1 -Terminal', $ui, (Get-Brush 'FFE0E0E0'), 16, 8)
+    $tg.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor; $tg.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+    $tg.DrawImage($small, [System.Drawing.Rectangle]::new(16, 38, $cols * $cellW, $rows * $cellH)); $small.Dispose()
+    $ty = 38 + $rows * $cellH + 2
+    $tg.DrawString("(•_•)", $mono, (Get-Brush 'FFFFFFFF'), 16, $ty); $tg.DrawString("$([char]0x2665) 100 $(Get-TerminalBar 1.0 10)", $mono, (Get-Brush 'FF60FF80'), 72, $ty)
+    $tg.DrawString('AMMO 16', $mono, (Get-Brush 'FFFFFFFF'), 250, $ty); $tg.DrawString('PISTOL', $mono, (Get-Brush 'FF40E0FF'), 330, $ty)
+    $tg.DrawString("PRIV $(Get-TerminalBar 0.5 8)", $mono, (Get-Brush 'FF8FB0FF'), 400, $ty)
+    $tg.DrawString("FLOOR 1  SCORE 000000  LIVES 3   KILLS 0/$($script:Stats.KillTotal)  SECRETS 0/$($script:Stats.SecretTotal)  TREASURE 0/$($script:Stats.TreasureTotal)", $mono, (Get-Brush 'FFA0B4D0'), 16, ($ty + $cellH))
+    $tg.DrawString('Floor 1: Shellstein Dungeon', $mono, (Get-Brush 'FFFFE860'), 16, ($ty + 2 * $cellH))
+    $term.Save((Join-Path $OutDir 'terminal.png'), [System.Drawing.Imaging.ImageFormat]::Png); $tg.Dispose(); $term.Dispose(); $ui.Dispose(); $mono.Dispose()
 
     Export-Banner (Join-Path $OutDir 'banner.png')
 

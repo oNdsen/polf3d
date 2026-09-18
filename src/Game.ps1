@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; C = 67; D = 68; E = 69; F = 70; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; V = 86; W = 87; X = 88; Z = 90
+    A = 65; C = 67; D = 68; E = 69; F = 70; J = 74; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; V = 86; W = 87; X = 88; Z = 90
     F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
 }
 
@@ -57,6 +57,7 @@ function New-GameWindow {
 }
 
 function Set-MouseLook([bool]$On) {
+    if ($script:TerminalMode) { return }
     if ($On -eq $script:MouseLook) { return }
     $script:MouseLook = $On
     if ($On) { [System.Windows.Forms.Cursor]::Hide(); Reset-MouseCenter } else { [System.Windows.Forms.Cursor]::Show() }
@@ -122,7 +123,7 @@ function Set-Mode([string]$Mode) {
 function Get-PlayerInput {
     $k = $script:KeyDown; $vk = $script:VK
     $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$vk.Shift]; Sneak = $k[$vk.C]; Weapon = $script:WeaponKey; Ability = [int]$script:AbilityKey
-        Fire = ($k[$vk.Ctrl] -or $k[$vk.LButton]); Use = ($k[$vk.Space] -or $k[$vk.E] -or $k[$vk.RButton])
+        Fire = ($k[$vk.Ctrl] -or $k[$vk.LButton] -or $k[$vk.J]); Use = ($k[$vk.Space] -or $k[$vk.E] -or $k[$vk.RButton])
     }
     if ($k[$vk.W] -or $k[$vk.Up]) { $in.Forward += 1 }
     if ($k[$vk.S] -or $k[$vk.Down]) { $in.Forward -= 1 }
@@ -230,6 +231,7 @@ function Update-World([double]$Tics, [hashtable]$In) {
 
 function Show-PlayFrame {
     Update-View
+    if ($script:TerminalMode) { return }                         # the terminal shows the frame buffer itself, and text
     Copy-ViewToBack
     Show-Overlays
     if ($script:KeyDown[$script:VK.M] -and $script:Mode -eq 'play') { Show-AutoMap }
@@ -352,7 +354,7 @@ function Start-GameLoop {
     $autoStart = $last; $autoFrames = 0
 
     while ($script:Running) {
-        [System.Windows.Forms.Application]::DoEvents()
+        if ($script:TerminalMode) { Read-TerminalKeys } else { [System.Windows.Forms.Application]::DoEvents() }
         if (-not $script:Running) { break }
 
         $now = $script:Clock.Elapsed.TotalSeconds
@@ -397,7 +399,12 @@ function Start-GameLoop {
             if ($script:Mode -eq 'title') { $hits = @($vk.Enter) }
             $script:KeyDown[$vk.W] = $true; $script:KeyDown[$vk.Ctrl] = ([int]($now * 2) % 2 -eq 0); $script:KeyDown[$vk.Right] = ([int]$now % 3 -eq 0)
             $autoFrames++
-            if ($now - $autoStart -gt $script:AutoQuit) {
+            if ($now - $autoStart -gt $script:AutoQuit -and $script:TerminalMode) {
+                Stop-Terminal
+                Write-Step ('Terminal test: {0:0.0} fps on average, mode {1}, {2} frames written, keyboard state polling: {3}' -f ($autoFrames / ($now - $autoStart)), $script:Mode, $script:Term.Frames, $script:Term.Async)
+                $script:Running = $false
+            }
+            elseif ($now - $autoStart -gt $script:AutoQuit) {
                 $shotG = [System.Drawing.Graphics]::FromImage($script:BackBmp)
                 $script:Buffered.Render($shotG); $shotG.Dispose()
                 $null = New-Item -ItemType Directory -Path (Join-Path $script:SaveDir '../selftest') -Force
@@ -486,8 +493,11 @@ function Start-GameLoop {
             }
 
             'console' {
-                Update-Console $hits
-                if ($script:Mode -eq 'console') { Show-PlayFrame; Show-Console }
+                if ($script:TerminalMode) { Invoke-TerminalConsole; $last = $script:Clock.Elapsed.TotalSeconds }
+                else {
+                    Update-Console $hits
+                    if ($script:Mode -eq 'console') { Show-PlayFrame; Show-Console }
+                }
             }
 
             'paused' {
@@ -574,7 +584,7 @@ function Start-GameLoop {
             }
         }
 
-        Show-Back
+        if ($script:TerminalMode) { Show-TerminalFrame } else { Show-Back }
         $spent = $script:Clock.Elapsed.TotalSeconds - $now
         if ($spent -lt 0.012) { [System.Threading.Thread]::Sleep(2) }
     }
