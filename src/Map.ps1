@@ -49,11 +49,17 @@ function Read-MapFile([string]$Path) {
     $spawns = [System.Collections.Generic.List[object]]::new()
     $darks = [System.Collections.Generic.List[object]]::new()
     $events = [System.Collections.Generic.List[object]]::new()
+    $gates = [System.Collections.Generic.List[object]]::new()
     $inMap = $false
     foreach ($line in [System.IO.File]::ReadAllLines($Path)) {
         if ($line.StartsWith(';')) { continue }
         if ($inMap) { if ($line.Trim().Length -gt 0) { $rows.Add($line.TrimEnd()) }; continue }
         if ($line.StartsWith('@map')) { $inMap = $true; continue }
+        if ($line.StartsWith('@horde ')) {                          # @horde <x> <y>: a tile the waves of the arena come from
+            $f = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if ($f.Count -ne 3) { throw "Map '$Path': malformed line '$line'" }
+            $gates.Add(@([int]$f[1], [int]$f[2])); continue
+        }
         if ($line.StartsWith('@event ')) {                          # @event lockdown|powerfail|patch <seconds>
             $f = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
             if ($f.Count -ne 3 -or $f[1] -notin 'lockdown', 'powerfail', 'patch') { throw "Map '$Path': malformed line '$line'" }
@@ -78,7 +84,7 @@ function Read-MapFile([string]$Path) {
     if ($rows.Count -eq 0) { throw "Map '$Path' has no @map block." }
     $w = $rows[0].Length / 2
     foreach ($r in $rows) { if ($r.Length -ne $w * 2) { throw "Map '$Path': every row must be $($w * 2) characters long (found: $($r.Length))." } }
-    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks; Events = $events }
+    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks; Events = $events; Gates = $gates }
 }
 
 function Initialize-Level([string]$Path) {
@@ -184,6 +190,7 @@ function Initialize-Level([string]$Path) {
     $script:DarkArea = [bool[]]::new([Math]::Max(1, $area))      # rooms without light (Render.ps1, Test-Sight)
     foreach ($d in $map.Darks) { $at = $script:AreaOf[$d[1] * $w + $d[0]]; if ($at -ge 0) { $script:DarkArea[$at] = $true } }
     $script:Darkness = 0.0; $script:LightFlash = 0.0; $script:DarkTold = $false
+    $script:HordeSpots = @($map.Gates)                            # where the arena's waves come from (Horde.ps1)
     $script:LevelEvents = @($map.Events)                          # what the floor has scheduled (Events.ps1)
     $script:AreaConnect = New-Object 'int[,]' $area, $area
     $script:AreaByPlayer = [bool[]]::new($area)

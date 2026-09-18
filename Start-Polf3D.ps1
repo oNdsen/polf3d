@@ -39,6 +39,8 @@
     Go straight into today's dungeon: one generated floor, the same for everybody today, one life, recorded as a demo.
 .PARAMETER Dungeon
     Play the dungeon generated from this number instead of today's.
+.PARAMETER Horde
+    Straight into the arena: one life, wave after wave. -HordeNumber picks the waves (default: today's number).
 .PARAMETER VerifyDemo
     No window: play this demo file back and report whether it is genuine - for dungeon runs that includes the time.
 .PARAMETER ExportGif
@@ -90,6 +92,8 @@ param(
     [ValidateRange(1024, 65535)][int]$Port = 27500,
     [switch]$Daily,
     [ValidateRange(1, 99999999)][int]$Dungeon,
+    [switch]$Horde,
+    [ValidateRange(1, 99999999)][int]$HordeNumber,
     [string]$VerifyDemo,
     [string]$ExportGif,
     [string]$GifPath,
@@ -186,7 +190,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Events', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Events', 'Horde', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
@@ -241,6 +245,7 @@ if ($SelfTest) {
 }
 
 if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.' }
+$script:AutoHorde = if ($HordeNumber) { $HordeNumber } elseif ($Horde) { Get-DailySeed } else { 0 }
 $script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
 Write-Step 'ready.'
 try {

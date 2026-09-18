@@ -33,6 +33,7 @@ composed, spoken and cached there the first time they are needed.
 - [Enemies, weapons, items](#enemies-weapons-items)
 - [PowerShell is the point](#powershell-is-the-point)
 - [The daily dungeon](#the-daily-dungeon)
+- [The arena](#the-arena)
 - [Terminal mode](#terminal-mode)
 - [Stealth](#stealth)
 - [Level machinery](#level-machinery)
@@ -115,7 +116,7 @@ map format, HUD, menus, music, network protocol.
 | `F5` / `F9` | quick save / quick load |
 | `F12` | record a demo (press again to stop and save) |
 | `P`, `Esc` | pause: `1`–`3` save to a slot, `L` load, `Q` main menu |
-| `G` (title screen) | today's dungeon |
+| `G` / `H` (title screen) | today's dungeon / the arena (horde mode) |
 | `O` (title screen, pause) | options: mouse sensitivity, volumes, radar, fps, floors, window size – **and every key above** |
 | `F1` (network games) | the player list – on the host with kick and ban |
 
@@ -315,6 +316,16 @@ checked**:
 The verifier rebuilds the dungeon, plays the input back without a window and compares where it ends. A doctored file
 does not end where it claims to. Best times are kept per seed and difficulty.
 
+## The arena
+
+`H` on the title screen (or `./Start-Polf3D.ps1 -Horde`, `-HordeNumber 4711` for a particular one): one life, one hall
+with eight pillars, and wave after wave coming out of four gates. Every wave has more to spend than the one before –
+first guards and dogs, later elites, snipers, shield bearers and kamikaze bots; every fifth wave is led by a
+commander, every tenth by a war machine. Between the waves supplies drop in the middle of the hall, and now and then a
+new weapon. The waves are made from the horde's number – today's date by default – so everybody fights the same ones,
+and `saves/horde.json` keeps your best for every number and difficulty. The lift in the corner is the way out: taking
+it ends the run with what you have. The console works in there. So do sentry guns, if you think of it.
+
 ## Terminal mode
 
 ```powershell
@@ -502,6 +513,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Settings.ps1](src/Settings.ps1) | the options menu, the key bindings, `saves/settings.json` |
 | [src/GifExport.ps1](src/GifExport.ps1) | a demo as an animated GIF |
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
+| [src/Horde.ps1](src/Horde.ps1) | the arena: waves from a number, supplies, the list of runs |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
 | [src/Events.ps1](src/Events.ps1) | what a floor has scheduled: lockdown, power failure, Patch Tuesday |

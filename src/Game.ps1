@@ -81,7 +81,7 @@ function Reset-ScreenEffects {
 # as well (riding the lift to the next floor). Keys never leave their floor.
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:NetLive = $false; $script:NetClient = $false
-    $script:MapFile = if ($script:DungeonMap) { $script:DungeonMap } elseif ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
+    $script:MapFile = if ($script:HordeSeed) { Get-HordeMap } elseif ($script:DungeonMap) { $script:DungeonMap } elseif ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
     $script:LevelSeed = if ($script:NextSeed) { $script:NextSeed } else { [int]($script:Clock.ElapsedTicks % 1000000) + 1 }
     $script:NextSeed = $null
     $script:Rng = [System.Random]::new($script:LevelSeed)
@@ -106,7 +106,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     Start-RunTranscript
     Reset-RunStats
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
-    $script:MusicWanted = if ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
+    $script:MusicWanted = if ($script:HordeSeed) { 5 } elseif ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
     if (-not $script:DungeonSeed -and -not $script:BonusMap -and $script:MapFiles.Count -gt 1 -and $script:LevelIndex -eq $script:MapFiles.Count - 1) { Initialize-MusicTrack $script:MUSIC_ENDING }
 }
@@ -121,7 +121,7 @@ function Set-Mode([string]$Mode) {
     if ($Mode -eq 'dying') { $null = Stop-RunTranscript $false } elseif ($Mode -eq 'title') { $script:Transcript = $null }
     if ($script:Recording -and $Mode -notin 'play', 'paused') { if ($script:DungeonSeed) { $null = Save-DungeonRun $false } else { Stop-DemoRecording } }
     if ($Mode -eq 'title' -and $script:KeepColumnStep) { $script:ColumnStep = $script:KeepColumnStep; $script:KeepColumnStep = 0 }
-    if ($Mode -eq 'title') { Stop-Dungeon }
+    if ($Mode -eq 'title') { Stop-Dungeon; Stop-Horde }
     if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame; $script:AchievementCount = Get-AchievementCount }
     if ($Mode -eq 'load') { $script:SaveList = @(Get-SaveList) }
 }
@@ -225,6 +225,7 @@ function Update-World([double]$Tics, [hashtable]$In) {
             $script:NetScope = 'world'
         }
         Update-Events $Tics
+        Update-Horde $Tics
         Update-Policy $Tics
         Update-Actors $Tics
         $script:NetScope = 'local'
@@ -273,7 +274,7 @@ function Show-TitleScreen {
     if ($script:Net) { $load = ''; Write-HudText (Get-NetStatus) 'Small' '60FF80' 0 131 320 8 }
     else {
         $best = Get-DungeonBest (Get-DailySeed)
-        Write-HudText "G = today's dungeon #$(Get-DailySeed)$(if ($best) { "   (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })" 'Small' '40E0FF' 0 131 320 8
+        Write-HudText "G = today's dungeon #$(Get-DailySeed)$(if ($best) { "   (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })     H = the arena: waves until you drop" 'Small' '40E0FF' 0 131 320 8
     }
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     O = options     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
@@ -393,6 +394,7 @@ function Start-GameLoop {
     $vk = $script:VK
     Set-Mode 'title'
     if ($script:AutoDungeon -and (Start-Dungeon $script:AutoDungeon)) { Set-Mode 'play' }
+    elseif ($script:AutoHorde -and (Start-Horde $script:AutoHorde)) { Set-Mode 'play' }
     $last = $script:Clock.Elapsed.TotalSeconds
     $fpsTime = $last; $fpsFrames = 0
     $autoStart = $last; $autoFrames = 0
@@ -477,6 +479,7 @@ function Start-GameLoop {
                     }
                     elseif ($h -eq $vk.L -and -not $script:Net -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
                     elseif ($h -eq $vk.G -and -not $script:Net) { if (Start-Dungeon 0) { Set-Mode 'play' } }
+                    elseif ($h -eq 72 -and -not $script:Net) { if (Start-Horde 0) { Set-Mode 'play' } }              # H: the arena
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.O) { Open-Options }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
@@ -530,6 +533,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.F11) { Invoke-Cheat 'OneHit' }
                     elseif ($script:Net -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in a network game' }
                     elseif ($script:DungeonSeed -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in the dungeon: one life, no saving, always recorded' }
+                    elseif ($script:HordeSeed -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in the arena: one life, no saving' }
                     elseif ($h -eq $vk.F12) { if ($script:Recording) { Stop-DemoRecording } else { Start-DemoRecording } }
                     elseif ($h -eq $vk.F5) { Save-Game }
                     elseif ($h -eq $vk.F9) { $null = Restore-Game }
@@ -541,6 +545,7 @@ function Start-GameLoop {
                 Update-World $tics $in
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
+                elseif ($script:LevelDone -and $script:HordeSeed) { $null = Save-HordeRun $true; Start-Sfx 'level_done'; Set-Mode 'gameover' }      # the lift: the way out
                 elseif ($script:LevelDone) { Complete-Level }
             }
 
@@ -609,6 +614,7 @@ function Start-GameLoop {
                     $p.Lives--
                     if ($p.Lives -lt 0) {
                         $p.Lives = 0
+                        if ($script:HordeSeed) { $null = Save-HordeRun $false }
                         Add-HighScore $p.Score "killed$(if ($p.Cheated) { ' (cheat)' })"
                         $script:HighScores = Get-HighScores
                         Set-Mode 'gameover'
@@ -635,7 +641,8 @@ function Start-GameLoop {
 
             'gameover' {
                 Show-Shade 'FF200808'
-                Write-HudText 'GAME OVER' 'Huge' 'FF4030' 0 60 320 50
+                if ($script:HordeSeed -and $script:LevelDone) { Write-HudText 'EVACUATED' 'Huge' '60FF80' 0 60 320 50 } else { Write-HudText 'GAME OVER' 'Huge' 'FF4030' 0 60 320 50 }
+                if ($script:HordeSeed) { Write-HudText $script:HordeResult 'Small' '40E0FF' 0 136 320 8 }
                 Write-HudText "Score: $($script:P.Score)" 'Mid' 'FFFFFF' 0 120 320 14
                 Write-HudText 'Enter = main menu' 'Small' 'FFE860' 0 150 320 10
                 if ($hits -contains $vk.Enter -or $hits -contains $vk.Esc) { Set-Mode 'title' }

@@ -62,6 +62,7 @@ function Update-Events([double]$Tics) {
 
 # For the HUD: the next event that announces itself - Patch Tuesday always, the others ten seconds ahead.
 function Get-EventNotice {
+    if ($script:HordeSeed) { return (Get-HordeNotice) }
     $st = $script:Stats; $best = $null
     for ($i = 0; $i -lt $script:LevelEvents.Count; $i++) {
         $e = $script:LevelEvents[$i]

@@ -453,6 +453,26 @@ function Invoke-SelfTest([string]$OutDir) {
         [int]$script:Stats.EventsDone -ne 0 -or $script:Stats.PowerOut -gt 0) { throw 'event test failed.' }
     $script:Difficulty = $keepDifficulty; $script:LevelIndex = 0
 
+    # ---- the arena: the same number gives the same waves, they grow, they come through the gates, and the run is kept ----
+    Remove-Item -LiteralPath (Get-HordePath) -ErrorAction SilentlyContinue
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 1; $keepGod = $script:GodMode; $script:GodMode = $true
+    $started = Start-Horde 4711
+    $same = ((Get-HordeWave 3) -join ',') -eq ((Get-HordeWave 3) -join ','); $sizes = (1, 5, 10 | ForEach-Object { "$(@(Get-HordeWave $_).Count)" }) -join '/'
+    $fifth = @(Get-HordeWave 5)[0]; $tenth = @(Get-HordeWave 10)[0]
+    for ($f = 0; $f -lt 400 -and @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert }).Count -lt 3; $f++) { Update-World 4.0 $idle }
+    $wave = $script:Stats.Wave; $arrived = @($script:Actors | Where-Object { $_.Shootable -and $_.AttackMode }).Count
+    Set-TestCamera 16.5 22.5 90; Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-horde.png')
+    foreach ($a in @($script:Actors)) { if ($a.Shootable -and -not $a.Def.Inert) { Stop-Actor $a } }
+    $script:Stats.WaveQueue = @()
+    $items = @($script:Items | Where-Object { -not $_.Removed }).Count
+    for ($f = 0; $f -lt 120 -and $script:Stats.Wave -eq $wave; $f++) { Update-World 4.0 $idle }
+    $supplies = @($script:Items | Where-Object { -not $_.Removed }).Count - $items
+    $script:P.Cheated = $false; $line = Save-HordeRun $false; $again = Save-HordeRun $false
+    Write-Step "horde test: waves of $sizes (the 5th leads with a $fifth, the 10th with a $tenth); wave $wave sent $arrived through the gates, clearing it brought wave $($script:Stats.Wave) and $supplies supplies; '$line'"
+    if (-not $started -or -not $same -or $fifth -ne 'boss' -or $tenth -ne 'uber' -or $wave -ne 1 -or $arrived -lt 3 -or $script:Stats.Wave -ne 2 -or $supplies -lt 3 -or $line -notmatch 'first run' -or $again -notmatch 'your best: 1 waves') { throw 'horde test failed.' }
+    Stop-Horde; $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod; $script:LevelIndex = 0
+    Remove-Item -LiteralPath (Get-HordePath) -ErrorAction SilentlyContinue
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

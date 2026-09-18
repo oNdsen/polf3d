@@ -24,6 +24,12 @@ function New-Grid([int]$Width, [int]$Height) {
     $script:darks = [System.Collections.Generic.List[string]]::new()
 }
 
+# A tile the waves of the arena come from (src/Horde.ps1).
+function Add-Gate([int]$X, [int]$Y) {
+    if ($script:grid[$X, $Y] -ne '..') { throw "Gate $X,$Y is not on a free floor tile" }
+    $script:darks.Add("@horde $X $Y")
+}
+
 # Something that happens to the floor at a fixed time: lockdown | powerfail | patch (see src/Events.ps1).
 function Add-Event([string]$Kind, [int]$Seconds) { $script:darks.Add("@event $Kind $Seconds") }
 
@@ -149,7 +155,7 @@ function Save-Level([int]$Number, [string]$Name, [int]$Par, [string]$Ceiling, [s
         $lines.Add($sb.ToString())
     }
     $null = New-Item -ItemType Directory -Path $OutDir -Force
-    $file = Join-Path $OutDir "$FilePrefix$Number.map"
+    $file = Join-Path $OutDir $(if ($FilePrefix -eq 'arena') { 'arena.map' } else { "$FilePrefix$Number.map" })
     [System.IO.File]::WriteAllLines($file, $lines)
     Write-Host ("floor {0}: {1,-22} {2}x{3}  -> {4}" -f $Number, $Name, $script:W, $script:H, $file)
 }
@@ -672,3 +678,18 @@ Add-Things @(
 Add-Spawns 3 @(14, 14, 'ov',  18, 14, 'ov')
 Add-Spawns 4 @(12, 16, 'k^',  20, 16, 'k^')
 Save-Level 2 'The Treasury' 120 '3A2A10' '6A5A30' 'WW' 'bonus' -Look '@floortex flat_carpet', '@ceiltex ceil_plain', '@fog 1A1206 14'
+
+# =====================================================================================================
+# THE ARENA (horde mode, H on the title screen).  One hall, eight pillars, four gates the waves come out
+# of - and a lift in the corner for those who have had enough.
+# =====================================================================================================
+New-Grid 33 33
+Add-Room 4 4 25 25 'MM' @(
+    6, 6, '*c',  18, 6, '*c',  6, 18, '*c',  18, 18, '*c',  12, 6, '*c',  12, 18, '*c',  6, 12, '*c',  18, 12, '*c'
+    12, 12, 'P^',  11, 11, '+a',  13, 11, '+a',  11, 13, '+h',  13, 13, '+a',  12, 10, '+m'
+    0, 0, '+h',  24, 24, '+h',  0, 24, '+a',  24, 0, '+a')
+Add-Room 15 1 3 3 'RR'; Add-Room 15 29 3 3 'RR'; Add-Room 1 15 3 3 'RR'; Add-Room 29 15 3 3 'RR'           # the four gates
+Add-Room 30 5 1 3 'MM' @(0, 1, '*l')                                                                          # the lift: the way out
+Add-Things @(29, 6, 'DL',  31, 6, 'MX')
+foreach ($g in @(15, 1), @(17, 1), @(15, 31), @(17, 31), @(1, 15), @(1, 17), @(31, 15), @(31, 17)) { Add-Gate $g[0] $g[1] }
+Save-Level 0 'The Arena' 0 '241C1C' '4E4444' 'MM' 'arena' -Look '@floortex flat_stone', '@ceiltex ceil_rock', '@fog 140808 15'
