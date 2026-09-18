@@ -1,7 +1,7 @@
 # POLF 3D - Copyright (c) 2026 oNdsen. Licensed under the MIT License, see LICENSE.
 
 # Music.ps1 - procedural chiptune. The title screen has its own anthem and every floor a loop in
-# a style of its own (rock, march, crypt, techno, finale; the secret floor gets a jolly tune).
+# a loop of its own in a style that suits it (rock, march, crypt, techno, finale; the secret floor gets a jolly tune).
 # A track is composed in code - chord progression, bass, lead, drums - rendered to a WAV file
 # once and cached in bin/music.
 #
@@ -29,11 +29,13 @@ $script:MusicStyles = @{
     treasure = @{ Tempo = 126; Root = 65.41; Bars = 16; Scale = 0, 2, 4, 7, 9;        Chords = '0M', '0M', '5M', '0M', '9m', '5M', '7M', '0M' }
 }
 
-# Track 0 = title screen, track N = floor N (further floors cycle through the styles), 99 = secret floor.
+# Track 0 = title screen, track N = floor N (further floors cycle through the list), 99 = secret floor.
+# Dungeon, barracks, catacombs, lab, citadel - data centre, archive, foundry, executive floor, ring 0.
+$script:FloorStyles = 'rock', 'march', 'crypt', 'techno', 'finale', 'techno', 'crypt', 'rock', 'march', 'finale'
 function Get-MusicStyle([int]$Track) {
     if ($Track -le 0) { return 'anthem' }
     if ($Track -eq $script:MUSIC_BONUS) { return 'treasure' }
-    ('rock', 'march', 'crypt', 'techno', 'finale')[($Track - 1) % 5]
+    $script:FloorStyles[($Track - 1) % $script:FloorStyles.Count]
 }
 
 # ---------------------------------------------------------------------------------------------

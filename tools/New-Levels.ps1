@@ -2,7 +2,7 @@
 
 <#
 .SYNOPSIS
-    Authoring tool: generates the campaign maps (maps/level1.map ... level5.map) from room lists.
+    Authoring tool: generates the campaign maps (maps/level1.map ... level10.map) from room lists.
 .DESCRIPTION
     Typing grids of two-character cells by hand is error prone, so every floor is described as
     rooms (rectangles carved out of solid rock), doors and things. Rooms that touch or overlap
@@ -52,6 +52,14 @@ function Add-Room([int]$X, [int]$Y, [int]$Width, [int]$Height, [string]$Wall, [o
         }
     }
     for ($i = 0; $i -lt $Things.Count; $i += 3) { Set-Cell ($X + $Things[$i]) ($Y + $Things[$i + 1]) $Things[$i + 2] }
+}
+
+# Solid blocks inside a room (shelves, a lift shaft): call AFTER the room has been carved.
+function Add-Wall([int]$X, [int]$Y, [int]$Width, [int]$Height, [string]$Code) {
+    for ($yy = $Y; $yy -lt $Y + $Height; $yy++) { for ($xx = $X; $xx -lt $X + $Width; $xx++) { Set-Cell $xx $yy $Code } }
+}
+function Add-Floor([int]$X, [int]$Y, [int]$Width, [int]$Height) {
+    for ($yy = $Y; $yy -lt $Y + $Height; $yy++) { for ($xx = $X; $xx -lt $X + $Width; $xx++) { $script:grid[$xx, $yy] = '..' } }
 }
 
 function Add-Things([object[]]$List) {           # flat list with ABSOLUTE coordinates: x, y, code, ...
@@ -352,7 +360,7 @@ Add-Spawns 4 @(30, 36, 'h>',  38, 36, 'h<',  47, 24, 's<')
 Save-Level 4 'Lab Zero' 480 '20262E' '4A525C' 'TT' -Look '@floortex flat_tech', '@ceiltex ceil_tech', '@fog 0A1018 14'
 
 # =====================================================================================================
-# FLOOR 5 - The Citadel.  The finale: a gate hall, the great hall with three patrols, mutants in the
+# FLOOR 5 - The Citadel.  The end of the first half: a gate hall, the great hall with three patrols, mutants in the
 # west tower (silver key), TWO commanders in the east tower (gold key) and, in the throne hall, the
 # war machine with its escort.
 # =====================================================================================================
@@ -391,6 +399,230 @@ Add-Things @(
 Add-Spawns 3 @(24, 20, 'ev',  22, 26, 'mv',  39, 20, 'e<')
 Add-Spawns 4 @(20, 8, 'hv',  27, 8, 'hv',  6, 23, 'k>')
 Save-Level 5 'The Citadel' 540 '30203A' '5A5060' 'SS' -Look '@floortex flat_carpet', '@ceiltex ceil_plain', '@fog 140A1C 15'
+
+# =====================================================================================================
+# FLOOR 6 - The Data Centre.  Six cold aisles between two cross corridors: snipers at the far ends,
+# windows in the rack rows. Silver key in the NOC, the commander sits in the silver cage on the gold
+# key, the lift lobby is behind the gold door.
+# =====================================================================================================
+New-Grid 56 42
+Add-Room 12 30 25 3 'TT' @(                                  # south cross corridor, one patrol
+    2, 1, 'eE',   0, 1, ':>',   23, 1, ':<',  4, 0, '*l',   12, 0, '*l',  20, 0, '*l',  8, 2, 'o^',  18, 2, 'h<')
+Add-Room 12 9 36 3 'TT' @(                                   # north cross corridor
+    30, 1, 'oW',  0, 1, ':>',   35, 1, ':<',  6, 0, '*l',   16, 0, '*l',  26, 0, '*l',  10, 0, 'ev',  20, 2, 'h<',  35, 0, '+a',  0, 2, '+f')
+foreach ($ax in 12, 16, 20, 24, 28, 32) { Add-Room $ax 12 3 18 'TT' }                                               # the aisles
+Add-Room 2 36 5 4 'MM' @(2, 2, 'P^',  2, 1, '*l',  0, 0, '+a',  4, 0, '+h')                                         # arrival
+Add-Room 2 24 9 11 'RR' @(                                   # loading dock
+    0, 0, '*x',  1, 0, '*x',  8, 0, '*x',  0, 5, '*x',  7, 6, '*x',  8, 6, '*x',  8, 10, '*x',  3, 3, '*e',  6, 8, '*e'
+    4, 2, 'gv',  6, 5, 'e<',  2, 8, 'g>',  7, 3, 'd<',  0, 10, '+a',  8, 1, '+a',  0, 1, '+f',  4, 5, '+m')
+Add-Room 2 9 9 14 'MM' @(                                    # cooling plant
+    1, 1, '*v',  1, 4, '*v',  1, 7, '*v',  1, 10, '*v',  6, 2, '*v',  6, 6, '*v',  6, 10, '*v'
+    3, 3, 'me',  7, 8, 'mw',  4, 0, 'ms',  3, 12, 'mn',  8, 12, 'm>',  4, 6, 'o>'
+    0, 13, '+h',  8, 0, '+a',  0, 0, '+2',  8, 13, '+z')
+Add-Room 38 13 10 8 'TT' @(                                  # network operations centre: silver key
+    1, 0, '*m',  3, 0, '*m',  5, 0, '*m',  7, 0, '*m',  4, 4, '*t',  5, 4, '*t'
+    2, 3, 'o^',  7, 3, 'o^',  4, 6, 'e^',  8, 6, 'e<',  9, 7, 's<',  9, 0, '+s',  0, 7, '+a',  0, 0, '+3')
+Add-Room 38 22 11 11 'MM' @(                                 # the silver cage: the commander
+    6, 5, 'b<',  3, 2, 'e<',  3, 8, 'e<',  1, 5, 'h<',  4, 3, '*c',  4, 7, '*c',  8, 3, '*c',  8, 7, '*c'
+    10, 0, '+h',  10, 10, '+h',  0, 0, '+a',  9, 5, '+o')
+Add-Room 40 3 9 5 'MM' @(2, 1, 'hv',  6, 1, 'hv',  4, 0, 'sv',  7, 2, 'k<',  0, 2, 'k>',  0, 0, '+h',  8, 4, '+a')      # lift lobby
+Add-Room 50 4 3 3 'MM' @(1, 1, '*l')                                                                                # lift
+Add-Room 2 5 4 3 'MM' @(0, 0, '+u',  3, 0, '+4',  0, 2, '+a',  3, 2, '+q')                                          # secret: plant
+Add-Room 20 34 5 3 'TT' @(0, 0, '+c',  4, 0, '+a',  0, 2, '+3',  4, 2, '+a')                                        # secret: south corridor
+Add-Room 50 25 3 3 'MM' @(0, 0, '+z',  2, 0, '+4',  0, 2, '+o',  2, 2, '+h')                                        # secret: cage
+Add-Room 20 5 4 3 'TT' @(0, 0, '+o',  3, 0, '+o',  0, 2, '+h',  3, 2, '+z')                                         # cache behind a cracked wall
+Add-Things @(
+    4, 35, 'DD',   5, 23, 'DD',   11, 31, 'DD',  11, 10, 'DD',  42, 12, 'DD',  37, 31, 'DS',  44, 8, 'DG',  49, 5, 'DL',  53, 5, 'MX'
+    19, 20, 'DD',  27, 20, 'DD',  15, 16, '=T',  15, 24, '=T',  23, 16, '=T',  23, 24, '=T',  31, 16, '=T',  31, 24, '=T'
+    3, 8, '?M',    22, 33, '?T',  49, 26, '?M',  21, 8, '!T'
+    13, 13, 'sv',  21, 13, 'sv',  29, 13, 'sv',  17, 20, 'ev',  25, 18, 'e^',  33, 22, 'ev',  13, 22, 'hv',  29, 24, 'hv',  21, 25, 'kv',  33, 14, 'kv'
+    17, 14, '+a',  25, 27, '+a',  33, 28, '+h',  13, 28, '+o'
+)
+Add-Spawns 3 @(14, 20, 'ev',  25, 30, 'h<',  43, 18, 'e^')
+Add-Spawns 4 @(45, 29, 'h<',  5, 15, 'm>',  30, 9, 's<')
+Save-Level 6 'The Data Centre' 600 '1C2430' '46505C' 'TT' -Look '@floortex flat_tech', '@ceiltex ceil_tech', '@fog 081420 13'
+
+# =====================================================================================================
+# FLOOR 7 - The Archive.  Two halls of shelves to get lost in, with things waiting between them. The
+# silver key is in the catalogue room, the commander in the tape vault has the gold key, and the
+# reading room behind the gold door leads to the lift. Four secrets - the microfiche knows them all.
+# =====================================================================================================
+New-Grid 54 44
+Add-Room 19 29 15 8 'WW' @(                                  # foyer
+    3, 2, '*c',  11, 2, '*c',  3, 5, '*c',  11, 5, '*c',  7, 3, '*h',  0, 0, '*p',  14, 0, '*p'
+    7, 1, 'ov',  5, 4, 'g>',  9, 4, 'g<',  0, 7, '+a',  14, 7, '+h')
+Add-Room 24 38 5 4 'MM' @(2, 2, 'P^',  2, 1, '*l',  0, 0, '+a',  4, 0, '+f')                                        # arrival
+Add-Room 3 21 15 18 'WW' @(                                  # west stacks
+    2, 3, 'ge',  12, 4, 'g<',  7, 6, 'ov',  3, 10, 'e>',  11, 10, 'h<',  6, 13, 'gn',  13, 16, 'k<',  2, 16, 'd>'
+    0, 0, '+a',  14, 0, '+3',  0, 17, '+h',  14, 17, '+a',  7, 3, '+f',  5, 9, '+2')
+Add-Room 35 21 15 18 'WW' @(                                 # east stacks
+    12, 3, 'mw',  2, 4, 'g>',  7, 7, 's<',  10, 10, 'e<',  3, 13, 'hn',  13, 14, 'k<',  1, 16, 'o>',  4, 0, 'sv'
+    0, 0, '+2',  14, 0, '+a',  0, 17, '+a',  14, 17, '+h',  7, 4, '+o',  9, 13, '+z')
+foreach ($ox in 3, 35) {                                     # the shelves, the same in both halls
+    Add-Wall ($ox + 1) 23 5 1 'Ws';  Add-Wall ($ox + 8) 23 6 1 'Ws'
+    Add-Wall $ox 26 4 1 'Ws';        Add-Wall ($ox + 6) 26 4 1 'Ws';   Add-Wall ($ox + 12) 26 3 1 'Ws'
+    Add-Wall ($ox + 1) 29 6 1 'Ws';  Add-Wall ($ox + 9) 29 5 1 'Ws'
+    Add-Wall $ox 33 5 1 'Ws';        Add-Wall ($ox + 7) 33 4 1 'Ws';   Add-Wall ($ox + 13) 33 2 1 'Ws'
+    Add-Wall ($ox + 1) 36 5 1 'Ws';  Add-Wall ($ox + 8) 36 6 1 'Ws'
+}
+Add-Room 24 21 5 7 'WW' @(1, 1, 'sv',  3, 1, 'ev',  0, 0, '*a',  4, 0, '*a')                                         # passage to the reading room
+Add-Room 3 8 12 12 'WW' @(                                   # catalogue room: silver key
+    3, 3, '*t',  8, 3, '*t',  3, 8, '*t',  8, 8, '*t',  11, 0, '+s'
+    5, 5, 'ov',  2, 2, 'o>',  9, 9, 'o<',  6, 1, 'ev',  10, 6, 'e<',  5, 10, 'hv',  0, 0, '+1',  0, 11, '+a',  11, 11, '+f')
+Add-Room 38 8 12 12 'BB' @(                                  # tape vault: the commander
+    6, 4, 'bv',  10, 1, 'mw',  1, 10, 'me',  4, 7, 'ev',  8, 7, 'ev'
+    3, 3, '*c',  8, 3, '*c',  3, 8, '*c',  8, 8, '*c',  0, 0, '+h',  11, 0, '+h',  0, 11, '+a',  11, 11, '+a',  6, 0, '+3')
+Add-Room 19 8 15 12 'WW' @(                                  # reading room
+    3, 3, '*t',  7, 3, '*t',  11, 3, '*t',  3, 8, '*t',  7, 8, '*t',  11, 8, '*t',  5, 5, '*h',  9, 5, '*h'
+    4, 1, 'ev',  10, 1, 'ev',  7, 2, 'ov',  2, 6, 'h>',  12, 6, 'h<',  1, 10, 'k^',  13, 10, 'k^',  7, 6, 'sv'
+    0, 0, '+h',  14, 0, '+a',  0, 11, '+a',  14, 11, '+3')
+Add-Room 25 4 3 3 'MM' @(1, 1, '*l')                                                                                # lift
+Add-Room 35 12 2 3 'WW' @(0, 0, '+o',  1, 0, '+o',  0, 2, '+h',  1, 2, '+u')                                        # cache behind a cracked wall
+Add-Room 5 4 4 3 'WW' @(0, 0, '+4',  3, 0, '+a',  0, 2, '+h',  3, 2, '+z')                                          # secret: catalogue room
+Add-Room 44 4 4 3 'BB' @(0, 0, '+c',  3, 0, '+a',  0, 2, '+4',  3, 2, '+q')                                         # secret: tape vault
+Add-Room 19 38 3 3 'WW' @(0, 0, '+a',  2, 0, '+2',  0, 2, '+f',  2, 2, '+t')                                        # secret: foyer
+Add-Room 51 30 2 3 'WW' @(0, 0, '+3',  1, 0, '+3',  0, 2, '+a',  1, 2, '+h')                                        # secret: east stacks
+Add-Things @(
+    26, 37, 'DD',  18, 32, 'DD',  34, 32, 'DD',  26, 28, 'DD',  26, 20, 'DG',  8, 20, 'DD',  43, 20, 'DS',  26, 7, 'DL',  26, 3, 'MX'
+    6, 7, '?w',    45, 7, '?B',   20, 37, '?w',  50, 31, '?W',  34, 13, '!W'
+    18, 25, 'Wp',  34, 25, 'Wp',  2, 14, 'Wp',   15, 14, 'Wp',  23, 24, 'Wp',  29, 24, 'Wp'
+)
+Add-Spawns 3 @(26, 33, 'ov',  9, 14, 'o>',  43, 15, 'ev')
+Add-Spawns 4 @(24, 15, 'h^',  10, 30, 'k>',  42, 30, 's<')
+Save-Level 7 'The Archive' 660 '3A2C1C' '6A5A40' 'WW' -Look '@floortex flat_wood', '@ceiltex ceil_plain', '@fog 120C06 12'
+
+# =====================================================================================================
+# FLOOR 8 - The Foundry.  A production line: the smelter, then the conveyor with three crushers and a
+# gate in the middle. Three levers (control room, machine shop, storage) open the way, the armoury
+# included. Silver key in the machine shop, the foreman behind the silver door has the gold key - and
+# in the assembly hall behind the gold door stands THE PRINTER.
+# =====================================================================================================
+New-Grid 60 40
+Add-Room 8 24 14 13 'RR' @(                                  # smelter
+    3, 2, '*v',  7, 2, '*v',  11, 2, '*v',  3, 6, '*v',  11, 6, '*v',  7, 6, '*e',  5, 10, '*e',  9, 10, '*e'
+    5, 4, 'e>',  9, 4, 'ev',  12, 9, 'h<',  6, 8, 'mv',  10, 8, 'm<',  1, 5, 'me',  12, 1, 'sw',  12, 11, 'k<'
+    0, 0, '+a',  13, 0, '+f',  0, 12, '+h',  13, 12, '+a',  6, 12, '+o')
+Add-Room 2 33 5 4 'MM' @(1, 2, 'P>',  2, 1, '*l',  0, 0, '+a',  4, 0, '+h')                                         # arrival
+Add-Room 8 18 8 5 'MM' @(1, 0, '*m',  3, 0, '*m',  6, 0, '*m',  2, 2, 'ov',  5, 2, 'ov',  7, 4, 'e<',  0, 4, '+a',  7, 0, '+2')       # control room: lever 1
+Add-Room 23 28 26 3 'MM'                                     # the conveyor
+Add-Room 26 17 14 10 'RR' @(                                 # machine shop: silver key, lever 2
+    2, 2, '*t',  6, 2, '*t',  10, 2, '*t',  2, 6, '*t',  6, 6, '*t',  10, 6, '*t',  13, 0, '*x',  13, 9, '*x',  0, 9, '*x'
+    4, 4, 'ev',  8, 4, 'ev',  12, 4, 'o<',  1, 7, 'm>',  11, 8, 'h<',  7, 8, 'k^',  0, 0, '+s',  12, 0, '+a',  5, 9, '+h')
+Add-Room 26 32 14 6 'RR' @(                                  # storage: the foreman, lever 3
+    0, 0, '*x',  1, 0, '*x',  0, 1, '*x',  12, 0, '*x',  13, 0, '*x',  6, 3, '*x',  7, 3, '*x'
+    10, 3, 'b<',  4, 2, 'e^',  4, 4, 'e^',  13, 5, '+h',  0, 5, '+a',  12, 5, '+o',  8, 5, '+z')
+Add-Room 43 32 5 4 'MM' @(0, 0, '+l',  4, 0, '+o',  0, 3, '+o',  4, 3, '+h',  2, 2, '+c',  2, 3, '+u')                 # armoury behind lever door 3
+Add-Room 50 18 8 18 'MM' @(                                  # assembly hall: THE PRINTER
+    2, 3, '*c',  5, 3, '*c',  2, 8, '*c',  5, 8, '*c',  2, 13, '*c',  5, 13, '*c'
+    3, 6, 'uv',  1, 1, 'kv',  6, 1, 'kv',  1, 15, 'e^',  6, 15, 'e^'
+    0, 0, '+h',  7, 0, '+h',  0, 17, '+a',  7, 17, '+a',  0, 9, '+o',  7, 9, '+o')
+Add-Room 53 14 3 3 'MM' @(1, 1, '*l')                                                                               # lift
+Add-Room 3 26 4 3 'RR' @(0, 0, '+a',  0, 2, '+3',  1, 0, '+t')                                                      # secret: smelter
+Add-Room 41 18 3 3 'RR' @(0, 0, '+4',  2, 0, '+a',  0, 2, '+a',  2, 2, '+q')                                        # secret: machine shop
+Add-Room 52 37 3 2 'MM' @(0, 0, '+4',  2, 0, '+4',  0, 1, '+r',  2, 1, '+a')                                        # secret: assembly hall
+Add-Room 17 18 3 3 'MM' @(0, 0, '+o',  2, 0, '+o',  0, 2, '+z',  2, 2, '+h')                                        # cache behind a cracked wall
+Add-Things @(
+    7, 35, 'DD',   11, 23, 'DD',  22, 29, 'D1',  12, 17, 'X1',  32, 27, 'DD',  30, 16, 'X2',  32, 31, 'DS',  40, 35, 'X3',  45, 31, 'D3'
+    41, 28, 'MM',  41, 30, 'MM',  41, 29, 'D2',  49, 29, 'DG',  54, 17, 'DL',  54, 13, 'MX'
+    7, 27, '?r',   40, 19, '?R',  53, 36, '?M',  16, 19, '!M'
+    26, 28, '~c',  26, 29, '~c',  26, 30, '~c',  36, 28, '~c',  36, 29, '~c',  36, 30, '~c',  44, 28, '~c',  44, 29, '~c',  44, 30, '~c'
+    30, 29, 'e<',  33, 28, 'h<',  38, 30, 'e<',  39, 28, 's<',  47, 29, 'h<',  46, 28, 'k<',  46, 30, 'k<',  24, 28, '+a',  48, 30, '+a'
+    7, 30, 'Rb',   22, 26, 'Rb',  22, 33, 'Rb',  25, 21, 'Rb',  25, 35, 'Rb'
+)
+Add-Spawns 3 @(16, 31, 'e<',  34, 22, 'ev',  52, 30, 'h^')
+Add-Spawns 4 @(55, 22, 'hv',  24, 29, 's>',  35, 34, 'e^')
+Save-Level 8 'The Foundry' 660 '2E1C14' '5A463A' 'RR' -Look '@floortex flat_stone', '@ceiltex ceil_rock', '@fog 1C0C04 12'
+
+# =====================================================================================================
+# FLOOR 9 - The Executive Floor.  Carpet, plants and a long gallery with offices on both sides. The
+# silver key is in the CFO's office, the board - two commanders - meets behind the silver door, and
+# the CEO's office behind the gold door has a lift of its own. And a printer.
+# =====================================================================================================
+New-Grid 56 42
+Add-Room 4 22 47 3 'WW' @(                                   # the gallery, one patrol
+    2, 1, 'oE',  0, 1, ':>',  46, 1, ':<',  7, 0, '*a',  17, 0, '*a',  29, 0, '*a',  39, 0, '*a',  7, 2, '*a',  17, 2, '*a',  29, 2, '*a',  39, 2, '*a'
+    0, 2, 'o>',  46, 2, 's<',  12, 0, 'ev',  34, 0, 'hv')
+Add-Room 25 36 5 4 'MM' @(2, 2, 'P^',  2, 1, '*l',  0, 0, '+a',  4, 0, '+h')                                        # arrival
+Add-Room 20 26 15 9 'WW' @(                                  # reception
+    0, 0, '*p',  14, 0, '*p',  0, 8, '*p',  14, 8, '*p',  5, 3, '*t',  6, 3, '*t',  8, 3, '*t',  9, 3, '*t',  7, 5, '*h'
+    7, 2, 'ov',  4, 2, 'gv',  10, 2, 'gv',  12, 6, 'h<',  1, 8, '+a',  13, 8, '+f')
+Add-Room 4 26 6 7 'WW' @(2, 3, '*t',  0, 6, '*p',  3, 2, 'ov',  4, 5, 'e^',  5, 6, '+a',  0, 0, '+1')                  # offices
+Add-Room 11 26 7 7 'WW' @(3, 3, '*t',  6, 6, '*p',  2, 5, 'h^',  5, 2, 'ov',  0, 6, '+f',  6, 0, '+2')
+Add-Room 37 26 7 7 'WW' @(3, 3, '*t',  0, 6, '*p',  1, 2, 'ov',  5, 5, 'e^',  3, 5, 'k^',  6, 6, '+a',  0, 0, '+3')
+Add-Room 45 26 6 7 'WW' @(2, 3, '*t',  5, 6, '*p',  3, 4, 's^',  1, 5, 'h^',  0, 6, '+h',  5, 0, '+1')
+Add-Room 4 12 12 9 'WW' @(                                   # the CFO's office: silver key
+    4, 3, '*t',  5, 3, '*t',  6, 3, '*t',  0, 0, '*p',  11, 0, '*p',  5, 2, '+s'
+    3, 5, 'ov',  8, 5, 'ov',  1, 7, 'e>',  10, 7, 'e<',  6, 6, 'hv',  11, 8, '+a',  0, 8, '+2',  10, 0, '+3')
+Add-Room 39 12 12 9 'TT' @(                                  # security
+    1, 0, '*m',  3, 0, '*m',  8, 0, '*m',  10, 0, '*m',  2, 3, 'kv',  9, 3, 'kv',  5, 4, 'sv',  2, 7, 'e>',  9, 7, 'e<',  6, 2, 'ov'
+    0, 8, '+a',  11, 8, '+h',  5, 0, '+o',  6, 0, '+o')
+Add-Room 18 9 19 12 'WW' @(                                  # the boardroom: two commanders
+    5, 5, '*t',  6, 5, '*t',  7, 5, '*t',  8, 5, '*t',  9, 5, '*t',  10, 5, '*t',  11, 5, '*t',  12, 5, '*t',  13, 5, '*t',  6, 3, '*h',  12, 3, '*h'
+    5, 2, 'bv',  13, 2, 'bv',  9, 2, 'ov',  2, 8, 'ev',  16, 8, 'ev',  9, 8, 'hv',  7, 9, 'hv',  11, 9, 'hv'
+    0, 0, '+h',  18, 0, '+h',  0, 11, '+a',  18, 11, '+a',  8, 0, '+z',  10, 0, '+o')
+Add-Room 20 3 16 5 'WW' @(                                   # the CEO's office
+    7, 1, '*t',  8, 1, '*t',  0, 0, '*p',  15, 0, '*p',  0, 4, '*f',  15, 4, '*f'
+    8, 2, 'uv',  3, 2, 'ev',  12, 2, 'ev',  1, 0, '+h',  14, 0, '+h',  1, 4, '+a',  14, 4, '+o')
+Add-Room 37 4 3 3 'MM' @(1, 1, '*l')                                                                                # the private lift
+Add-Room 16 4 3 3 'WW' @(0, 0, '+4',  0, 2, '+4',  0, 1, '+q')                                                      # cache behind a cracked wall
+Add-Room 6 8 4 3 'WW' @(0, 0, '+4',  3, 0, '+4',  0, 2, '+a',  3, 2, '+q')                                          # secret: CFO
+Add-Room 31 36 3 3 'WW' @(0, 0, '+a',  2, 0, '+a',  0, 2, '+c',  2, 2, '+h')                                        # secret: reception
+Add-Room 52 15 2 3 'TT' @(0, 0, '+z',  1, 0, '+z',  0, 2, '+u',  1, 2, '+h')                                        # secret: security
+Add-Things @(
+    27, 35, 'DD',  27, 25, 'DD',  6, 25, 'DD',   14, 25, 'DD',  40, 25, 'DD',  47, 25, 'DD',  9, 21, 'DD',  45, 21, 'DD'
+    27, 21, 'DS',  27, 8, 'DG',   36, 5, 'DL',   40, 5, 'MX'
+    7, 11, '?w',   32, 35, '?w',  51, 16, '?T',  19, 5, '!W'
+    12, 21, 'Wp',  20, 21, 'Ws',  34, 21, 'Ws',  42, 21, 'Wp',  10, 25, 'Wp',  23, 25, 'Ws',  31, 25, 'Ws',  44, 25, 'Wp'
+)
+Add-Spawns 3 @(27, 30, 'ov',  30, 24, 'e<',  27, 15, 'hv')
+Add-Spawns 4 @(24, 5, 'hv',  8, 28, 's>',  45, 16, 'kv')
+Save-Level 9 'The Executive Floor' 720 '2A2030' '584A5C' 'WW' -Look '@floortex flat_carpet', '@ceiltex ceil_plain', '@fog 100810 15'
+
+# =====================================================================================================
+# FLOOR 10 - Ring 0.  Two rings around the core. Patrols walk the outer ring; the gates to the inner
+# ring hang on two levers (north-east room, the silver arsenal in the south-east). A commander in the
+# inner ring has the gold key to the core - and in the core wait two printers, the last commander and,
+# in the middle of it all, the lift.
+# =====================================================================================================
+New-Grid 51 51
+Add-Room 4 4 43 3 'TT'; Add-Room 4 4 3 43 'TT'; Add-Room 44 4 3 43 'TT'; Add-Room 4 44 43 3 'TT'            # the outer ring
+Add-Room 12 12 27 3 'MM'; Add-Room 12 12 3 27 'MM'; Add-Room 36 12 3 27 'MM'; Add-Room 12 36 27 3 'MM'      # the inner ring
+Add-Room 16 16 19 19 'TT'                                                                                       # the core
+Add-Wall 23 22 5 6 'MM'; Add-Floor 24 24 3 3                                                                    # the lift shaft in the middle of it
+Add-Room 23 48 5 2 'MM' @(2, 1, 'P^',  0, 0, '+a',  4, 0, '+h')                                                 # arrival
+Add-Room 24 40 3 3 'MM' @(0, 0, '+a',  2, 0, '+h',  0, 2, '+a')                                                 # gates: south, north, west, east
+Add-Room 24 8 3 3 'MM' @(0, 1, 'h>')
+Add-Room 8 24 3 3 'MM' @(1, 0, 'ev')
+Add-Room 40 24 3 3 'MM' @(1, 2, 'e^')
+Add-Room 8 8 3 3 'MM' @(0, 0, '+s',  2, 0, '+a',  1, 2, 'o^')                                                   # north-west: silver key
+Add-Room 40 8 3 3 'MM' @(0, 0, '+a',  2, 0, '+h',  0, 2, 'k^',  2, 2, 'k^')                                     # north-east: lever 1
+Add-Room 8 40 3 3 'MM' @(0, 0, '+h',  2, 0, '+h',  1, 0, '+o',  0, 2, '+a',  2, 2, '+a')                        # south-west: supplies
+Add-Room 40 40 3 3 'MM' @(0, 0, '+z',  2, 0, '+z',  0, 1, '+o',  2, 1, '+o',  0, 2, '+q',  2, 2, '+u')          # south-east: the arsenal, lever 2
+Add-Room 8 14 3 5 'TT' @(0, 0, '+4',  2, 0, '+4',  0, 4, '+a',  2, 4, '+h')                                     # secret: west
+Add-Room 40 30 3 5 'TT' @(2, 0, '+c',  2, 4, '+a',  0, 0, '+u',  0, 4, '+h')                                    # secret: east
+Add-Room 14 8 5 3 'TT' @(0, 0, '+4',  4, 0, '+4',  0, 2, '+z',  4, 2, '+z')                                     # secret: north
+Add-Room 32 40 5 3 'TT' @(0, 0, '+o',  4, 0, '+o',  2, 0, '+h')                                                 # cache behind a cracked wall
+Add-Things @(
+    25, 47, 'DD',  25, 43, 'DD',  25, 39, 'D1',  25, 7, 'DD',   25, 11, 'D1',  7, 25, 'DD',   11, 25, 'D2',  43, 25, 'DD',  39, 25, 'D2'
+    9, 7, 'DD',    41, 7, 'DD',   41, 11, 'X1',  9, 43, 'DD',   41, 43, 'DS',  41, 39, 'X2',  25, 15, 'DG',  25, 27, 'DL',  25, 23, 'MX',  25, 25, '*l'
+    7, 16, '?T',   39, 32, '?M',  16, 7, '?T',   34, 43, '!T'
+    # the outer ring: four patrols walk it clockwise, snipers in the corners, mutants in the niches
+    5, 5, ':>',    45, 5, ':v',   45, 45, ':<',  5, 45, ':^',   10, 5, 'eE',   45, 20, 'eS',  40, 45, 'eW',  5, 30, 'eN'
+    4, 4, 's>',    46, 4, 'sv',   46, 46, 's<',  4, 46, 's^',   15, 6, 'mn',   35, 4, 'ms',   44, 15, 'me',  46, 35, 'mw',  15, 44, 'mn',  35, 46, 'mn',  4, 15, 'me',  6, 35, 'mw'
+    20, 6, '+a',   30, 6, '+a',   6, 22, '+a',   44, 28, '+a',  20, 44, '+a',  31, 46, '+a'
+    12, 4, '+a',   38, 6, '+a',   46, 12, '+f',  44, 38, '+a',  12, 46, '+h',  38, 44, '+a',  4, 38, '+a',   6, 12, '+f'
+    # the inner ring: shield-bearers on patrol, kamikaze robots, the commander with the gold key
+    13, 13, ':>',  37, 13, ':v',  37, 37, ':<',  13, 37, ':^',  18, 13, 'hE',  32, 37, 'hW'
+    30, 12, 'b<',  14, 20, 'kv',  36, 30, 'k^',  20, 38, 'k>',  30, 36, 'k<',  38, 12, 'e<',  12, 38, 'e>',  38, 38, 'e^'
+    12, 12, '+h',  36, 36, '+a',  14, 36, '+a',  14, 14, '+o',  36, 14, '+o'
+    # the core
+    19, 19, '*c',  31, 19, '*c',  19, 31, '*c',  31, 31, '*c',  19, 25, '*c',  31, 25, '*c'
+    25, 19, 'b^',  19, 28, 'u^',  31, 28, 'u^',  17, 17, 'e>',  33, 17, 'e<',  17, 33, 'k^',  33, 33, 'k^',  22, 30, 'h^',  28, 30, 'h^'
+    16, 16, '+h',  34, 16, '+h',  16, 34, '+h',  34, 34, '+h',  17, 16, '+a',  33, 16, '+a',  17, 34, '+o',  33, 34, '+o',  16, 25, '+z',  34, 25, '+z',  25, 33, '+q'
+)
+Add-Spawns 3 @(30, 44, 'e<',  14, 25, 'h<',  24, 31, 'e^')
+Add-Spawns 4 @(20, 20, 'h^',  30, 20, 'h^',  4, 20, 'sv')
+Save-Level 10 'Ring 0' 900 '101018' '30303C' 'TT' -Look '@floortex flat_tech', '@ceiltex ceil_tech', '@fog 04040C 11'
 
 # =====================================================================================================
 # SECRET FLOOR (from floor 2) - The Treasury.  Behind the push-wall in dorm B of the barracks hides a
