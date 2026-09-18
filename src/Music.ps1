@@ -13,6 +13,7 @@
 $script:MUSIC_RATE = 22050
 $script:MUSIC_VERSION = 3                       # bump to invalidate cached tracks
 $script:MUSIC_BONUS = 99                        # track number of the secret floor
+$script:MUSIC_ENDING = 98                       # ... and of the epilogue
 $script:MusicEnabled = $true
 $script:MusicIds = @{}                          # track -> the mixer's id of its samples
 $script:MusicTrack = -1
@@ -26,6 +27,7 @@ $script:MusicStyles = @{
     crypt    = @{ Tempo = 66;  Root = 65.41; Bars = 8;  Scale = 0, 1, 3, 6, 7, 8, 11; Chords = '0m', '0m', '1M', '0m', '-2m', '0m', '6m', '1M' }
     techno   = @{ Tempo = 138; Root = 55.0;  Bars = 16; Scale = 0, 2, 3, 5, 7, 8, 10; Chords = '0m', '0m', '0m', '0m', '8M', '8M', '10M', '10M' }
     finale   = @{ Tempo = 164; Root = 73.42; Bars = 16; Scale = 0, 2, 3, 5, 7, 8, 11; Chords = '0m', '0m', '8M', '7M', '0m', '5m', '7M', '7M' }
+    ending   = @{ Tempo = 92;  Root = 65.41; Bars = 32; Scale = 0, 2, 4, 5, 7, 9, 11;    Chords = '0M', '7M', '9m', '5M', '0M', '7M', '5M', '0M', '5M', '7M', '4m', '9m', '5M', '7M', '0M', '0M' }
     treasure = @{ Tempo = 126; Root = 65.41; Bars = 16; Scale = 0, 2, 4, 7, 9;        Chords = '0M', '0M', '5M', '0M', '9m', '5M', '7M', '0M' }
 }
 
@@ -35,6 +37,7 @@ $script:FloorStyles = 'rock', 'march', 'crypt', 'techno', 'finale', 'techno', 'c
 function Get-MusicStyle([int]$Track) {
     if ($Track -le 0) { return 'anthem' }
     if ($Track -eq $script:MUSIC_BONUS) { return 'treasure' }
+    if ($Track -eq $script:MUSIC_ENDING) { return 'ending' }
     $script:FloorStyles[($Track - 1) % $script:FloorStyles.Count]
 }
 
@@ -383,6 +386,44 @@ function Add-TreasureMusic([hashtable]$Def, [hashtable]$Kit, [System.Random]$Rng
     }
 }
 
+# The epilogue: C major at walking pace. A theme that sings (eight bars), a second one that climbs (eight more),
+# then both again with a second voice a third above, a fuller beat and the timpani. It begins almost alone -
+# an arpeggio and a bass - the way the morning does.
+function Add-EndingMusic([hashtable]$Def, [hashtable]$Kit, [System.Random]$Rng) {
+    $ch = $script:Mx.Ch
+    $theme = '4---..4-7---6-4-', '6-----4---..1-2-', '2---..2-5---4-2-', '3-----..0-1-2-3-',
+             '4---..4-7---8-9-', '8-----6---..4-6-', '7---5---3---5---', '7-----------....',
+             '5-..5-7-a---9-7-', '8-..8-9-b---9-8-', '9-----8-6---4---', '5-----..5-7-9-c-',
+             'c---a---9---7---', 'b---9---8---6---', '7-8-9-b-c---b---', 'e-----------....'
+    for ($bar = 0; $bar -lt $Def.Bars; $bar++) {
+        $chord = Get-Chord $Def.Chords[$bar % 16]; $at = $bar * 16; $again = $bar -ge 16; $last = $bar -eq $Def.Bars - 1
+        # bass: root, fifth, root an octave up
+        if ($last) { Add-Note $ch.Bass $at 15 $chord.Semi 54 'triangle' 0.6 }
+        else {
+            Add-Note $ch.Bass $at 7 $chord.Semi 54 'triangle' 0.7
+            Add-Note $ch.Bass ($at + 8) 3.6 ($chord.Semi + 7) 50 'triangle' 0.7
+            Add-Note $ch.Bass ($at + 12) 3.6 ($chord.Semi + 12) 50 'triangle' 0.7
+        }
+        # the arpeggio that carries it all
+        for ($s = 0; $s -lt 16; $s += 2) {
+            $tone = $chord.Tones[(0, 1, 2, 1, 0, 2, 1, 2)[$s / 2]] + $(if ($s -in 4, 10) { 12 } else { 0 })
+            Add-Note $ch.Extra ($at + $s) 1.8 ($chord.Semi + 24 + $tone) $(if ($again) { 13 } else { 15 }) 'thin' 0.45
+        }
+        if ($bar -ge 2) {
+            Add-Melody $ch.Lead $bar $theme[$bar % 16] -Scale $Def.Scale -BaseSemi 12 -Amp 34 -Wave $(if ($again) { 'square' } else { 'pulse' }) -Decay 0.6
+            if ($again) { Add-Melody $ch.Harm $bar $theme[$bar % 16] -Scale $Def.Scale -BaseSemi 12 -Amp 17 -Wave 'pulse' -Decay 0.6 -Shift 2 }
+            else { Add-Melody $ch.Harm $bar $theme[$bar % 16] -Scale $Def.Scale -BaseSemi 12 -Amp 9 -Wave 'thin' -Decay 0.5 -Delay 3 }       # an echo
+        }
+        if ($bar -ge 8) {
+            foreach ($s in 0, 8) { Add-Drum $ch.DrumA $bar $s $(if ($again) { $Kit.Kick } else { $Kit.Heart }) }
+            foreach ($s in 4, 12) { Add-Drum $ch.DrumB $bar $s $(if ($again) { $Kit.Snare } else { $Kit.SnareSoft }) }
+            if ($again) { foreach ($s in 2, 6, 10, 14) { Add-Drum $ch.DrumB $bar $s $Kit.Hat } }
+        }
+        if ($bar % 16 -eq 15) { foreach ($s in 8, 10, 12, 13, 14, 15) { Add-Drum $ch.DrumA $bar $s $Kit.Timpani } }                 # the roll into the next part
+        if ($bar -eq 16) { Add-Drum $ch.DrumB $bar 0 $Kit.Crash }
+    }
+}
+
 # ---------------------------------------------------------------------------------------------
 # Rendering a track to a 16 bit mono WAV file
 # ---------------------------------------------------------------------------------------------
@@ -391,7 +432,7 @@ function New-MusicTrack([int]$Track, [string]$Path) {
     $def = $script:MusicStyles[$style]
     $rng = [System.Random]::new(4200 + $Track)
     $round = [int][Math]::Floor([Math]::Max(0, $Track - 1) / 5)                 # floors 6+ reuse the styles, two semitones up each round
-    if ($Track -eq $script:MUSIC_BONUS) { $round = 0 }
+    if ($Track -in $script:MUSIC_BONUS, $script:MUSIC_ENDING) { $round = 0 }
     $stepLen = [int]($script:MUSIC_RATE * 60.0 / $def.Tempo / 4)               # one sixteenth note
     $total = [int][Math]::Ceiling($stepLen * 16 * $def.Bars / 64.0) * 64       # a multiple of every vector width
     $script:Mx = @{
@@ -409,6 +450,7 @@ function New-MusicTrack([int]$Track, [string]$Path) {
         'techno'   { Add-TechnoMusic $def $kit $rng }
         'finale'   { Add-FinaleMusic $def $kit $rng }
         'treasure' { Add-TreasureMusic $def $kit $rng }
+        'ending'   { Add-EndingMusic $def $kit $rng }
     }
 
     # mix: the channel amplitudes are chosen so that the sum cannot overflow 16 bits
@@ -433,6 +475,12 @@ function New-MusicTrack([int]$Track, [string]$Path) {
 }
 
 function Get-MusicPath([int]$Track) { Join-Path $script:MusicDir ("track{0}-v{1}.wav" -f $Track, $script:MUSIC_VERSION) }
+
+# Composes a track ahead of time, so that it starts without a pause when it is wanted.
+function Initialize-MusicTrack([int]$Track) {
+    if (-not $script:MusicEnabled -or -not $script:Mixer) { return }
+    try { $path = Get-MusicPath $Track; if (-not (Test-Path -LiteralPath $path)) { New-MusicTrack $Track $path } } catch { }
+}
 
 function Start-Music([int]$Track) {
     if (-not $script:MusicEnabled -or -not $script:Mixer) { return }

@@ -791,7 +791,7 @@ function Invoke-SelfTest([string]$OutDir) {
     else { Write-Step 'mixer test: no sound device (skipped)' }
 
     # ---- music: every style must render, stay within 16 bits and differ from the others ----
-    $lengths = foreach ($track in 0, 1, 2, 3, 4, 5, $script:MUSIC_BONUS) {
+    $lengths = foreach ($track in 0, 1, 2, 3, 4, 5, $script:MUSIC_BONUS, $script:MUSIC_ENDING) {
         $wav = Join-Path $OutDir "music-$track.wav"
         New-MusicTrack $track $wav
         $bytes = [System.IO.File]::ReadAllBytes($wav)
@@ -802,6 +802,21 @@ function Invoke-SelfTest([string]$OutDir) {
         "$(Get-MusicStyle $track) $([int]($samples.Length / $script:MUSIC_RATE))s"
     }
     Write-Step "music test: $($lengths -join ', ')"
+
+    # ---- the epilogue: it scrolls, it can be hurried and skipped, and it ends on the title screen ----
+    $script:LevelIndex = $script:MapFiles.Count - 1; $script:BonusMap = $null; Start-Level $false $false
+    Start-Ending
+    $none = [int[]]@()
+    for ($f = 0; $f -lt 40; $f++) { $script:ModeTics += 70; Update-Ending 70 $none }
+    $middle = $script:Ending.Scroll / $script:Ending.Total
+    Show-Ending; Save-BackBuffer (Join-Path $OutDir 'screen-ending.png')
+    $terminalRows = @(Get-EndingScreen | Where-Object { $_ }).Count
+    Update-Ending 1 ([int[]]@(13)); $skipped = $script:Ending.Done
+    Update-Ending 200 $none; Show-Ending; Save-BackBuffer (Join-Path $OutDir 'screen-ending-card.png')
+    Update-Ending 1 ([int[]]@(13))
+    Write-Step "ending test: $($script:EndingLines.Count) lines, $([int]($script:Ending.Total / $script:ENDING_SPEED / 70)) s at reading speed; after 40 s at $([int]($middle * 100)) %, $terminalRows rows in a terminal; Enter skips: $skipped; then mode '$($script:Mode)'"
+    if ($middle -lt 0.3 -or $middle -gt 0.7 -or $terminalRows -lt 8 -or -not $skipped -or $script:Mode -ne 'title') { throw 'ending test failed.' }
+    foreach ($line in $script:EndingLines) { if ($line[0].Length -gt 84) { throw "ending test failed: the line '$($line[0])' is too long for the screen." } }
 
     # ---- the floor as a test suite ----
     Remove-Item -LiteralPath (Get-AchievementPath) -ErrorAction SilentlyContinue

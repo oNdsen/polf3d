@@ -106,6 +106,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
     $script:MusicWanted = if ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
+    if (-not $script:DungeonSeed -and -not $script:BonusMap -and $script:MapFiles.Count -gt 1 -and $script:LevelIndex -eq $script:MapFiles.Count - 1) { Initialize-MusicTrack $script:MUSIC_ENDING }
 }
 
 function Set-Mode([string]$Mode) {
@@ -365,7 +366,7 @@ function Show-DoneScreen {
         Write-HudText "Dungeon #$($script:DungeonSeed)   $was" 'Small' '40E0FF' 0 182 320 8
         Write-HudText "proof: saves/$($r.DungeonDemo)   (check it with -VerifyDemo)" 'Small' '8FB0FF' 0 190 320 8
     }
-    $foot = if ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected -and -not $r.Last) { 'Waiting for the host to call the lift ...' } elseif ($r.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
+    $foot = if ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected -and -not $r.Last) { 'Waiting for the host to call the lift ...' } elseif ($r.Last) { $(if ($script:DungeonSeed -or $script:MapFiles.Count -le 1) { 'Completed - thanks for playing!   Enter = main menu' } else { 'All floors completed!   Enter = the way out' }) } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
     Write-HudText $foot 'Small' 'FFE860' 0 200 320 10
 }
 
@@ -628,10 +629,16 @@ function Start-GameLoop {
                 if ($hits -contains $vk.Enter -or $hits -contains $vk.Esc) { Set-Mode 'title' }
             }
 
+            'ending' {
+                Update-Ending $tics $hits
+                if ($script:Mode -eq 'ending') { Show-Ending }
+            }
+
             'done' {
                 Show-DoneScreen
                 if ($script:ModeTics -gt 50 -and ($hits -contains $vk.Enter -or $hits -contains $vk.Esc)) {
-                    if ($script:Result.Last) { Set-Mode 'title' }
+                    if ($script:Result.Last -and -not $script:DungeonSeed -and $script:MapFiles.Count -gt 1) { Start-Ending }      # the campaign is over: the epilogue
+                    elseif ($script:Result.Last) { Set-Mode 'title' }
                     elseif ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected) { }      # the host calls the lift
                     elseif ($script:Result.ToBonus) { $script:BonusMap = $script:Result.BonusPath; Start-Level $true $true; Set-Mode 'play' }
                     else { $script:BonusMap = $null; $script:LevelIndex++; Start-Level $true $true; Set-Mode 'play' }
