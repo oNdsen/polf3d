@@ -13,6 +13,8 @@
 public static class PolfScaler
 {
     public static int FogColor = unchecked((int)0xFF101010);
+    // Optional, one factor per screen column: the flashlight's cone thins the haze in the middle of the picture.
+    public static double[] ColumnFog = null;
 
     static int Mix(int c, int fog)
     {
@@ -90,12 +92,15 @@ public static class PolfScaler
             double fx = px + rowDist * (dirX - planeX) + stepX * 0.5;
             double fy = py + rowDist * (dirY - planeY) + stepY * 0.5;
             int fog = (int)(rowDist * fogPerTile); if (fog > maxFog) fog = maxFog;
+            double rowFog = rowDist * fogPerTile;
+            double[] cone = ColumnFog;
             int rowF = y * fbW, rowC = (fbH - 1 - y) * fbW;
             for (int x = 0; x < fbW; x++)
             {
                 int tx = (int)(fx * 64.0) & 63, ty = (int)(fy * 64.0) & 63;
                 fx += stepX; fy += stepY;
                 int i = ty * 64 + tx;
+                if (cone != null) { fog = (int)(rowFog * cone[x]); if (fog > maxFog) fog = maxFog; }
                 fb[rowF + x] = Mix(floorTex[i], fog);
                 fb[rowC + x] = Mix(ceilTex[i], fog);
             }

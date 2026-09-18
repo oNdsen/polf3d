@@ -8,13 +8,13 @@ $script:BindDefaults = [ordered]@{
     Forward = 87; Back = 83; StrafeLeft = 65; StrafeRight = 68; TurnLeft = 37; TurnRight = 39
     Run = 16; Sneak = 67; Fire = 17; Use = 32; Map = 77; Console = 84
     WhatIf = 90; Confirm = 88; Verbose = 86; Force = 70; Undo = 82
-    Macro1 = 71; Macro2 = 72; Macro3 = 66; Macro4 = 89
+    Macro1 = 71; Macro2 = 72; Macro3 = 66; Macro4 = 89; Light = 76
 }
 $script:BindLabels = @{
     Forward = 'forward'; Back = 'back'; StrafeLeft = 'strafe left'; StrafeRight = 'strafe right'; TurnLeft = 'turn left'; TurnRight = 'turn right'
     Run = 'run'; Sneak = 'sneak'; Fire = 'fire'; Use = 'use'; Map = 'automap (hold)'; Console = 'console'
     WhatIf = '-WhatIf'; Confirm = '-Confirm'; Verbose = '-Verbose'; Force = '-Force'; Undo = 'Undo'
-    Macro1 = 'console hotkey 1'; Macro2 = 'console hotkey 2'; Macro3 = 'console hotkey 3'; Macro4 = 'console hotkey 4'
+    Light = 'flashlight'; Macro1 = 'console hotkey 1'; Macro2 = 'console hotkey 2'; Macro3 = 'console hotkey 3'; Macro4 = 'console hotkey 4'
 }
 # what every row of the menu is for - shown to the right of its value
 $script:OptionHelp = @{
@@ -41,6 +41,7 @@ $script:OptionHelp = @{
     Verbose = '15 privilege: ten seconds of seeing everybody nearby through walls'
     Force = '35 privilege: kicks in the door or the cracked wall in front of you'
     Undo = '60 privilege: the last five seconds never happened'
+    Light = 'in dark rooms: you see further - and everybody sees you'
     Macro1 = 'runs the command line you put on it in the console: Set-Hotkey 1 ''...'''
     Macro2 = 'the second console hotkey: Set-Hotkey 2 ''...'''
     Macro3 = 'the third console hotkey: Set-Hotkey 3 ''...'''

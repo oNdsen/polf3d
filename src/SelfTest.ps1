@@ -392,6 +392,24 @@ function Invoke-SelfTest([string]$OutDir) {
         $plainHealth -ne 60 -or $script:P.Health -ne 65 -or $script:P.Modules.Count -ne $script:ModulePerks.Count -or $none.Count -ne 0 -or -not $script:StorySecrets) { throw 'perk test failed.' }
     $script:Difficulty = $keepDifficulty; New-Player
 
+    # ---- light and darkness: a dark room is dark, the flashlight helps the player - and whoever is looking for him ----
+    $script:LevelIndex = 5; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    Add-Enemy 'guard' 4 11 0 'stand'; $watcher = $script:Actors[$script:Actors.Count - 1]
+    Set-TestCamera 9.5 11.5 180
+    $sums = foreach ($light in $false, $true) {
+        $script:P.Light = $light
+        for ($f = 0; $f -lt 40; $f++) { Show-PlayFrame }
+        Save-BackBuffer (Join-Path $OutDir "view-dark-$(if ($light) { 'flashlight' } else { 'off' }).png")
+        $sum = 0L; for ($i = 0; $i -lt $script:FB.Length; $i += 7) { $c = $script:FB[$i]; $sum += (($c -shr 16) -band 255) + (($c -shr 8) -band 255) + ($c -band 255) }
+        [pscustomobject]@{ Light = $light; Brightness = [int]($sum / ($script:FB.Length / 7) / 3); Seen = (Test-Sight $watcher) }
+    }
+    $script:MadeNoise = $true; $script:P.Light = $false; Show-PlayFrame; $script:MadeNoise = $false
+    Save-BackBuffer (Join-Path $OutDir 'view-dark-muzzle.png')
+    Set-TestCamera 13.5 20.5 90; for ($f = 0; $f -lt 40; $f++) { Show-PlayFrame }
+    Write-Step "darkness test: dark areas $(@($script:DarkArea | Where-Object { $_ }).Count); brightness without/with the flashlight $($sums[0].Brightness)/$($sums[1].Brightness); the guard five tiles away sees the player: $($sums[0].Seen)/$($sums[1].Seen); back in the aisle the darkness is $($script:Darkness)"
+    if (@($script:DarkArea | Where-Object { $_ }).Count -ne 1 -or $sums[1].Brightness -le $sums[0].Brightness * 1.3 -or $sums[0].Seen -or -not $sums[1].Seen -or $script:Darkness -ne 0) { throw 'darkness test failed.' }
+    $script:LevelIndex = 0
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

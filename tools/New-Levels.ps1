@@ -21,6 +21,13 @@ function New-Grid([int]$Width, [int]$Height) {
     $script:W = $Width; $script:H = $Height
     $script:grid = New-Object 'string[,]' $Width, $Height          # $null = untouched rock
     $script:spawns = [System.Collections.Generic.List[string]]::new()
+    $script:darks = [System.Collections.Generic.List[string]]::new()
+}
+
+# The room around this tile has no light: flashlight and muzzle flashes only.
+function Add-Dark([int]$X, [int]$Y) {
+    if ($script:grid[$X, $Y] -ne '..') { throw "Dark room marker $X,$Y is not on a free floor tile" }
+    $script:darks.Add("@dark $X $Y")
 }
 
 # Reinforcements that only appear from difficulty $MinDifficulty (3 = Senior Engineer, 4 = root).
@@ -131,6 +138,7 @@ function Save-Level([int]$Number, [string]$Name, [int]$Par, [string]$Ceiling, [s
     $lines.Add("@name $Name"); $lines.Add("@par $Par"); $lines.Add("@ceiling $Ceiling"); $lines.Add("@floor $Floor")
     foreach ($l in $Look) { $lines.Add($l) }                      # @floortex / @ceiltex / @fog
     foreach ($sp in $script:spawns) { $lines.Add($sp) }
+    foreach ($dk in $script:darks) { $lines.Add($dk) }
     $lines.Add('@map')
     for ($y = 0; $y -lt $script:H; $y++) {
         $sb = [System.Text.StringBuilder]::new()
@@ -442,6 +450,7 @@ Add-Things @(
 )
 Add-Spawns 3 @(14, 20, 'ev',  25, 30, 'h<',  43, 18, 'e^')
 Add-Spawns 4 @(45, 29, 'h<',  5, 15, 'm>',  30, 9, 's<')
+Add-Dark 5 15                                                 # the cooling plant
 Save-Level 6 'The Data Centre' 600 '1C2430' '46505C' 'TT' -Look '@floortex flat_tech', '@ceiltex ceil_tech', '@fog 081420 13'
 
 # =====================================================================================================
@@ -492,6 +501,7 @@ Add-Things @(
 )
 Add-Spawns 3 @(26, 33, 'ov',  9, 14, 'o>',  43, 15, 'ev')
 Add-Spawns 4 @(24, 15, 'h^',  10, 30, 'k>',  42, 30, 's<')
+Add-Dark 43 14                                                # the tape vault
 Save-Level 7 'The Archive' 660 '3A2C1C' '6A5A40' 'WW' -Look '@floortex flat_wood', '@ceiltex ceil_plain', '@fog 120C06 12'
 
 # =====================================================================================================
@@ -535,6 +545,7 @@ Add-Things @(
 )
 Add-Spawns 3 @(16, 31, 'e<',  34, 22, 'ev',  52, 30, 'h^')
 Add-Spawns 4 @(55, 22, 'hv',  24, 29, 's>',  35, 34, 'e^')
+Add-Dark 31 35                                                # the storage
 Save-Level 8 'The Foundry' 660 '2E1C14' '5A463A' 'RR' -Look '@floortex flat_stone', '@ceiltex ceil_rock', '@fog 1C0C04 12'
 
 # =====================================================================================================
@@ -581,6 +592,7 @@ Add-Things @(
 )
 Add-Spawns 3 @(27, 30, 'ov',  30, 24, 'e<',  27, 15, 'hv')
 Add-Spawns 4 @(24, 5, 'hv',  8, 28, 's>',  45, 16, 'kv')
+Add-Dark 45 17                                                # security likes it dim
 Save-Level 9 'The Executive Floor' 720 '2A2030' '584A5C' 'WW' -Look '@floortex flat_carpet', '@ceiltex ceil_plain', '@fog 100810 15'
 
 # =====================================================================================================
@@ -628,6 +640,7 @@ Add-Things @(
 )
 Add-Spawns 3 @(30, 44, 'e<',  14, 25, 'h<',  24, 31, 'e^')
 Add-Spawns 4 @(20, 20, 'h^',  30, 20, 'h^',  4, 20, 'sv')
+Add-Dark 20 21                                                # the core
 Save-Level 10 'Ring 0' 900 '101018' '30303C' 'TT' -Look '@floortex flat_tech', '@ceiltex ceil_tech', '@fog 04040C 11'
 
 # =====================================================================================================

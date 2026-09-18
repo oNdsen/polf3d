@@ -29,6 +29,7 @@ function New-Player {
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0; PainTics = 0.0; RageTics = 0.0; LookHold = 0.0; FaceKey = ''
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
+        Light = $false                                            # the flashlight (dark rooms)
         Modules = @()                                             # Install-Module between the floors (Perks.ps1)
     }
 }

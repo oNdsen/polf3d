@@ -69,6 +69,32 @@ function Update-View {
 
     # distance haze: fog units (0..256) per tile, capped so far walls never vanish completely
     $fogK = [double]$script:FogPerTile; $maxFog = 205
+    # light and darkness: in a dark room the haze closes in and turns black. A shot lights the room up for a moment,
+    # the flashlight thins the haze in the middle of the picture (one factor per column, also used by the floor caster).
+    $wantDark = if ($script:DarkArea -and $script:P.Area -ge 0 -and $script:DarkArea[$script:P.Area]) { 1.0 } else { 0.0 }
+    $script:Darkness += ($wantDark - $script:Darkness) * 0.15
+    if ([Math]::Abs($wantDark - $script:Darkness) -lt 0.01) { $script:Darkness = $wantDark }
+    $script:LightFlash = if ($script:MadeNoise) { 1.0 } else { $script:LightFlash * 0.55 }
+    $gloom = [double]$script:Darkness
+    $cone = $script:ConeOnes
+    if (-not $cone -or $cone.Length -ne $W) { $cone = $script:ConeOnes = [double[]]::new($W); for ($x = 0; $x -lt $W; $x++) { $cone[$x] = 1.0 }; $script:ConeKey = -1 }
+    $scaler::ColumnFog = $null
+    if ($gloom -gt 0) {
+        if (-not $script:DarkTold -and $gloom -gt 0.5) { $script:DarkTold = $true; if (-not $script:P.Light) { Show-Message "It is dark in here. $(Get-KeyName $script:Bind.Light) = flashlight: you see the room - and the room sees you" } }
+        $fogK *= (1.0 + 3.6 * $gloom) * (1.0 - 0.72 * $script:LightFlash)
+        $maxFog = 205 + [int](47 * $gloom * (1.0 - $script:LightFlash))
+        $base = $script:FogColor; $keep = 1.0 - 0.92 * $gloom
+        $scaler::FogColor = (255 -shl 24) -bor ([int]((($base -shr 16) -band 255) * $keep) -shl 16) -bor ([int]((($base -shr 8) -band 255) * $keep) -shl 8) -bor [int](($base -band 255) * $keep)
+        if ($script:P.Light) {
+            $key = [int]($gloom * 40)
+            if ($script:ConeKey -ne $key -or -not $script:ConeLit -or $script:ConeLit.Length -ne $W) {
+                $script:ConeLit = [double[]]::new($W); $script:ConeKey = $key
+                for ($x = 0; $x -lt $W; $x++) { $u = ($x - $W / 2.0) / ($W * 0.34); $script:ConeLit[$x] = 1.0 - 0.8 * $gloom * [Math]::Exp(- $u * $u * 2.2) }
+            }
+            $cone = $script:ConeLit; $scaler::ColumnFog = $cone
+        }
+    }
+    elseif ($scaler::FogColor -ne $script:FogColor) { $scaler::FogColor = $script:FogColor }
 
     # windows: the ray goes on, the window strip is remembered and drawn over the scene later
     $isWin = $script:IsWindow
@@ -169,7 +195,7 @@ function Update-View {
         }
 
         if ($perp -lt 0.02) { $perp = 0.02 }
-        $fog = [int]($perp * $fogK); if ($fog -gt $maxFog) { $fog = $maxFog }
+        $fog = [int]($perp * $fogK * $cone[$col]); if ($fog -gt $maxFog) { $fog = $maxFog }
         $scaler::Wall($fb, $W, $H, $col, $step, [int]($projH / $perp), $tex, $texX, $fog, $false)
         $zbuf[$col] = $perp
         if ($step -gt 1) { for ($k = 1; $k -lt $step -and ($col + $k) -lt $W; $k++) { $zbuf[$col + $k] = $perp } }
@@ -234,7 +260,7 @@ function Update-View {
                 for ($c = 0; $c -lt $W; $c += $step) { if ($winD[$c] -gt 0) { $scaler::Wall($fb, $W, $H, $c, $step, [int]($projH / [Math]::Max(0.02, $winD[$c])), $winT[$c], $winX[$c], [int][Math]::Min($maxFog, $winD[$c] * $fogK), $true) } }
                 $windowsPending = $false
             }
-            $fog = [int]($it[3] * $fogK); if ($fog -gt $maxFog) { $fog = $maxFog }
+            $fog = [int]($it[3] * $fogK * $cone[[Math]::Max(0, [Math]::Min($W - 1, [int]$it[1]))]); if ($fog -gt $maxFog) { $fog = $maxFog }
             $scaler::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3], $fog)
         }
     }

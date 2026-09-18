@@ -516,6 +516,7 @@ function Start-GameLoop {
                     elseif ($h -eq $script:Bind.Verbose) { $script:AbilityKey = 3 }
                     elseif ($h -eq $script:Bind.Force) { $script:AbilityKey = 4 }
                     elseif ($h -eq $script:Bind.Undo) { $script:AbilityKey = 5 }
+                    elseif ($h -eq $script:Bind.Light) { $script:AbilityKey = 6 }
                     elseif ($h -eq $script:Bind.Macro1) { Invoke-ConsoleHotkey 1 }
                     elseif ($h -eq $script:Bind.Macro2) { Invoke-ConsoleHotkey 2 }
                     elseif ($h -eq $script:Bind.Macro3) { Invoke-ConsoleHotkey 3 }

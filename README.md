@@ -106,6 +106,7 @@ map format, HUD, menus, music, network protocol.
 | `Z` `X` `V` `F` `R` | the powers: `-WhatIf`, `-Confirm`, `-Verbose`, `-Force`, Undo (see [below](#powershell-is-the-point)) |
 | `T`, `Tab` | the PowerShell console – or "use" a terminal or a server rack |
 | `G` `H` `B` `Y` | the four console hotkeys: whatever command line you put on them with `Set-Hotkey` |
+| `L` | flashlight (dark rooms) |
 | `M` (hold) / `N` | automap / radar minimap on and off |
 | `F2` / `F3` / `F4` | mouse look / fps display / music on and off |
 | `F5` / `F9` | quick save / quick load |
@@ -346,6 +347,10 @@ down again, for 15 privilege a step. (Setting it to `Unrestricted` is free. You 
 
 ## Level machinery
 
+* **Dark rooms** (floors 6–10 each have one – on floor 10 it is the core). The haze closes in and turns black; every
+  shot lights the room up for a moment. `L` switches on a flashlight that opens a cone of light in the middle of the
+  picture. It cuts both ways: in the dark nobody sees further than three and a half tiles – unless you carry a light
+  around. A map marks them with `@dark <x> <y>`.
 * **Doors** slide into the wall and close again by themselves; gold and silver locks need the matching key.
 * **Lever doors** cannot be opened by hand: somewhere there is a wall lever with the same number.
 * **Secret push-walls** slide back two tiles when you press against them. **Cracked walls** only give way to explosions.
