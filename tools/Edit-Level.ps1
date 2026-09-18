@@ -37,6 +37,11 @@ $script:Palette = @(
     @('WW', 'Wall: wood', 'tile'), @('Wp', 'Wall: wood, portrait', 'tile'), @('Ws', 'Wall: wood, shield', 'tile'),
     @('RR', 'Wall: brick', 'tile'), @('Rb', 'Wall: brick, banner', 'tile'), @('MM', 'Wall: steel', 'tile'),
     @('GG', 'Wall: mossy rock', 'tile'), @('Gv', 'Wall: mossy rock, vines', 'tile'), @('TT', 'Wall: tech', 'tile'), @('Tl', 'Wall: tech, console', 'tile'),
+    @('St', 'Wall: stone, PS console', 'tile'), @('Bt', 'Wall: blue stone, PS console', 'tile'), @('Wt', 'Wall: wood, PS console', 'tile'), @('Rt', 'Wall: brick, PS console', 'tile'),
+    @('Mt', 'Wall: steel, PS console', 'tile'), @('Gt', 'Wall: mossy rock, dead console', 'tile'), @('Tt', 'Wall: tech, PS console', 'tile'),
+    @('Sh', 'Wall: stone, Get-Help poster', 'tile'), @('Wh', 'Wall: wood, Get-Help poster', 'tile'), @('Rh', 'Wall: brick, Get-Help poster', 'tile'),
+    @('Me', 'Wall: steel, error screen', 'tile'), @('Te', 'Wall: tech, error screen', 'tile'), @('Mn', 'Wall: steel, neon prompt', 'tile'), @('Tn', 'Wall: tech, neon prompt', 'tile'),
+    @('Rg', 'Wall: brick, graffiti', 'tile'), @('Sg', 'Wall: stone, graffiti', 'tile'),
     @('MX', 'Lift switch (exit)', 'tile'), @('MY', 'Secret lift switch (bonus floor)', 'tile'),
     @('DD', 'Door', 'tile'), @('DG', 'Door: gold lock', 'tile'), @('DS', 'Door: silver lock', 'tile'), @('DL', 'Door: lift', 'tile'),
     @('D1', 'Remote door 1', 'tile'), @('X1', 'Lever 1', 'tile'), @('D2', 'Remote door 2', 'tile'), @('X2', 'Lever 2', 'tile'),
@@ -54,7 +59,7 @@ $script:Palette = @(
     @('+1', 'Treasure: coins', 'tile'), @('+2', 'Treasure: goblet', 'tile'), @('+3', 'Treasure: chest', 'tile'), @('+4', 'Treasure: crown', 'tile'),
     @('*e', 'Explosive barrel', 'tile'), @('*b', 'Deco: barrel', 'tile'), @('*c', 'Deco: column', 'tile'), @('*t', 'Deco: table', 'tile'), @('*x', 'Deco: crates', 'tile'),
     @('*l', 'Deco: ceiling lamp', 'tile'), @('*h', 'Deco: chandelier', 'tile'), @('*L', 'Deco: floor lamp', 'tile'), @('*p', 'Deco: plant', 'tile'), @('*a', 'Deco: armour', 'tile'),
-    @('*f', 'Deco: flag', 'tile'), @('*v', 'Deco: vat', 'tile'), @('*B', 'Deco: bed', 'tile'), @('*m', 'Deco: console', 'tile'), @('*g', 'Deco: stalagmite', 'tile'),
+    @('*f', 'Deco: flag', 'tile'), @('*v', 'Deco: vat', 'tile'), @('*B', 'Deco: bed', 'tile'), @('*m', 'Deco: console', 'tile'), @('*r', 'Deco: server rack', 'tile'), @('*T', 'Deco: desk with terminal', 'tile'), @('*n', 'Deco: neon prompt sign', 'tile'), @('*g', 'Deco: stalagmite', 'tile'),
     @('*s', 'Deco: bones', 'tile'), @('*u', 'Deco: puddle', 'tile'), @('*k', 'Deco: dead guard', 'tile'),
     @('~s', 'Trap: spikes', 'tile'), @('~c', 'Trap: crusher', 'tile'), @('@1', 'Teleporter pair 1', 'tile'), @('@2', 'Teleporter pair 2', 'tile')
 )

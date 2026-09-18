@@ -105,7 +105,10 @@ $script:WallNames = @(
     'lever_off', 'lever_on', 'door_remote',
     'stone_cracked', 'blue_cracked', 'wood_cracked', 'brick_cracked', 'steel_cracked', 'moss_cracked', 'tech_cracked',
     'stone_window', 'blue_window', 'wood_window', 'brick_window', 'steel_window', 'moss_window', 'tech_window',
-    'secret_switch_off', 'secret_switch_on'
+    'secret_switch_off', 'secret_switch_on',
+    # PowerShell everywhere: consoles, posters, error screens, neon prompts, graffiti
+    'stone_console', 'blue_console', 'wood_console', 'brick_console', 'steel_console', 'moss_console', 'tech_console',
+    'stone_poster', 'wood_poster', 'brick_poster', 'steel_error', 'tech_error', 'tech_neon', 'steel_neon', 'brick_graffiti', 'stone_graffiti'
 )
 $script:TEX_SECRET_OFF = 40       # the hidden lift switch that leads to a bonus floor
 $script:TEX_SECRET_ON  = 41
@@ -123,7 +126,10 @@ $script:TEX_DOOR       = 15      # + lock (0..3)
 
 $script:WallCodes = [hashtable]::new([StringComparer]::Ordinal)      # map codes are case sensitive
 foreach ($wc in @('SS', 1), @('Sb', 2), @('Sp', 3), @('BB', 4), @('Bc', 5), @('WW', 6), @('Wp', 7), @('Ws', 8),
-                 @('RR', 9), @('Rb', 10), @('MM', 11), @('MX', 12), @('GG', 19), @('Gv', 20), @('TT', 21), @('Tl', 22), @('MY', 40)) { $script:WallCodes[$wc[0]] = $wc[1] }
+                 @('RR', 9), @('Rb', 10), @('MM', 11), @('MX', 12), @('GG', 19), @('Gv', 20), @('TT', 21), @('Tl', 22), @('MY', 40),
+                 # second letter: t = PowerShell console, h = poster ("help"), e = error screen, n = neon prompt, g = graffiti
+                 @('St', 42), @('Bt', 43), @('Wt', 44), @('Rt', 45), @('Mt', 46), @('Gt', 47), @('Tt', 48),
+                 @('Sh', 49), @('Wh', 50), @('Rh', 51), @('Me', 52), @('Te', 53), @('Tn', 54), @('Mn', 55), @('Rg', 56), @('Sg', 57)) { $script:WallCodes[$wc[0]] = $wc[1] }
 # secret push-walls: '?' + texture letter (lower case = decorated variant)
 $script:PushCodes = @{
     [char]'S' = 1; [char]'s' = 2; [char]'B' = 4; [char]'b' = 5
@@ -162,6 +168,8 @@ $script:DecoCodes = @{
     [char]'B' = @('bed', $true);           [char]'m' = @('console', $true)
     [char]'g' = @('stalagmite', $true)
     [char]'e' = @('barrel_red', $true)     # explosive - spawned as a shootable actor, see Map.ps1
+    [char]'r' = @('rack', $true);          [char]'T' = @('crt', $true)       # server rack, a desk with a PowerShell terminal
+    [char]'n' = @('sign_ps', $false)                                         # a neon prompt hanging from the ceiling
 }
 
 # ---------------------------------------------------------------------------------------------

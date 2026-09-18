@@ -114,8 +114,94 @@ function Add-Emblem([int]$X, [int]$Y) {       # the ">_" prompt - POLF's coat of
     Add-Box 'FFFFFF' ($X + 10) ($Y + 10) 8 3
 }
 
+# ---- a 3x5 pixel font, for everything in this world that has PowerShell written on it ---------------
+$script:TinyFont = @{}
+foreach ($glyph in @(
+        'A010101111101101', 'B110101110101110', 'C011100100100011', 'D110101101101110', 'E111100110100111', 'F111100110100100',
+        'G011100101101011', 'H101101111101101', 'I111010010010111', 'J001001001101010', 'K101101110101101', 'L100100100100111',
+        'M101111111101101', 'N110101101101101', 'O010101101101010', 'P110101110100100', 'Q010101101111011', 'R110101110101101',
+        'S011100010001110', 'T111010010010010', 'U101101101101111', 'V101101101101010', 'W101101111111101', 'X101101010101101',
+        'Y101101010010010', 'Z111001010100111', '0111101101101111', '1010110010010111', '2110001010100111', '3110001010001110',
+        '4101101111001001', '5111100110001110', '6011100111101111', '7111001010010010', '8111101111101111', '9111101111001110',
+        '>100010001010100', '<001010100010001', '_000000000000111', '-000000111000000', '|010010010010010', '.000000000000010',
+        ':000010000010000', '$011110010011110', '(001010010010001', ')100010010010100', '=000111000111000', '+000010111010000',
+        '/001001010100100', '\100100010001001', '{011010110010011', '}110010011010110', '[011010010010011', ']110010010010110',
+        '*000101010101000', '?110001010000010', '!010010010000010', ',000000000010100', '%101001010100101', '#101111101111101', '@010101111100011')) {
+    $script:TinyFont[$glyph[0]] = $glyph.Substring(1)
+}
+
+# Writes $Text (upper case) with its top left corner at $X,$Y. One character is 3x5 pixels plus a pixel of spacing.
+function Add-TinyText([string]$C, [int]$X, [int]$Y, [string]$Text, [int]$Size = 1) {
+    foreach ($ch in $Text.ToUpper().ToCharArray()) {
+        $bits = $script:TinyFont[$ch]
+        if ($bits) { for ($i = 0; $i -lt 15; $i++) { if ($bits[$i] -eq '1') { Add-Box $C ($X + ($i % 3) * $Size) ($Y + [int][Math]::Floor($i / 3) * $Size) $Size $Size } } }
+        $X += 4 * $Size
+    }
+}
+
+# A wall-mounted PowerShell console: grey frame, title bar, the blue screen and three lines of text.
+function Add-ConsoleArt([string[]]$Lines, [string]$Screen = '012456') {
+    Add-Box '15181E' 7 11 50 40; Add-Box '3A404C' 8 12 48 38
+    Add-Box 'E4E6EA' 9 13 46 6; Add-Box '2C54C4' 10 14 5 4; Add-TinyText 'FFFFFF' 11 14 '>'; Add-TinyText '30343C' 17 14 'PWSH.EXE'
+    Add-Box $Screen 9 19 46 30
+    $y = 22
+    foreach ($line in $Lines) {
+        $color = if ($line -like 'PS>*') { 'F9F1A5' } else { 'EEEDF0' }
+        Add-TinyText $color 11 $y $line
+        $y += 8
+    }
+    Add-Box '6A7484' 28 51 8 3; Add-Box '20242C' 24 54 16 2                       # bracket
+}
+
+function Add-BigPrompt([string]$C, [int]$X, [int]$Y, [int]$T) {               # a large ">_", $T = stroke width
+    Add-Poly $C @($X, $Y, ($X + $T), $Y, ($X + 12 + $T), ($Y + 12), ($X + $T), ($Y + 24), $X, ($Y + 24), ($X + 12), ($Y + 12))
+    Add-Box $C ($X + 18) ($Y + 20) 16 $T
+}
+
 function Add-WallArt([string]$Name) {
     switch ($Name) {
+        { $_ -like '*_console' } {
+            $base = $Name -replace '_console'
+            Add-WallBase $base
+            $text = switch ($base) {
+                'stone' { 'PS> WHOAMI', 'INTRUDER', 'PS> _' }
+                'blue'  { 'PS> GET-KEY', 'DENIED', 'PS> _' }
+                'wood'  { 'PS> GET-ALE', 'EMPTY :(', 'PS> _' }
+                'brick' { 'PS> GCI -R', '42 GUARDS', 'PS> _' }
+                'steel' { 'PS> GET-JOB', 'RUNNING', 'PS> _' }
+                'moss'  { 'PS> HELP', '...', '_' }
+                default { 'PS> IWR LAB', '200 OK', 'PS> _' }
+            }
+            Add-ConsoleArt $text
+            if ($base -eq 'moss') {                                  # long dead, cracked and overgrown
+                Add-Poly '0C0C0C' @(30, 19, 33, 19, 40, 34, 36, 49, 34, 49, 37, 34)
+                foreach ($vx in 12, 47) { $x = $vx; for ($y = 0; $y -lt 46; $y += 3) { $x += $script:Rng.Next(3) - 1; Add-Box '2E6A28' $x $y 2 3; if ($y % 9 -eq 0) { Add-Oval '4A9A3A' ($x - 3) $y 5 3 } } }
+            }
+        }
+        { $_ -like '*_error' } {
+            Add-WallBase ($Name -replace '_error')
+            Add-ConsoleArt @() '0C0C0C'
+            Add-TinyText 'F14C4C' 11 22 'ACCESS'; Add-TinyText 'F14C4C' 11 29 'DENIED'; Add-TinyText 'F14C4C' 11 36 '+ LINE:1'; Add-TinyText 'F14C4C' 11 43 '+ CHAR:1'
+        }
+        { $_ -like '*_poster' } {
+            Add-WallBase ($Name -replace '_poster')
+            Add-Box '20202A' 13 9 40 48; Add-Box 'ECE4CC' 14 10 38 46
+            Add-Box '2C54C4' 14 10 38 17; Add-Emblem 24 12
+            Add-TinyText '2C54C4' 17 30 'GET-HELP' ; Add-Box '9A927A' 17 37 32 1
+            Add-TinyText '50483A' 16 40 'VERB-NOUN'; Add-TinyText '50483A' 16 47 'ALWAYS.'
+        }
+        { $_ -like '*_neon' } {
+            Add-WallBase ($Name -replace '_neon')
+            Add-Box '0A0E16' 8 12 48 40; Add-Box '141A26' 10 14 44 36
+            Add-BigPrompt '2040E0FF' 13 18 8; Add-BigPrompt '5040E0FF' 14 19 6                 # the glow
+            Add-BigPrompt '40E0FF' 15 20 4; Add-BigPrompt 'D8FFFF' 16 21 2
+        }
+        { $_ -like '*_graffiti' } {
+            Add-WallBase ($Name -replace '_graffiti')
+            Add-BigPrompt '60FFFFFF' 12 14 7; Add-BigPrompt 'F0F0F0' 13 15 5
+            foreach ($drip in @(17, 39, 9), @(40, 40, 11)) { Add-Box 'F0F0F0' $drip[0] $drip[1] 2 $drip[2] }
+            Add-TinyText '40E0FF' 9 55 'PS WAS HERE'
+        }
         'stone'  { Add-WallBase stone }
         'blue'   { Add-WallBase blue }
         'wood'   { Add-WallBase wood }
@@ -596,12 +682,35 @@ function Add-ThingSprites {
     $S['rocket.boom3'] = New-Sprite { Add-Oval '5A5A5A' 6 6 52 52; Add-Oval '7A7A7A' 14 12 30 30; Add-Oval 'C03008' 24 26 16 16; foreach ($d in @(2, 6), @(58, 10), @(4, 56), @(56, 54), @(30, 0)) { Add-Box '402010' $d[0] $d[1] 3 3 } }
 
     $S['bed'] = New-Sprite { Add-Box '5A3414' 8 44 4 18; Add-Box '5A3414' 52 50 4 12; Add-Box '7A4A20' 8 50 48 6; Add-Box '9AA6B8' 12 46 40 6; Add-Box 'E8E8E0' 12 43 12 5; Add-Box '6A7A9A' 26 46 26 5 }
-    $S['console'] = New-Sprite { Add-Box '3A4450' 14 30 36 32; Add-Box '56626F' 14 30 36 2; Add-Poly '4A5561' @(14, 30, 50, 30, 46, 20, 18, 20); Add-Box '0A2A1A' 20 22 24 7; Add-Box '30E070' 22 24 14 1; Add-Box '30E070' 22 26 9 1; foreach ($l in @(18, 36, 'E03030'), @(24, 36, '30E070'), @(30, 36, 'E0C020'), @(36, 36, '20C0E0'), @(42, 36, '30E070')) { Add-Box $l[2] $l[0] $l[1] 3 3 }; Add-Box '242B33' 18 44 28 14 }
+    $S['console'] = New-Sprite { Add-Box '3A4450' 14 30 36 32; Add-Box '56626F' 14 30 36 2; Add-Poly '4A5561' @(14, 30, 50, 30, 46, 20, 18, 20); Add-Box '012456' 20 22 24 7; Add-TinyText 'F9F1A5' 22 23 'PS>_'; foreach ($l in @(18, 36, 'E03030'), @(24, 36, '30E070'), @(30, 36, 'E0C020'), @(36, 36, '20C0E0'), @(42, 36, '30E070')) { Add-Box $l[2] $l[0] $l[1] 3 3 }; Add-Box '242B33' 18 44 28 14 }
     $S['stalagmite'] = New-Sprite { Add-Poly '5A6A52' @(18, 63, 46, 63, 36, 30, 32, 8, 27, 32); Add-Poly '7A8A6A' @(27, 60, 32, 12, 33, 60); Add-Poly '4E5E4A' @(8, 63, 24, 63, 17, 40); Add-Poly '4E5E4A' @(40, 63, 56, 63, 49, 44); Add-Oval '3E6A32' 22 54 8 4; Add-Oval '3E6A32' 38 57 9 4 }
 
     $S['lamp_ceiling'] = New-Sprite { Add-Box '303030' 31 0 2 8; Add-Poly '2A8A3A' @(24, 14, 40, 14, 36, 8, 28, 8); Add-Oval 'FFFFC0' 27 13 10 5 }
     $S['chandelier'] = New-Sprite { Add-Box 'C09010' 31 0 2 10; Add-Box 'E0B828' 18 10 28 3; foreach ($x in 18, 25, 37, 44) { Add-Box 'F0F0E0' $x 5 2 5; Add-Oval 'FFE060' ($x - 1) 1 4 5 }; Add-Poly 'C09010' @(26, 13, 38, 13, 32, 19) }
     $S['lamp_floor'] = New-Sprite { Add-Oval '404040' 25 58 14 5; Add-Box '505050' 31 22 2 38; Add-Poly 'E0D8A0' @(24, 22, 40, 22, 36, 10, 28, 10); Add-Oval 'FFFFD0' 28 20 8 4 }
+    $S['rack'] = New-Sprite {
+        Add-Oval '1C2028' 16 59 32 5
+        Add-Box '14181E' 18 4 28 58; Add-Box '2A303A' 19 5 26 56; Add-Box '3A424E' 19 5 26 1
+        foreach ($uy in 8, 15, 22, 40, 47, 54) {
+            Add-Box '181C24' 21 $uy 22 5; Add-Box '0C0E12' 22 ($uy + 1) 9 3
+            foreach ($led in @(33, '30E070'), @(36, '30E070'), @(39, 'E0C020')) { Add-Box $led[1] $led[0] ($uy + 2) 2 1 }
+        }
+        Add-Box '0C0E12' 21 29 22 10; Add-Box '012456' 22 30 20 8; Add-TinyText 'F9F1A5' 24 31 'PS>_'
+        Add-Box 'E03030' 39 9 2 1
+    }
+    $S['crt'] = New-Sprite {
+        Add-Oval '1C2028' 8 59 48 5
+        Add-Box '5A3414' 10 44 4 18; Add-Box '5A3414' 50 44 4 18; Add-Box '8A5A28' 6 40 52 5; Add-Box '6A421C' 6 45 52 2      # the desk
+        Add-Box 'B8B4A4' 18 14 28 24; Add-Box 'D8D4C4' 18 14 28 2; Add-Box '8A8678' 18 36 28 2; Add-Box '8A8678' 26 38 12 2          # the monitor
+        Add-Box '0A0E16' 20 17 24 17; Add-Box '012456' 21 18 22 15
+        Add-TinyText 'F9F1A5' 23 20 'PS>'; Add-TinyText 'EEEDF0' 23 27 'GCI'; Add-Box 'EEEDF0' 36 27 3 5
+        Add-Box 'C8C4B4' 14 38 24 3; Add-Box '9A9688' 15 39 22 1; Add-Oval 'C8C4B4' 42 37 6 4                                     # keyboard and mouse
+    }
+    $S['sign_ps'] = New-Sprite {
+        Add-Box '30343C' 22 0 1 8; Add-Box '30343C' 41 0 1 8
+        Add-Box '0A0E16' 14 8 36 18; Add-Box '141A26' 15 9 34 16
+        Set-Pivot 19 10 0 0.62 0.62; Add-BigPrompt '5040E0FF' -1 -1 6; Add-BigPrompt '40E0FF' 0 0 4; Add-BigPrompt 'D8FFFF' 1 1 2; Reset-Pivot
+    }
     $S['table'] = New-Sprite { Add-Box '5A3414' 16 44 4 18; Add-Box '5A3414' 44 44 4 18; Add-Box '8A5A28' 12 40 40 5; Add-Box '6A421C' 12 45 40 2; Add-Box '7A4A20' 4 48 8 14; Add-Box '7A4A20' 4 38 2 12; Add-Box '7A4A20' 52 48 8 14; Add-Box '7A4A20' 58 38 2 12 }
     $S['barrel'] = New-Sprite { Add-Oval '3A6A3A' 20 56 24 7; Add-Box '3A6A3A' 20 34 24 26; Add-Oval '4A8A4A' 20 31 24 7; Add-Oval '2A4A2A' 23 32 18 4; Add-Box '2A4A2A' 20 40 24 2; Add-Box '2A4A2A' 20 52 24 2; Add-Box '5A9A5A' 23 35 2 24 }
     # hit feedback: blood at chest height, sparks where a bullet meets a wall
