@@ -965,7 +965,18 @@ function Add-TurretArt([string]$Pose) {
     if ($Pose -eq 'fire') { Add-Oval 'FFB030' 23 32 18 18; Add-Oval 'FFE880' 26 35 12 12; Add-Oval 'FFFFFF' 29 38 6 6 }
 }
 
+# Start-Job's drone: a small quadcopter under the ceiling, with a claw for whatever it finds.
+function Add-DroneArt([bool]$Flip) {
+    Add-Box '20262C' 20 13 24 2                                   # the arms
+    foreach ($x in 17, 41) { Add-Box '8A929A' ($x + $(if ($Flip) { 1 } else { 0 })) 11 $(if ($Flip) { 4 } else { 6 }) 1; Add-Box '50585F' ($x + 2) 12 2 2 }
+    Add-Box '2C54C4' 27 12 10 7; Add-Box '4070E0' 28 13 8 2
+    Add-Box '101418' 30 16 4 2; Add-Box $(if ($Flip) { '40E0FF' } else { '2080A0' }) 31 16 2 1
+    Add-Box '50585F' 29 19 1 4; Add-Box '50585F' 34 19 1 4; Add-Box '50585F' 30 22 1 1; Add-Box '50585F' 33 22 1 1
+}
+
 function Add-SecuritySprites {
+    $script:Spr['drone.a'] = New-Sprite { Add-DroneArt $false }
+    $script:Spr['drone.b'] = New-Sprite { Add-DroneArt $true }
     foreach ($pose in 's', 'w1', 'w2', 'w3', 'w4') {
         $script:Spr["camera.$pose"] = New-Sprite { Add-CameraArt ($pose -in 'w2', 'w4') $false }
         $script:Spr["turret.$pose"] = New-Sprite { Add-TurretArt $pose }

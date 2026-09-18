@@ -352,6 +352,30 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:Difficulty = $keepDifficulty
     $script:Con.Runspace.Dispose(); $script:Con = $null
 
+    # ---- Start-Job: the drone collects what is in reach, Undo gives it back, Receive-Job drops it at the player's feet ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    Set-TestCamera 24.5 20.5 0
+    $inReach = @($script:Items | Where-Object { -not $_.Removed -and $script:AreaByPlayer[$script:AreaOf[$_.Y * $script:MapW + $_.X]] }).Count
+    $script:P.Privilege = 100; if ($script:Con) { $script:Con.Runspace.Dispose() }; $script:Con = $null
+    Open-Console; Invoke-ConsoleLine 'Start-Job'; Invoke-ConsoleLine 'Start-Job'; Close-Console
+    $drone = Get-Drone
+    $drone.X = 26.2; $drone.Y = 20.2; Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-drone.png'); $drone.X = $script:P.X; $drone.Y = $script:P.Y
+    for ($f = 0; $f -lt 30; $f++) { Invoke-ThinkDrone $drone 10 }
+    $snapshot = New-WorldSnapshot
+    for ($f = 0; $f -lt 400 -and -not ($drone.Hacked -and [Math]::Abs($drone.X - $script:P.X) + [Math]::Abs($drone.Y - $script:P.Y) -lt 1.5); $f++) { Invoke-ThinkDrone $drone 10 }
+    $carried = @($script:Stats.Cargo).Count; $left = @($script:Items | Where-Object { -not $_.Removed }).Count
+    Restore-WorldSnapshot $snapshot
+    $undone = @($script:Items | Where-Object { -not $_.Removed }).Count - $left
+    $drone = Get-Drone
+    for ($f = 0; $f -lt 400 -and -not ($drone.Hacked -and [Math]::Abs($drone.X - $script:P.X) + [Math]::Abs($drone.Y - $script:P.Y) -lt 1.5); $f++) { Invoke-ThinkDrone $drone 10 }
+    Open-Console; Invoke-ConsoleLine 'Get-Job'; Invoke-ConsoleLine 'Receive-Job'; Invoke-ConsoleLine 'Get-Job'
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"; Close-Console
+    $atFeet = @($script:Items | Where-Object { -not $_.Removed -and $_.X -eq 24 -and $_.Y -eq 20 }).Count
+    Write-Step "drone test: $inReach things in reach, it carried $carried home (Undo put $undone of them back), Receive-Job dropped $atFeet at the player's feet, privilege $([int]$script:P.Privilege)"
+    if ($carried -lt 1 -or $carried -ne [Math]::Min(6, $inReach) -or $undone -lt 1 -or $atFeet -ne $carried -or (Get-Drone) -or [int]$script:P.Privilege -ne 70 -or
+        $text -notmatch 'one drone is all' -or $text -notmatch 'Completed' -or $text -notmatch 'Received:' -or $text -notmatch 'No jobs') { throw "drone test failed:`n$text" }
+    $script:Con.Runspace.Dispose(); $script:Con = $null
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

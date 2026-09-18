@@ -311,6 +311,7 @@ $script:MiscDefs = @{
     procket = @{ Speed = 0.16; Rotates = $false; Doors = $false; Pain = $false; BlastRadius = 1.9; BlastDamage = 120 }
     tknife  = @{ Speed = 0.22; Rotates = $false; Doors = $false; Pain = $false }
     fx = @{ Rotates = $false; Doors = $false; Pain = $false }      # short-lived effects: blood, sparks
+    drone = @{ Rotates = $false; Doors = $false; Pain = $false; Speed = 0.07; Capacity = 6; Life = 2100.0 }      # Start-Job: a background job with rotors
     peer = @{ Rotates = $true; Doors = $false; Pain = $false; Points = 0 }      # the other player of a network game
     # explosive barrel: an "inert" actor - it can be shot, but never thinks, scores or counts as a kill
     barrel = @{ Inert = $true; HP = 15; Rotates = $false; Doors = $false; Pain = $false; Points = 0; BlastRadius = 2.2; BlastDamage = 90 }
@@ -379,6 +380,10 @@ function Initialize-States {
     Add-State 'rocket.boom1' 'rocket.boom1' $false 6 $null $null 'rocket.boom2'
     Add-State 'rocket.boom2' 'rocket.boom2' $false 6 $null $null 'rocket.boom3'
     Add-State 'rocket.boom3' 'rocket.boom3' $false 6 $null 'Remove' 'rocket.boom3'
+
+    # Start-Job's drone: two frames of rotor, thinking in both
+    Add-State 'drone.fly1' 'drone.a' $false 4 'Drone' $null 'drone.fly2'
+    Add-State 'drone.fly2' 'drone.b' $false 4 'Drone' $null 'drone.fly1'
 
     # effects: three frames each, then gone
     Add-State 'procket.fly' 'rocket' $false 0 'PlayerProjectile' $null 'procket.fly'

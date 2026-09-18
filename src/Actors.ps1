@@ -313,6 +313,68 @@ function Invoke-ThinkBotChase([Actor]$a, [double]$Tics) {
     Invoke-Walk $a $Tics 'Chase'
 }
 
+# ---- Start-Job: the drone ---------------------------------------------------------------------
+# It flies - through the ventilation, so walls do not bother it - to whatever lies around in the rooms that are
+# connected to the player's right now, nearest first, and picks it up. Six things or thirty seconds later it comes
+# back and hovers next to the player until Receive-Job takes the load off it. What it carries is kept in
+# $script:Stats.Cargo (a new array with every change), so Undo and saved games take it along.
+# Fields: HP = the item it is heading for (-1: none), Cool = flying time left, Hacked = on its way back / waiting.
+function Get-Drone { foreach ($a in $script:Actors) { if ($a.Kind -eq 'drone' -and $a.State -ne 'gone') { return $a } } }
+
+function Start-Drone {
+    $a = [Actor]::new()
+    $a.Kind = 'drone'; $a.Def = $script:MiscDefs.drone
+    $a.X = $script:P.X; $a.Y = $script:P.Y; $a.TX = [int][Math]::Floor($a.X); $a.TY = [int][Math]::Floor($a.Y)
+    $a.Area = $script:P.Area; $a.Active = $true; $a.Corpse = $true; $a.Visible = $true
+    $a.HP = -1; $a.Cool = $a.Def.Life
+    Set-ActorState $a 'drone.fly1'
+    $a.NetId = ++$script:NextNetId
+    $script:Actors.Add($a)
+    $script:Stats.Cargo = @()
+    $a
+}
+
+function Invoke-ThinkDrone([Actor]$a, [double]$Tics) {
+    $items = $script:Items; $w = $script:MapW
+    if (-not $a.Hacked) {
+        $a.Cool -= $Tics
+        if ($a.Cool -le 0 -or @($script:Stats.Cargo).Count -ge $a.Def.Capacity) { $a.Hacked = $true }
+    }
+    if (-not $a.Hacked -and ($a.HP -lt 0 -or $a.HP -ge $items.Count -or $items[$a.HP].Removed)) {
+        $a.HP = -1; $best = 1e9
+        for ($i = 0; $i -lt $items.Count; $i++) {
+            $s = $items[$i]
+            if ($s.Removed -or -not $script:AreaByPlayer[$script:AreaOf[$s.Y * $w + $s.X]]) { continue }
+            $d = ($s.X + 0.5 - $a.X) * ($s.X + 0.5 - $a.X) + ($s.Y + 0.5 - $a.Y) * ($s.Y + 0.5 - $a.Y)
+            if ($d -lt $best) { $best = $d; $a.HP = $i }
+        }
+        if ($a.HP -lt 0) { $a.Hacked = $true }                   # nothing left in reach
+    }
+    if ($a.Hacked) { $tx = $script:P.X; $ty = $script:P.Y; $stop = 0.9 } else { $tx = $items[$a.HP].X + 0.5; $ty = $items[$a.HP].Y + 0.5; $stop = 0.25 }
+    $dx = $tx - $a.X; $dy = $ty - $a.Y; $len = [Math]::Sqrt($dx * $dx + $dy * $dy)
+    if ($len -gt $stop) {
+        $move = [Math]::Min($len - $stop + 0.01, $a.Def.Speed * $Tics * $(if ($a.Hacked) { 1.6 } else { 1.0 }))
+        $a.X += $dx / $len * $move; $a.Y += $dy / $len * $move
+        $a.TX = [int][Math]::Floor($a.X); $a.TY = [int][Math]::Floor($a.Y)
+        return
+    }
+    if ($a.Hacked) { return }                                   # back home: hovering
+    $items[$a.HP].Removed = $true
+    $script:Stats.Cargo = @($script:Stats.Cargo) + $items[$a.HP].Item
+    Start-Sfx 'pickup' $a.X $a.Y
+    $a.HP = -1
+}
+
+# Receive-Job: what the drone carries lands at the player's feet - picking it up is the player's business.
+function Receive-Drone {
+    $cargo = @($script:Stats.Cargo)
+    foreach ($name in $cargo) { Add-Item $name ([int][Math]::Floor($script:P.X)) ([int][Math]::Floor($script:P.Y)) }
+    $script:Stats.Cargo = @()
+    $drone = Get-Drone
+    if ($drone -and $drone.Hacked) { $drone.State = 'gone' }     # the job is done and has been received: it goes away
+    $cargo
+}
+
 # A camera sweeps: ahead, a quarter turn to one side, ahead, a quarter turn to the other ($a.VX counts the steps).
 function Invoke-ThinkCameraStand([Actor]$a, [double]$Tics) {
     $a.Cool -= $Tics
@@ -560,6 +622,7 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
         'CameraStand' { Invoke-ThinkCameraStand $a $Tics }
         'CameraChase' { Invoke-ThinkCameraChase $a $Tics }
         'TurretChase' { Invoke-ThinkTurretChase $a $Tics }
+        'Drone' { Invoke-ThinkDrone $a $Tics }
         'Projectile' { Invoke-ThinkProjectile $a $Tics }
         'PlayerProjectile' { Invoke-ThinkPlayerProjectile $a $Tics }
     }

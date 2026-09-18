@@ -2,7 +2,7 @@
 
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
 <i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
-verifiable runs,<br>ten floors, a secret one and an ending worth playing for, eleven kinds of enemies, nine weapons, co-op and deathmatch for up to four over the network, a terminal
+verifiable runs,<br>ten floors, a secret one and an ending worth playing for, eleven kinds of enemies plus cameras and sentry guns, nine weapons, co-op and deathmatch for up to four over the network, a terminal
 mode –<br>procedurally generated graphics, sound, speech and music, and under 400 lines of C#.</i></p>
 
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
@@ -250,6 +250,11 @@ privilege once. **Those terminals have files** – `Get-ChildItem`, `Get-Content
 what happened at Shellstein, floor by floor: tickets nobody could close, a duty roster, the minutes of the board. Some
 of them give things away: `Unlock-Door -Code 4711` opens what the mail says it opens, `Use-Token NIGHTSHIFT` marks the
 floor's secrets on the automap. A code works once per floor.
+
+**It has background jobs.** `Start-Job` (30 privilege) sends out a drone – a small blue quadcopter that flies through
+the ventilation to whatever lies around in the rooms that are open to you, nearest first, and picks it up: ammunition,
+first aid, treasure, keys. Six things or thirty seconds later it comes back and hovers next to you. `Get-Job` shows how
+it is doing, `Receive-Job` drops its load at your feet, `Stop-Job` calls it back early. Undo undoes it, too.
 
 **It has a `$PROFILE`.** Define a function or an alias in the console and `Save-Profile` writes it to
 `saves/profile.ps1`, which is run – inside the sandbox, like everything else – whenever the console starts. And

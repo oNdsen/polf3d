@@ -27,6 +27,8 @@ ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight sec
               Disable-Trap (10)     Set-Turret -Owner Me (25: a sentry gun changes sides)     Get-Enemy -Kind camera | Stop-Enemy
               Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
+JOBS          Start-Job (30): a drone collects what lies around in the rooms open to you - six things or thirty seconds
+              Get-Job shows how it is doing, Receive-Job drops its load at your feet, Stop-Job calls it back
 PROFILE       function kn { Get-Enemy | select -First 1 | Stop-Enemy }      Set-Alias ge Get-Enemy
               Set-Hotkey 1 'kn'   runs it from the game with a key (Get-Hotkey shows the four keys)
               Save-Profile keeps what you defined:   Get-Content $PROFILE   Clear-Content $PROFILE
@@ -69,6 +71,11 @@ function Initialize-Console {
         'Set-Hotkey' = 'param([Parameter(Position = 0)][int]$Key, [Parameter(Position = 1)][string]$Command) [pscustomobject]@{ PolfAction = "Set-Hotkey"; Id = $Key; WhatIf = $false; Value = $Command }'
         'Get-Hotkey' = '$PolfHotkeys'
         'Get-ExecutionPolicy' = '$PolfPolicy'
+        'Get-Job' = 'if ($PolfJobs) { $PolfJobs } else { "No jobs. Start-Job sends out a drone." }'
+        'Start-Job' = 'param([string]$Name, [Parameter(Position = 0)]$ScriptBlock) [pscustomobject]@{ PolfAction = "Start-Job"; Id = 0; WhatIf = $false }'
+        'Receive-Job' = 'param([Parameter(Position = 0)]$Id, [string]$Name, [switch]$Keep, [switch]$Wait) [pscustomobject]@{ PolfAction = "Receive-Job"; Id = 0; WhatIf = $false }'
+        'Stop-Job' = 'param([Parameter(Position = 0)]$Id, [string]$Name) [pscustomobject]@{ PolfAction = "Stop-Job"; Id = 0; WhatIf = $false }'
+        'Wait-Job' = '"Wait-Job: there is no time to wait down here. Get-Job tells you how far it is."'
         'Set-ExecutionPolicy' = 'param([Parameter(Position = 0)][string]$ExecutionPolicy, [string]$Scope, [switch]$Force) [pscustomobject]@{ PolfAction = "Set-Policy"; Id = 0; WhatIf = $false; Value = $ExecutionPolicy }'
         'Save-Profile' = '[pscustomobject]@{ PolfAction = "Save-Profile"; Id = 0; WhatIf = $false }'
         'Clear-Content' = 'param([Parameter(Position = 0)][string]$Path) if ($Path -eq $PROFILE) { [pscustomobject]@{ PolfAction = "Clear-Profile"; Id = 0; WhatIf = $false } } else { throw "Clear-Content: the only thing that can be cleared from here is `$PROFILE." }'
@@ -92,7 +99,7 @@ process {
     foreach ($a in @('?', 'Where-Object'), @('where', 'Where-Object'), @('%', 'ForEach-Object'), @('foreach', 'ForEach-Object'), @('select', 'Select-Object'), @('sort', 'Sort-Object'),
         @('measure', 'Measure-Object'), @('group', 'Group-Object'), @('ft', 'Format-Table'), @('fl', 'Format-List'), @('gm', 'Get-Member'), @('echo', 'Write-Output'),
         @('help', 'Get-Help'), @('man', 'Get-Help'), @('gcm', 'Get-Command'), @('kill', 'Stop-Enemy'), @('spps', 'Stop-Enemy'), @('ps', 'Get-Process'), @('gps', 'Get-Process'),
-        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
+        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('sajb', 'Start-Job'), @('gjb', 'Get-Job'), @('rcjb', 'Receive-Job'), @('spjb', 'Stop-Job'), @('Remove-Job', 'Stop-Job'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
         $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateAliasEntry]::new($a[0], $a[1]))
     }
     $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
@@ -223,6 +230,9 @@ function Update-ConsoleData {
     }
     $proxy.SetVariable('PolfFiles', @($files)); $proxy.SetVariable('PolfFileText', $texts)
     $proxy.SetVariable('PolfPolicy', (Get-Policy).Name)
+    $drone = Get-Drone
+    $proxy.SetVariable('PolfJobs', @(if ($drone) { [pscustomobject]@{ Type = 'Job'; Id = 1; Name = 'Drone'; State = $(if ($drone.Hacked) { 'Completed' } else { 'Running' }); HasMoreData = [bool]@($script:Stats.Cargo).Count
+        Carrying = (@($script:Stats.Cargo) -join ', '); Distance = (Get-Range $drone.X $drone.Y); Bearing = (Get-Bearing $drone.X $drone.Y) } }))
     $profilePath = Get-ProfilePath
     $proxy.SetVariable('PolfProfile', $(if (Test-Path -LiteralPath $profilePath) { try { [System.IO.File]::ReadAllText($profilePath).TrimEnd() } catch { '' } } else { '' }))
     $proxy.SetVariable('PolfHotkeys', @(foreach ($slot in 1..4) { [pscustomobject]@{ Type = 'Hotkey'; Id = $slot; Key = (Get-KeyName $script:Bind["Macro$slot"]); Command = "$($script:Hotkeys[$slot])" } }))
@@ -264,6 +274,25 @@ function Invoke-ConsoleAction($Action) {
     if ($name -eq 'Use-Code') {
         $answer = Invoke-StoryCode ([string]$Action.Value)
         if ($answer) { Write-ConsoleLine $answer '60FF80'; Start-Sfx 'key' } else { Write-ConsoleLine "'$($Action.Value)' means nothing on this floor." 'F14C4C'; Start-Sfx 'noway' }
+        return $true
+    }
+    if ($name -eq 'Start-Job') {
+        if (Get-Drone) { Write-ConsoleLine 'Start-Job: one drone is all you have. Receive-Job takes its load and sends it home.' 'F14C4C'; return $true }
+        if ($p.Privilege -lt 30 -and -not $script:InfiniteAmmo) { Write-ConsoleLine "Start-Job: Access is denied - a drone costs 30 privilege, you have $([int]$p.Privilege)." 'F14C4C'; return $false }
+        if (-not $script:InfiniteAmmo) { Add-Privilege (-30) }
+        $null = Start-Drone; $script:Run.Console++
+        Write-ConsoleLine "Id 1  Drone  Running  -  it collects what lies around in the rooms open to you.  (-30 privilege, $([int]$p.Privilege) left)" '60FF80'
+        return $true
+    }
+    if ($name -eq 'Stop-Job') {
+        $drone = Get-Drone
+        if (-not $drone) { Write-ConsoleLine 'Stop-Job: there is no job.' 'F14C4C' } else { $drone.Hacked = $true; Write-ConsoleLine 'The drone is on its way back. Receive-Job takes what it has.' '60FF80' }
+        return $true
+    }
+    if ($name -eq 'Receive-Job') {
+        if (-not (Get-Drone) -and -not @($script:Stats.Cargo).Count) { Write-ConsoleLine 'Receive-Job: there is no job.' 'F14C4C'; return $true }
+        $cargo = @(Receive-Drone)
+        Write-ConsoleLine $(if ($cargo.Count) { "Received: $($cargo -join ', ') - at your feet." } else { 'The drone has not found anything yet.' }) '60FF80'
         return $true
     }
     if ($name -eq 'Set-Policy') {
