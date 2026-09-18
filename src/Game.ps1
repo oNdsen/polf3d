@@ -102,6 +102,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     if ($script:Net -and $script:Net.Connected) { Initialize-NetLevel $KeepPlayer $KeepKit }
     elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
     Start-RunTranscript
+    Reset-RunStats
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
     $script:MusicWanted = if ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
@@ -118,7 +119,7 @@ function Set-Mode([string]$Mode) {
     if ($script:Recording -and $Mode -notin 'play', 'paused') { if ($script:DungeonSeed) { $null = Save-DungeonRun $false } else { Stop-DemoRecording } }
     if ($Mode -eq 'title' -and $script:KeepColumnStep) { $script:ColumnStep = $script:KeepColumnStep; $script:KeepColumnStep = 0 }
     if ($Mode -eq 'title') { Stop-Dungeon }
-    if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame }
+    if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame; $script:AchievementCount = Get-AchievementCount }
     if ($Mode -eq 'load') { $script:SaveList = @(Get-SaveList) }
 }
 
@@ -281,7 +282,7 @@ function Show-TitleScreen {
         if (-not $runs) { Write-HudText '- no complete run yet -' 'Small' '7080A0' 160 150 160 8 }
     }
     else { Show-HighScoreList }
-    Write-HudText "$($script:MapFiles.Count) floors  -  all graphics and sounds are generated procedurally at start-up." 'Small' '506080' 0 217 320 8
+    Write-HudText "$($script:MapFiles.Count) floors  -  tests passed: $($script:AchievementCount)  -  everything you see and hear is generated at start-up." 'Small' '506080' 0 217 320 8
     Write-HudText "POLF 3D  $($script:Copyright)" 'Small' '7080A0' 0 226 320 8
 }
 
@@ -321,6 +322,8 @@ function Complete-Level {
         $r.DungeonDemo = Save-DungeonRun $true
     }
     $r.Previous = Add-SpeedrunResult $r.Exact $r.Last
+    $r.Tests = Invoke-FloorTests                                 # the floor as a test suite, Pester style
+    foreach ($line in $r.Tests.Lines) { Add-TranscriptLine $line[0].TrimStart() }
     $r.Transcript = Stop-RunTranscript $true
     $r.TimeBonus = [Math]::Max(0, $script:ParSeconds - $seconds) * 500
     $r.Bonus = $r.TimeBonus + 10000 * (@($r.Kills, $r.Secrets, $r.Treasures) -eq 100).Count
@@ -344,12 +347,18 @@ function Show-DoneScreen {
     $y = 50
     foreach ($row in $rows) {
         if ($row[0]) {
-            Write-HudText $row[0] 'Mid' '8FB0FF' 60 $y 100 12
-            Write-HudText $row[1] 'Mid' $(if ($row[1] -eq '100 %' -or $row[1] -like '*RECORD*') { '40FF60' } else { 'FFFFFF' }) 150 $y 150 12
+            Write-HudText $row[0] 'Small' '8FB0FF' 6 $y 50 12
+            Write-HudText $row[1] 'Small' $(if ($row[1] -eq '100 %' -or $row[1] -like '*RECORD*') { '40FF60' } else { 'FFFFFF' }) 54 $y 100 12
         }
         $y += 14
     }
     if ($script:Net -and $script:Net.Mode -eq 'duel') { Write-HudText (Get-NetHudText) 'Mid' '60C0FF' 0 180 320 12 }
+    if ($r.Tests) {
+        # the floor's test run, the way Pester prints it
+        Write-HudBar 'C0050A14' 158 46 158 122
+        $ty = 49.0
+        foreach ($line in $r.Tests.Lines) { $script:BackG.DrawString($line[0], $script:Fonts.Term, (Get-Brush $line[1]), [single](161 * $script:Scale), [single]($ty * $script:Scale)); $ty += 9.0 }
+    }
     if ($r.Transcript) { Write-HudText "`"$($r.Transcript.Verdict)`"" 'Small' 'C0C8D8' 0 173 320 8 }
     if ($r.DungeonDemo) {
         $was = if ($r.DungeonBest) { "best so far $(Format-Time ([double]$r.DungeonBest.Seconds) -Tenths)" } else { 'first run of this dungeon' }

@@ -768,6 +768,19 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     Write-Step "music test: $($lengths -join ', ')"
 
+    # ---- the floor as a test suite ----
+    Remove-Item -LiteralPath (Get-AchievementPath) -ErrorAction SilentlyContinue
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $keepCheat = $script:P.Cheated; $script:P.Cheated = $false
+    $script:Stats.Tics = 70 * 100; $script:Stats.Secrets = $script:Stats.SecretTotal; $script:Run.Shots = 3
+    $first = Invoke-FloorTests; $second = Invoke-FloorTests
+    $script:Result = @{ Last = $false; Exact = 100.0; Previous = 0; Kills = 0; Secrets = 100; Treasures = 0; Bonus = 10000; Tests = $first; Transcript = @{ Verdict = 'Completed. No findings. Next maintenance window: the floor above.' } }
+    Show-DoneScreen; Save-BackBuffer (Join-Path $OutDir 'screen-tests.png')
+    Write-Step "achievement test: passed $($first.Passed), failed $($first.Failed), new the first time: $($first.New -join ','); new the second time: $($second.New.Count); on record: $(Get-AchievementCount)"
+    if ($first.Passed -ne 7 -or $first.Failed -ne 3 -or $first.New.Count -ne 7 -or $second.New.Count -ne 0 -or (Get-AchievementCount) -notlike '7 of *' -or 'pacifist' -in $first.New -or 'par' -notin $first.New) { throw 'achievement test failed.' }
+    $script:P.Cheated = $keepCheat
+    Remove-Item -LiteralPath (Get-AchievementPath) -ErrorAction SilentlyContinue
+
     # ---- the transcript of a floor ----
     $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
     $victim = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert } | Select-Object -First 1

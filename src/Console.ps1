@@ -203,6 +203,7 @@ function Invoke-ConsoleAction($Action) {
         }
     }
     if (-not $script:InfiniteAmmo) { Add-Privilege (- $cost) }
+    $script:Run.Console++
     Write-ConsoleLine "${name}: $label - $done.  (-$cost privilege, $([int]$p.Privilege) left)" '60FF80'
     $true
 }

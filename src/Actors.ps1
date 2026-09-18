@@ -76,6 +76,7 @@ function Test-Gunfire([Actor]$a) {
 }
 
 function Start-Attack([Actor]$a) {
+    if (-not $script:Predicting) { $script:Run.Alerts++ }
     $a.AlertTics = 50
     Start-Sfx (Get-AlertSound $a) $a.X $a.Y
     Set-ActorState $a "$($a.Kind).chase1"

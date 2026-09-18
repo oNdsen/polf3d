@@ -331,6 +331,7 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
         elseif ($action -ne 'none') {
             # every other action fires something - if the player can pay for it
             if (Use-WeaponResource) {
+                if ($action -ne 'throw') { $script:Run.Shots++ }
                 if ($action -like '*repeat' -and $Trigger) { $p.AttackFrame -= 2 }
                 switch -Wildcard ($action) {
                     'fire*'  { Invoke-GunAttack }
@@ -443,6 +444,7 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     if ($Points -le 0) { return }
     $before = $p.Health
     if (-not $script:GodMode) { $p.Health -= $Points }
+    if ($p.Health -lt $script:Run.MinHealth) { $script:Run.MinHealth = $p.Health }
     if ($before -gt 25 -and $p.Health -le 25 -and $p.Health -gt 0) { Add-TranscriptLine "health is down to $($p.Health)" 'WARNING' }
     $script:DamageFlash += $Points
     $script:Shake = [Math]::Min(14.0, $script:Shake + $Points / 2.0)      # the view jolts with every hit

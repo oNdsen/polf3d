@@ -127,7 +127,7 @@ function Invoke-Ability([int]$Id) {
         4 { Invoke-Force }
         5 { Undo-World }
     }
-    if ($ok) { Add-TranscriptLine "Invoke-Ability $($ab.Name)" }
+    if ($ok) { $script:Run.Powers++; Add-TranscriptLine "Invoke-Ability $($ab.Name)" }
     if ($ok -and -not $script:InfiniteAmmo) { Add-Privilege (- $ab.Cost) }
 }
 
