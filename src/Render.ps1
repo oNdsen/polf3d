@@ -360,28 +360,24 @@ function Show-Overlays {
     }
 }
 
+# Which face fits the moment: "tier|expression|look" (see New-FaceBitmap).
+function Get-FaceKey {
+    $p = $script:P
+    if ($p.Health -le 0) { return '5|idle|0' }
+    $tier = [Math]::Min(4, [int][Math]::Floor((100 - $p.Health) / 20))
+    $expr = if ($p.PainTics -gt 0) { 'pain' } elseif ($p.SudoTics -gt 0) { 'sudo' } elseif ($script:GodMode) { 'god' } elseif ($p.GrinTics -gt 0) { 'grin' }
+            elseif ($p.RageTics -gt 60) { 'rage' } elseif ($p.Sneaking) { 'sneak' } else { 'idle' }
+    "$tier|$expr|$(if ($expr -in 'idle', 'rage', 'sneak', 'god') { [int]$p.FaceLook } else { 0 })"
+}
+
 function Show-Face([double]$X, [double]$Y) {
-    $p = $script:P; $g = $script:BackG; $s = $script:Scale
-    $hp = $p.Health
-    Write-HudPanel '80101A2C' $X $Y 28 34
-    $g.FillEllipse((Get-Brush 'E0A878'), [single](($X + 4) * $s), [single](($Y + 4) * $s), [single](20 * $s), [single](27 * $s))
-    Write-HudBar '6A4420' ($X + 5) ($Y + 3) 18 7
-    $look = if ($hp -le 0) { 0 } else { $p.FaceLook * 1.5 }
-    if ($hp -le 0) {
-        Write-HudText 'x' 'Small' '101010' ($X + 5) ($Y + 11) 8 8; Write-HudText 'x' 'Small' '101010' ($X + 15) ($Y + 11) 8 8
-    }
-    else {
-        Write-HudBar 'FFFFFF' ($X + 8) ($Y + 13) 5 4; Write-HudBar 'FFFFFF' ($X + 15) ($Y + 13) 5 4
-        Write-HudBar '203060' ($X + 9.5 + $look) ($Y + 13.5) 2 3; Write-HudBar '203060' ($X + 16.5 + $look) ($Y + 13.5) 2 3
-    }
-    Write-HudBar 'C08860' ($X + 13) ($Y + 17) 2 5
-    if ($p.GrinTics -gt 0) { Write-HudBar 'FFFFFF' ($X + 9) ($Y + 24) 10 3; Write-HudBar '7A3030' ($X + 9) ($Y + 23.4) 10 0.8 }
-    elseif ($hp -gt 60) { Write-HudBar '7A3030' ($X + 10) ($Y + 25) 8 1.2 }
-    elseif ($hp -gt 25) { Write-HudBar '7A3030' ($X + 10) ($Y + 25.5) 8 1.2; Write-HudBar '7A3030' ($X + 9) ($Y + 26.5) 2 1.2 }
-    else { Write-HudBar '501010' ($X + 10) ($Y + 24) 8 4 }
-    if ($hp -le 75) { Write-HudBar 'B01010' ($X + 19) ($Y + 9) 2 5 }
-    if ($hp -le 50) { Write-HudBar 'B01010' ($X + 7) ($Y + 18) 3 2; Write-HudBar 'B01010' ($X + 12) ($Y + 22) 1.5 4 }
-    if ($hp -le 25) { Write-HudBar 'B01010' ($X + 16) ($Y + 6) 2 8; Write-HudBar 'B01010' ($X + 20) ($Y + 20) 3 3; Write-HudBar '5A2A6A' ($X + 7) ($Y + 11) 6 2 }
+    $s = $script:Scale
+    $key = Get-FaceKey
+    $script:P.FaceKey = $key
+    $f = $key.Split('|')
+    Write-HudPanel $(if ($f[1] -eq 'sudo') { 'F0D040' } else { '80101A2C' }) ($X - 1) ($Y - 0.5) 32 35
+    Write-HudBar 'FF101A2C' $X $Y 30 34
+    $script:BackG.DrawImage((Get-FaceBitmap ([int]$f[0]) $f[1] ([int]$f[2])), [System.Drawing.RectangleF]::new([single]($X * $s), [single]($Y * $s), [single](30 * $s), [single](34 * $s)))
 }
 
 # Helpers for the status bar: rounded panels and gradient-filled gauges.
@@ -443,7 +439,7 @@ function Show-Hud {
     $low, $high = if ($hp -le 25) { 'C02020', 'FF5040' } elseif ($hp -le 50) { 'C07010', 'FFC040' } else { '20A040', '60FF80' }
     Write-HudGauge 82 ($y + 29) 64 5 ($hp / 100.0) $low $high
 
-    Show-Face 154 ($y + 3)
+    Show-Face 153 ($y + 3)
 
     # ammunition - or whatever the weapon in hand consumes
     $res = Get-WeaponResource

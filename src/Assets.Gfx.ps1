@@ -829,3 +829,112 @@ function Add-BotSprites {
     foreach ($i in 1, 2, 3) { $script:Spr["bot.die$i"] = $script:Spr["rocket.boom$i"] }
     $script:Spr['bot.dead'] = New-Sprite { Add-Oval '101010' 18 56 28 6; Add-Poly '2E3640' @(22, 60, 26, 50, 34, 47, 42, 52, 44, 60); Add-Box '56626F' 28 51 5 3; Add-Oval '5A5A5A' 28 38 8 8; Add-Oval '6A6A6A' 32 30 7 7 }
 }
+
+# ---------------------------------------------------------------------------------------------
+# The face in the status bar: the admin on call - headset, stubble, hoodie with a >_ on the zipper.
+# Painted at 30x34 pixels and enlarged without smoothing, like every other sprite.
+#   Tier  0 fresh .. 4 nearly dead (a new layer of damage every 20 health), 5 dead
+#   Expr  idle | pain | grin | rage | sneak | sudo | god          Look  -1 left, 0, 1 right
+# ---------------------------------------------------------------------------------------------
+$script:FaceCache = @{}
+
+function Get-FaceBitmap([int]$Tier, [string]$Expr, [int]$Look) {
+    $key = "$Tier|$Expr|$Look"
+    if (-not $script:FaceCache[$key]) { $script:FaceCache[$key] = New-FaceBitmap $Tier $Expr $Look }
+    $script:FaceCache[$key]
+}
+
+function New-FaceBitmap([int]$Tier, [string]$Expr, [int]$Look) {
+    $bmp = [System.Drawing.Bitmap]::new(30, 34)
+    $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+    $box = { param([string]$C, [int]$X, [int]$Y, [int]$W = 1, [int]$H = 1) $gfx.FillRectangle((Get-Brush $C), $X, $Y, $W, $H) }
+    $dead = $Tier -ge 5
+    $skin, $shade, $dark = if ($dead) { 'A9B4BC', '8E9AA4', '74808A' } elseif ($Tier -ge 4) { 'D8A07C', 'B8825E', '9A6A4A' } else { 'E4AC7C', 'C48C60', 'A47048' }
+
+    # neck and hoodie
+    & $box $shade 11 28 8 4
+    & $box '2A3344' 3 31 24 3; & $box '3A465C' 5 30 6 2; & $box '3A465C' 19 30 6 2; & $box '1C2230' 13 31 4 3
+    & $box '40E0FF' 14 32; & $box '40E0FF' 15 33                     # the >_ on the zipper tag
+
+    # head, ears, stubble
+    & $box $skin 6 6 18 20; & $box $skin 7 26 16 2; & $box $skin 9 28 12 1; & $box $skin 11 29 8 1
+    & $box $shade 6 8 2 16; & $box $shade 22 8 2 16; & $box $shade 7 24 2 3; & $box $shade 21 24 2 3
+    & $box $skin 4 13 2 6; & $box $shade 4 15 1 3; & $box $skin 24 13 2 6; & $box $shade 25 15 1 3
+    foreach ($st in @(8, 23), @(10, 25), @(12, 27), @(14, 27), @(16, 27), @(18, 27), @(20, 25), @(22, 23), @(9, 26), @(21, 26), @(11, 24), @(19, 24)) { & $box $dark $st[0] $st[1] }
+
+    # hair: short, a bit of a mess
+    & $box '3A2616' 6 3 18 5; & $box '3A2616' 5 5 2 6; & $box '3A2616' 23 5 2 6; & $box '3A2616' 8 2 12 1
+    & $box '4E3422' 9 3 4 1; & $box '4E3422' 16 4 5 1; & $box '3A2616' 11 1 2 1; & $box '3A2616' 17 1 3 1
+    & $box '3A2616' 7 8 3 1; & $box '3A2616' 20 8 3 1
+    # headset: band, ear cups, microphone
+    & $box '39435A' 5 0 20 2; & $box '5A6884' 7 0 16 1
+    & $box '39435A' 2 11 3 9; & $box '5A6884' 3 12 1 7; & $box '40E0FF' 2 14 1 2
+    & $box '39435A' 25 11 3 9; & $box '5A6884' 26 12 1 7
+    & $box '39435A' 3 20 1 3; & $box '39435A' 4 22 1 2; & $box '39435A' 5 24 2 1; & $box '262E40' 7 25 3 2; & $box '7080A0' 8 25
+
+    # brows
+    $brow = switch ($Expr) { 'pain' { 10 } 'grin' { 10 } 'rage' { 12 } default { 11 } }
+    $worn = $Tier -ge 4 -and $Expr -eq 'idle'
+    if ($worn) { $brow = 10 }
+    & $box '2A1A0E' 8 $brow 5 1; & $box '2A1A0E' 17 $brow 5 1
+    if ($Expr -eq 'rage') { & $box '2A1A0E' 11 13 2 1; & $box '2A1A0E' 17 13 2 1 }              # pulled together
+    if ($Expr -eq 'pain' -or $worn) { & $box '2A1A0E' 8 11 2 1; & $box '2A1A0E' 20 11 2 1 }     # worried: outer ends down
+
+    # eyes
+    if ($dead) {
+        foreach ($ex in 8, 17) { foreach ($o in @(0, 13), @(4, 13), @(1, 14), @(3, 14), @(2, 15), @(1, 16), @(3, 16), @(0, 17), @(4, 17)) { & $box '20242C' ($ex + $o[0]) $o[1] } }
+    }
+    elseif ($Expr -eq 'sudo') {
+        & $box '0C0E14' 6 12 18 2; & $box '0C0E14' 7 14 7 3; & $box '0C0E14' 16 14 7 3                # deal-with-it shades
+        & $box 'F0D040' 8 13 2 1; & $box 'F0D040' 17 13 2 1; & $box 'FFFFFF' 9 14; & $box 'FFFFFF' 18 14
+    }
+    elseif ($Expr -eq 'pain') {
+        & $box '2A1A0E' 8 14 5 1; & $box '2A1A0E' 17 14 5 1; & $box $dark 9 15 3 1; & $box $dark 18 15 3 1    # squeezed shut
+    }
+    else {
+        $open = if ($Expr -eq 'sneak') { 1 } elseif ($Tier -ge 4) { 2 } else { 3 }
+        $top = 16 - $open
+        $white = if ($Expr -eq 'god') { 'FFF4A0' } elseif ($Tier -ge 3) { 'F4E0DA' } else { 'FFFFFF' }
+        $iris = if ($Expr -eq 'god') { 'FFB000' } elseif ($Expr -eq 'rage') { '7A1414' } else { '2A4A8A' }
+        foreach ($ex in 8, 17) {
+            if ($Tier -ge 4 -and $ex -eq 8) { & $box '6A3A6A' 8 13 5 3; & $box '4A2448' 8 15 5 1; & $box '2A1A0E' 9 14 3 1; continue }     # swollen shut
+            & $box $white $ex $top 5 $open
+            & $box $iris ($ex + 1 + $Look) $top 3 $open
+            if ($Expr -ne 'god') { & $box '101828' ($ex + 2 + $Look) ($top + [int][Math]::Floor($open / 2)) }
+            & $box $dark $ex ($top - 1) 5 1
+            if ($Tier -ge 4) { & $box $shade $ex 16 5 1 }                                          # bags under the eyes
+        }
+        if ($Expr -eq 'god') { & $box 'FFE860' 8 0 14 1 }
+    }
+
+    # nose
+    & $box $shade 14 15 2 5; & $box $dark 13 20 4 1; & $box $skin 14 19 2 1
+
+    # mouth
+    switch ($(if ($dead) { 'dead' } else { $Expr })) {
+        'grin'  { & $box '5A2020' 10 22 10 4; & $box 'FFFFFF' 11 23 8 2; & $box 'D0D0D0' 13 23 1 2; & $box 'D0D0D0' 16 23 1 2 }
+        'sudo'  { & $box '7A3030' 11 24 8 1; & $box '7A3030' 19 23; & $box '7A3030' 20 22 }       # smirk
+        'pain'  { & $box '3A1010' 11 22 8 5; & $box 'FFFFFF' 12 22 6 1; & $box 'A03030' 13 25 4 2 }
+        'rage'  { & $box '5A2020' 10 22 10 4; & $box 'FFFFFF' 11 23 8 2; foreach ($t in 12, 14, 16, 18) { & $box 'A0A0A0' $t 23 1 2 } }
+        'sneak' { & $box '7A3030' 13 24 4 1 }
+        'dead'  { & $box '3A2020' 11 23 8 2; & $box 'B05060' 14 24 3 3 }                           # tongue out
+        default {
+            if ($Tier -ge 4) { & $box '3A1010' 11 23 8 3; & $box 'FFFFFF' 12 23 6 1 }              # panting
+            elseif ($Tier -ge 2) { & $box '7A3030' 11 24 8 1; & $box '7A3030' 10 25; & $box '7A3030' 19 25 }
+            else { & $box '7A3030' 11 24 8 1 }
+        }
+    }
+
+    # wounds: one more layer per tier
+    $blood = 'B01010'; $clot = '7A0808'
+    if ($Tier -ge 1) { & $box $blood 20 9 2 1; & $box $blood 21 10 1 2; & $box $clot 21 12 }                                         # a cut over the brow
+    if ($Tier -ge 2) { & $box $blood 14 21 1 3; & $box $clot 14 24; & $box '8A5A8A' 17 17 4 1; & $box '7A4A7A' 18 18 3 1 }           # nose bleed, a bruise
+    if ($Tier -ge 3) { & $box $blood 22 5 1 9; & $box $blood 23 9 1 8; & $box $clot 22 14 1 5; & $box $blood 18 25 2 1; & $box $blood 19 26 1 3; & $box $blood 8 7 3 1 }
+    if ($Tier -ge 4) {
+        & $box $blood 7 8 1 10; & $box $clot 8 12 1 9; & $box $blood 9 21 1 4; & $box $blood 12 27 2 2; & $box $clot 13 29 1 2; & $box $blood 16 21 1 2
+        & $box '9AD8FF' 12 7 1 2; & $box '9AD8FF' 20 20 1 2; & $box '9AD8FF' 5 21 1 2                                                 # sweat
+    }
+    if ($dead) { & $box $clot 6 6 4 3; & $box $blood 6 9 2 12; & $box $clot 22 5 2 16; & $box $blood 10 27 3 3 }
+    $gfx.Dispose()
+    $bmp
+}

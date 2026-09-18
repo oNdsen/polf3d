@@ -25,7 +25,7 @@ function New-Player {
         Charges = 0; Rockets = 0; Knives = 0; SudoTics = 0.0
         AttackFrame = -1; AttackTics = 0.0; WeaponFrame = 0
         Running = $false; Sneaking = $false; UseHeld = $false; FireHeld = $false
-        FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0
+        FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0; PainTics = 0.0; RageTics = 0.0; LookHold = 0.0; FaceKey = ''
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
     }
@@ -423,6 +423,13 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     $script:DamageFlash += $Points
     $script:Shake = [Math]::Min(14.0, $script:Shake + $Points / 2.0)      # the view jolts with every hit
     $p.GrinTics = 0
+    $p.PainTics = 22.0                                           # the face in the status bar winces ...
+    if ($Attacker) {                                             # ... and then looks to where it came from
+        $to = [Math]::Atan2(- ($Attacker.Y - $p.Y), $Attacker.X - $p.X) * 180.0 / [Math]::PI
+        $side = (($to - $p.Angle + 540.0) % 360.0) - 180.0
+        $p.FaceLook = if ($side -gt 20) { -1 } elseif ($side -lt -20) { 1 } else { 0 }
+        $p.LookHold = 90.0
+    }
     $script:HudDirty = $true
     if ($p.Health -le 0) {
         $p.Health = 0
@@ -484,5 +491,9 @@ function Update-Player([double]$Tics, [hashtable]$In) {
     # the face in the status bar glances around at random
     $p.FaceTimer += $Tics
     if ($p.GrinTics -gt 0) { $p.GrinTics -= $Tics; if ($p.GrinTics -le 0) { $script:HudDirty = $true } }
-    if ($p.FaceTimer -gt (Get-Rnd)) { $p.FaceTimer = 0; $p.FaceLook = $script:Rng.Next(3) - 1; $script:HudDirty = $true }
+    if ($p.PainTics -gt 0) { $p.PainTics -= $Tics }
+    if ($p.LookHold -gt 0) { $p.LookHold -= $Tics }
+    $p.RageTics = if ($In.Fire -and $p.AttackFrame -ge 0) { [Math]::Min(200.0, $p.RageTics + $Tics) } else { [Math]::Max(0.0, $p.RageTics - 3 * $Tics) }      # holding the trigger
+    if ($p.FaceTimer -gt (Get-Rnd)) { $p.FaceTimer = 0; $look = $script:Rng.Next(3) - 1; if ($p.LookHold -le 0) { $p.FaceLook = $look } }
+    if ((Get-FaceKey) -ne $p.FaceKey) { $script:HudDirty = $true }
 }

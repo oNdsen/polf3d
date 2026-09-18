@@ -132,6 +132,27 @@ function Invoke-SelfTest([string]$OutDir) {
     Write-Step "combat test: kills $($script:Stats.Kills), alerted enemies $alert, health $($script:P.Health), ammo $($script:P.Ammo)"
     Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-0-combat2.png')
 
+    # ---- the face in the status bar: every variant paints; a hit makes it wince and look towards the attacker ----
+    $faces = [System.Drawing.Bitmap]::new(7 * 94, 6 * 106)
+    $fg = [System.Drawing.Graphics]::FromImage($faces); $fg.Clear([System.Drawing.Color]::FromArgb(255, 16, 26, 44))
+    $fg.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor; $fg.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+    $col = 0
+    foreach ($expr in 'idle', 'pain', 'grin', 'rage', 'sneak', 'sudo', 'god') {
+        for ($tier = 0; $tier -le 5; $tier++) { $fg.DrawImage((Get-FaceBitmap $tier $expr 0), [System.Drawing.Rectangle]::new($col * 94 + 2, $tier * 106 + 2, 90, 102)) }
+        $col++
+    }
+    $faces.Save((Join-Path $OutDir 'sheet-faces.png'), [System.Drawing.Imaging.ImageFormat]::Png); $fg.Dispose(); $faces.Dispose()
+    $keepGod = $script:GodMode; $script:GodMode = $false
+    $script:P.Health = 100; $script:P.Angle = 0.0; $script:P.PainTics = 0.0; $script:P.FaceLook = 1
+    $fresh = Get-FaceKey
+    $thug = [Actor]::new(); $thug.X = $script:P.X; $thug.Y = $script:P.Y - 3                 # straight to the left of somebody looking east
+    Invoke-PlayerDamage 150 $thug
+    $hit = Get-FaceKey; $script:P.PainTics = 0.0; $after = Get-FaceKey
+    Write-Step "face test: fresh '$fresh', when hit '$hit', afterwards '$after' (health $($script:P.Health))"
+    if ($fresh -ne '0|idle|0' -and $fresh -notlike '0|idle|*') { throw 'face test failed: a healthy face expected.' }
+    if ($hit -notlike '*|pain|0' -or $after -notlike '*|idle|-1' -or $after -like '0|*') { throw 'face test failed: no wince, no damage or no look to the left.' }
+    $script:GodMode = $keepGod; $script:P.Health = 100; $script:PlayerDied = $false; $script:P.LookHold = 0.0
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
