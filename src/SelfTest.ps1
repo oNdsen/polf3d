@@ -963,6 +963,15 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($middle -lt 0.3 -or $middle -gt 0.7 -or $terminalRows -lt 8 -or -not $skipped -or $script:Mode -ne 'title') { throw 'ending test failed.' }
     foreach ($line in $script:EndingLines) { if ($line[0].Length -gt 84) { throw "ending test failed: the line '$($line[0])' is too long for the screen." } }
 
+    # ---- GIF export: three frames in, three frames out - read back by a decoder that is not ours (GDI+) ----
+    $pictures = foreach ($n in 0..2) { $px = [int[]]::new(32 * 20); for ($i = 0; $i -lt $px.Length; $i++) { $px[$i] = (255 -shl 24) -bor (($i * 7 + $n * 90) -band 255) -shl 8 -bor ($n * 100) }; , $px }
+    $gifPath = Join-Path $OutDir 'test.gif'
+    Export-Gif $gifPath @($pictures) 32 20 2
+    $gif = [System.Drawing.Image]::FromFile($gifPath)
+    $count = $gif.GetFrameCount([System.Drawing.Imaging.FrameDimension]::new($gif.FrameDimensionsList[0])); $size = "$($gif.Width)x$($gif.Height)"; $gif.Dispose()
+    Write-Step "gif test: $count frames of $size, $((Get-Item $gifPath).Length) bytes"
+    if ($count -ne 3 -or $size -ne '64x40') { throw 'gif test failed.' }
+
     # ---- the floor as a test suite ----
     Remove-Item -LiteralPath (Get-AchievementPath) -ErrorAction SilentlyContinue
     $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false

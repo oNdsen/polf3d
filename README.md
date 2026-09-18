@@ -7,6 +7,9 @@ mode –<br>procedurally generated graphics, sound, speech and music, and under 
 
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
 
+<p align="center"><img src="media/gameplay.gif" alt="Ten seconds of the attract demo: the hub hall of floor 1" width="640"><br>
+<sub>Ten seconds of the demo that plays on the title screen – exported by the game itself: <code>./Start-Polf3D.ps1 -ExportGif demos/attract.json</code></sub></p>
+
 ```powershell
 git clone https://github.com/oNdsen/polf3d.git
 cd polf3d
@@ -404,6 +407,11 @@ time-bending powers are switched off in a network game (`-Verbose` works), and m
 * **Speedruns:** `-Speedrun` (or `T` on the title screen) shows the clock – floor time, par and total run – and keeps
   the best times per floor and for complete runs in `saves/speedrun.json`.
 
+**Demos as GIFs.** `./Start-Polf3D.ps1 -ExportGif <demo.json>` plays a demo back without a window and saves it as an
+animated GIF – `-GifStart` and `-GifSeconds` choose the part (default: the first twelve seconds), `-GifScale 2` doubles
+the pixels, `-GifPath` says where. Windows reduces the colours (one palette for the whole clip, so nothing flickers),
+PowerShell stitches the frames together. The clip at the top of this page was made that way.
+
 ## Music
 
 Every track is composed in code and rendered once: a solemn **anthem** that plays only on the title screen, then
@@ -492,6 +500,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Transcript.ps1](src/Transcript.ps1) | the transcript of a floor and its verdict |
 | [src/Achievements.ps1](src/Achievements.ps1) | every floor as a test suite: the ten tests, what has been passed, the Pester-style report |
 | [src/Settings.ps1](src/Settings.ps1) | the options menu, the key bindings, `saves/settings.json` |
+| [src/GifExport.ps1](src/GifExport.ps1) | a demo as an animated GIF |
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |

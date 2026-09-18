@@ -41,6 +41,9 @@
     Play the dungeon generated from this number instead of today's.
 .PARAMETER VerifyDemo
     No window: play this demo file back and report whether it is genuine - for dungeon runs that includes the time.
+.PARAMETER ExportGif
+    No window: play this demo file back and save it as an animated GIF (-GifPath, default: next to the demo).
+    -GifStart and -GifSeconds choose the part of the demo (default: the first 12 seconds), -GifScale 2 doubles the pixels.
 .PARAMETER Terminal
     No window: draw the game into the terminal with half-block characters and 24 bit colours. Wants a terminal
     that understands ANSI sequences (Windows Terminal) - and the bigger its window, the finer the picture.
@@ -88,6 +91,11 @@ param(
     [switch]$Daily,
     [ValidateRange(1, 99999999)][int]$Dungeon,
     [string]$VerifyDemo,
+    [string]$ExportGif,
+    [string]$GifPath,
+    [ValidateRange(0, 3600)][double]$GifStart = 0,
+    [ValidateRange(1, 120)][double]$GifSeconds = 12,
+    [ValidateRange(1, 3)][int]$GifScale = 1,
     [switch]$Terminal,
     [switch]$TerminalKeys,
     [switch]$Speedrun,
@@ -178,15 +186,15 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Events', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Events', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
-$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo
+$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
 $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
 $script:AttractDemo = Join-Path $PSScriptRoot 'demos/attract.json'
 
-if (-not $NoMods -and (-not $headless -or $VerifyDemo)) {
+if (-not $NoMods -and (-not $headless -or $VerifyDemo -or $ExportGif)) {
     Import-Mods (Join-Path $PSScriptRoot 'mods')
     if ($script:Mods) { Write-Step "mods: $($script:Mods -join ', ')" }
 }
@@ -211,6 +219,12 @@ if ($RecordAttractDemo) {
 }
 if ($VerifyDemo) {
     if (-not (Test-DemoFile (Resolve-Path -LiteralPath $VerifyDemo).Path)) { exit 1 }
+    return
+}
+if ($ExportGif) {
+    $demo = (Resolve-Path -LiteralPath $ExportGif).Path
+    if (-not $GifPath) { $GifPath = [System.IO.Path]::ChangeExtension($demo, '.gif') }
+    if (-not (Export-DemoGif $demo ([System.IO.Path]::GetFullPath($GifPath, (Get-Location).Path)) $GifStart $GifSeconds $GifScale)) { exit 1 }
     return
 }
 if ($BalanceTest) {
