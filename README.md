@@ -1,8 +1,9 @@
 <h1 align="center">POLF 3D &nbsp;<code>&gt;_</code></h1>
 
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
-<i>Five floors and a secret one, eleven kinds of enemies, nine weapons, co-op and duels over the network,<br>
-procedurally generated graphics, sound and music – and about 150 lines of C#.</i></p>
+<i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
+verifiable runs,<br>five floors and a secret one, eleven kinds of enemies, nine weapons, co-op and duels over the network, a terminal
+mode –<br>procedurally generated graphics, sound, speech and music, and about 200 lines of C#.</i></p>
 
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
 
@@ -13,8 +14,9 @@ cd polf3d
 ```
 
 Requirements: **Windows** and **PowerShell 7.2+**. Nothing else – no modules, no asset files, no installation.
-On first start the two small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Gamepad.cs](src/Gamepad.cs)) are compiled
-once into `bin/`, and each piece of music is composed and cached there the first time it is needed.
+On first start the three small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Gamepad.cs](src/Gamepad.cs),
+[src/Terminal.cs](src/Terminal.cs)) are compiled once into `bin/`; the music and the enemies' spoken lines are
+composed, spoken and cached there the first time they are needed.
 
 ---
 
@@ -25,11 +27,15 @@ once into `bin/`, and each piece of music is composed and cached there the first
 - [Controls](#controls)
 - [The campaign](#the-campaign)
 - [Enemies, weapons, items](#enemies-weapons-items)
+- [PowerShell is the point](#powershell-is-the-point)
+- [The daily dungeon](#the-daily-dungeon)
+- [Terminal mode](#terminal-mode)
 - [Stealth](#stealth)
 - [Level machinery](#level-machinery)
 - [Two players: co-op and duel](#two-players-co-op-and-duel)
 - [Saved games, demos, speedruns](#saved-games-demos-speedruns)
 - [Music](#music)
+- [Mods](#mods)
 - [Cheats](#cheats)
 - [Command line](#command-line)
 - [How it works](#how-it-works)
@@ -45,11 +51,16 @@ sliding doors, keys, levers, traps, teleporters, secret push-walls, enemy AI, bo
 editor and a two-player network mode – and almost all of it is **plain PowerShell**: game logic, AI, ray casting,
 map format, HUD, menus, music, network protocol.
 
-* **No asset files.** All wall and floor textures, about 300 sprite images, 40 sound effects and the whole soundtrack
-  are generated procedurally (GDI+ primitives, a tiny square/saw/noise synthesiser and a chiptune composer).
-* **As little C# as possible:** the innermost pixel loops (scale one wall strip, draw one sprite, fill one floor row)
-  and one P/Invoke declaration for the game pad. PowerShell cannot push 64,000 pixels per frame – but it handles the
-  320 rays per frame with ease.
+* **PowerShell is not just the language, it is the theme.** A sandboxed but real PowerShell console is part of the
+  game, the special powers are PowerShell's common parameters, the walls are full of consoles and error screens, the
+  final boss is a printer, and every floor ends with a transcript.
+* **No asset files.** All wall and floor textures, about 380 sprite images, 40 sound effects and the whole soundtrack
+  are generated procedurally (GDI+ primitives, a 3×5 pixel font, a tiny square/saw/noise synthesiser and a chiptune
+  composer); the enemies' lines are spoken by Windows' own speech synthesiser. That is also why a [mod](#mods) can add
+  an enemy with ten lines of data.
+* **As little C# as possible:** the innermost pixel loops (scale one wall strip, draw one sprite, fill one floor row,
+  turn a frame into terminal characters) and two P/Invoke declarations (game pad, keyboard state). PowerShell cannot
+  push 64,000 pixels per frame – but it handles the 320 rays per frame with ease.
 * **50–60 fps** in a 960×720 window on an ordinary office laptop.
 
 ## Screenshots
@@ -66,6 +77,12 @@ map format, HUD, menus, music, network protocol.
 | Floor 5: the great hall of the citadel | Automap (hold `M`) – shows only what you have already seen |
 | ![Kennels](media/kennels.png) | ![War machine](media/warmachine.png) |
 | The kennels | Pipeline Cannon versus the war machine and its escort |
+| ![-WhatIf](media/whatif.png) | ![The console](media/console.png) |
+| `-WhatIf`: time stands still, ghosts show where everybody will be in two seconds – the red ones will open fire | The console: real pipelines, real `-WhatIf`, no way out of the sandbox |
+| ![Terminal mode](media/terminal.png) | ![The daily dungeon](media/dungeon.png) |
+| `-Terminal`: the same game as half-block characters | The plan of a generated dungeon: the lift behind the gold door, the key with the boss |
+
+<p align="center"><img src="media/faces.png" alt="The face in the status bar" width="880"></p>
 
 <p align="center"><img src="media/cast.png" alt="The cast" width="900"></p>
 
@@ -81,17 +98,22 @@ map format, HUD, menus, music, network protocol.
 | `Ctrl`, left mouse button | fire |
 | `Space`, `E`, right mouse button | door, lever, lift switch, secret wall |
 | `1`–`9` | weapons (see below) |
+| `Z` `X` `V` `F` `R` | the powers: `-WhatIf`, `-Confirm`, `-Verbose`, `-Force`, Undo (see [below](#powershell-is-the-point)) |
+| `T`, `Tab` | the PowerShell console – or "use" a terminal or a server rack |
 | `M` (hold) / `N` | automap / radar minimap on and off |
 | `F2` / `F3` / `F4` | mouse look / fps display / music on and off |
 | `F5` / `F9` | quick save / quick load |
 | `F12` | record a demo (press again to stop and save) |
 | `P`, `Esc` | pause: `1`–`3` save to a slot, `L` load, `Q` main menu |
+| `G` (title screen) | today's dungeon |
 
 **Game pad (XInput):** left stick move and strafe, right stick turn, `RT` fire, `LT` run, `A` use, `B` sneak,
-`LB`/`RB` previous/next weapon, `Y` minimap, `Back` automap, `Start` pause. D-pad and `A` work in the menus.
+`LB`/`RB` previous/next weapon, `X` `-Confirm`, `Y` minimap, `Back` automap, `Start` pause. D-pad and `A` work in the menus.
 
 The status bar shows floor, score, lives, health, ammunition for the weapon in hand, the weapons you own and your
-keys. Above it: floor progress (kills, secrets, treasures), a three-step **noise meter**, `?` and `!` above enemies
+keys – and **the admin on call**: he collects a new layer of damage every 20 health, winces at every hit and then
+looks towards whoever fired, grins over a new weapon, grits his teeth while you hold the trigger, squints when
+sneaking and wears shades during SUDO. Above it: floor progress (kills, secrets, treasures), a three-step **noise meter**, `?` and `!` above enemies
 who have noticed something or are coming for you, and the radar with alerted enemies as red dots.
 
 ## The campaign
@@ -143,12 +165,14 @@ all: there you need cover, the special weapons and a plan.
 | Sniper | 15–30 | slow and fragile, takes his time – and then hits hard at **any** distance. Only running helps |
 | Shield bearer | 45–80 | bullets and blades glance off the shield: get behind him, wait until he lowers it to shoot – or use something that does not care |
 | Kamikaze bot | 10–20 | rolls at you at speed and blows itself up; shooting it has the same effect (mind who stands next to it) |
-| Commander | 350–1200 | boss with twin machine guns: three rounds per salvo, then a pause – that is your moment. Drops the gold key |
-| War machine | 550–1800 | super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover) |
-| Pilot | 140–500 | phase 2: climbs out of the war machine's wreck – few hit points, but very fast |
+| Commander – *LEGACY.BAT* | 350–1200 | "runs as SYSTEM, nobody dares to touch it". Twin machine guns: three rounds per salvo, then a pause – that is your moment. Drops the gold key |
+| War machine – *THE PRINTER* | 550–1800 | "PC LOAD LETTER". Super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover) |
+| Pilot – *THE PRINTER DRIVER* | 140–500 | "unsigned". Phase 2: climbs out of the war machine's wreck – few hit points, but very fast |
 
 The AI works on the tile grid: enemies patrol along waypoints, open doors, chase you in a zig-zag and have a reaction
-time. Hits throw blood or sparks, a heavy hit shakes the camera, explosions shake it more.
+time. Hits throw blood or sparks, a heavy hit shakes the camera, explosions shake it more. Bosses show their name
+and a health bar once they are after you. And **they talk**: "Access denied!", "Who approved this change?", "Execution
+policy: restricted!" – and now and then a last "Null reference!" (`-NoVoices` makes them beep again).
 
 **Weapons**
 
@@ -171,6 +195,74 @@ When a weapon runs dry you automatically draw the best one that still works.
 (coins 100, goblet 500, chest 1000, crown 5000 points), extra lives, Force charges and the **SUDO** power-up
 (20 seconds of double damage dealt and half damage taken). Every 40,000 points earn an extra life.
 **Explosive barrels** (the red ones) go up when shot and set each other off.
+
+## PowerShell is the point
+
+**Powers named after the common parameters.** They cost *privilege* (the blue gauge), which trickles back by itself
+and comes in chunks with every kill.
+
+| Key | Power | Cost | |
+|---|---|---|---|
+| `Z` | `-WhatIf` | 25 | Time stands still for four seconds and everybody's next two seconds appear as ghosts – cyan for where they will walk, **red for those who will open fire**. It is a real forecast: the game copies the world, runs the actual simulation ahead and puts the world back |
+| `X` | `-Confirm` | 30 | "Are you sure?" The world drops to a third of its speed for five seconds. You do not |
+| `V` | `-Verbose` | 15 | Ten seconds of `VERBOSE: guard 25` over everybody within 14 tiles – through walls |
+| `F` | `-Force` | 35 | Kicks in the door in front of you (locked or not), brings down cracked walls, shoves secret walls and hurts whoever stands close |
+| `R` | Undo | 60 | `Restore-Checkpoint`: the last five seconds never happened – including the rocket you just ate |
+
+**The console** (`T` or `Tab`). The world stops and you get a PowerShell prompt – a real one: pipelines,
+`Where-Object`, `Sort-Object`, script blocks, `Get-Member`. The game's cmdlets cost privilege when they *do* something:
+
+```powershell
+Get-Enemy | Sort-Object Distance | Select-Object -First 1 | Stop-Enemy -WhatIf   # what would it cost?
+Get-Enemy | Where-Object State -eq 'attacking' | Suspend-Enemy                   # freeze them for eight seconds
+Get-Door  | Where-Object Lock -ne '-' | Open-Door                                # who needs keys
+Get-Door  | Sort-Object Distance | Select-Object -First 1 | Lock-Door            # jam the door behind you
+Get-Trap | Disable-Trap ;  Get-Loot -Name key* ;  Get-Secret ;  Get-Player ;  Get-Help
+```
+
+Logging on at one of the terminals or server racks in the levels ("use") opens the same console and grants 30
+privilege once. It is safe to type anything: the console runs in a second runspace whose session state starts
+*empty* – no providers (so no file system), no external programs, a dozen harmless cmdlets added back,
+`ConstrainedLanguage`, and two seconds per line. `Remove-Item C:\ -Recurse -Force` gets a polite answer.
+
+**Everywhere you look.** Consoles on the walls (each wall type has its own one-liner; the one in the caves is long
+dead and overgrown), red `ACCESS DENIED` screens, `Get-Help` posters ("Verb-Noun. Always."), neon `>_` signs,
+graffiti, server racks, desks with CRTs. The level generator spreads them over every floor.
+
+**The transcript.** Every floor writes a `Start-Transcript`-style log into `saves/transcripts` – what you killed with
+what (and whether the victim had noticed anything), what you found, which powers and console lines you used – and
+ends with a one-line verdict that also appears on the floor-completed screen ("Completed with 12 % of the staff still
+employed. A remarkably quiet change window.").
+
+## The daily dungeon
+
+`G` on the title screen (or `-Daily`) builds a floor from today's date, so **everybody gets the same dungeon today**;
+`-Dungeon 4711` plays any other number. Rooms are joined into a tree by corridors plus a loop or two, the lift is
+behind a gold door in the farthest dead end, the key is with *LEGACY.BAT* in another, and everything in between is
+populated by its distance from the start. One life, a fresh kit, no saving, no console.
+
+Every run is recorded – and since a demo is nothing but the seed plus the input of every frame, **a time can be
+checked**:
+
+```powershell
+./Start-Polf3D.ps1 -VerifyDemo ./saves/dungeon-20260918-d2-3m12s4-174501.json
+# VALID: ... on 'Dungeon #20260918', difficulty 2, 6745 frames - reached the lift after 3:12.4 with 31 kills
+```
+
+The verifier rebuilds the dungeon, plays the input back without a window and compares where it ends. A doctored file
+does not end where it claims to. Best times are kept per seed and difficulty.
+
+## Terminal mode
+
+```powershell
+./Start-Polf3D.ps1 -Terminal
+```
+
+No window: the frame buffer goes into the terminal as half-block characters with 24 bit colours (two pixels per
+character cell – the bigger the terminal window, the finer the picture), status bar and menus are text, and the
+PowerShell console simply *is* the terminal. Wants a terminal that understands ANSI sequences, such as Windows
+Terminal. Over SSH the keyboard state of the remote machine is of no use, so there (or with `-TerminalKeys`) the key
+presses of the terminal are used, and `J` fires.
 
 ## Stealth
 
@@ -227,6 +319,27 @@ one style per floor – **rock** for the dungeon, a **march** for the barracks, 
 for the catacombs, **techno** for the lab, a **galloping finale** in harmonic minor for the citadel and a carefree
 ditty for the treasury. Further floors you add cycle through the styles, transposed. `F4` or `-NoMusic` turns it off.
 
+## Mods
+
+Every `mods/*.psd1` is read with `Import-PowerShellDataFile` – which cannot run code – and merged into the game's
+tables before anything is painted, spoken or composed. Because all art is generated, **a new enemy needs no picture,
+only a palette**:
+
+```powershell
+@{
+    Name     = 'Purple interns'
+    Enemies  = @{ intern = @{ BasedOn = 'guard'; HP = 8, 10, 12, 12; Points = 50; Code = 'i'; Replaces = 'guard'; Share = 0.33 } }
+    Palettes = @{ intern = @{ Uniform = '7A3AA8'; UniformDark = '5A2A80'; Hair = 'D8B040'; HatStyle = 'none' } }
+    Voices   = @{ intern = 'It works on my machine!', 'Is this production?'; 'intern.die' = 'I will put it in a ticket.' }
+    Weapons  = @{ pistol = @{ Name = 'Service pistol' } }
+}
+```
+
+That is [mods/examples/purple-interns.psd1](mods/examples/purple-interns.psd1): copy it one folder up and a third of
+all guards turn into chatty interns in purple hoodies. Mods can also change any field of the existing enemies, the
+difficulty table and the music styles (tempo, key, scale, chords); see [src/Mods.ps1](src/Mods.ps1). Demos remember
+the mods they were recorded with, and `-VerifyDemo` insists on the same ones. `-NoMods` ignores the folder.
+
 ## Cheats
 
 | Key | Code word (type it while playing) | Parameter | Effect |
@@ -249,8 +362,11 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -Level 4        # start the campaign on floor 4
 ./Start-Polf3D.ps1 -Map ./maps/mine.map   # play just this one map
 ./Start-Polf3D.ps1 -Speedrun       # show the speedrun clock
-./Start-Polf3D.ps1 -NoSound -NoMusic -NoGamepad
+./Start-Polf3D.ps1 -NoSound -NoMusic -NoVoices -NoGamepad -NoMods
 ./Start-Polf3D.ps1 -HostGame Coop  # network game, see above (-JoinGame <host>, -Port <n>)
+./Start-Polf3D.ps1 -Daily          # today's dungeon (-Dungeon <number> for any other)
+./Start-Polf3D.ps1 -VerifyDemo <file>   # is this demo genuine, and how long did the run take?
+./Start-Polf3D.ps1 -Terminal       # no window: play in the terminal (-TerminalKeys over SSH)
 ```
 
 `Get-Help ./Start-Polf3D.ps1 -Full` lists everything.
@@ -263,6 +379,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Defs.ps1](src/Defs.ps1) | constants, the classes `Actor`/`Door`/`Static`, tables for enemies, states, weapons, items |
 | [src/Assets.Gfx.ps1](src/Assets.Gfx.ps1) | procedural textures, flats and sprites |
 | [src/Assets.Sfx.ps1](src/Assets.Sfx.ps1) | sound synthesis, playback on one channel with priorities |
+| [src/Voices.ps1](src/Voices.ps1) | the enemies' lines, spoken once by Windows' speech synthesiser (SAPI through COM) and cached |
 | [src/Music.ps1](src/Music.ps1) | the composer: styles, melodies written as text, wave patterns, SIMD mixing, WAV cache |
 | [src/Map.ps1](src/Map.ps1) | loads the text map, finds rooms ("areas") by flood fill, places things |
 | [src/Doors.ps1](src/Doors.ps1) | doors, levers, the area graph for sound and sight, push-walls |
@@ -271,10 +388,16 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Player.ps1](src/Player.ps1) | movement with wall sliding, use, weapons, items, cheats |
 | [src/Render.ps1](src/Render.ps1) | ray caster, floor casting, fog, windows, sprite projection, HUD, overlays, automap, radar |
 | [src/Game.ps1](src/Game.ps1) | window, keyboard/mouse/game pad, game modes, main loop, screens |
+| [src/Mods.ps1](src/Mods.ps1) | merges `mods/*.psd1` into the tables |
 | [src/SaveGame.ps1](src/SaveGame.ps1) | saved games as JSON, speedrun records, high score list |
+| [src/Transcript.ps1](src/Transcript.ps1) | the transcript of a floor and its verdict |
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
+| [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | the two-player mode: connection, protocol, snapshots, the "peer context" |
-| [src/Scaler.cs](src/Scaler.cs), [src/Gamepad.cs](src/Gamepad.cs) | **the only C#**: the pixel loops, and the XInput declaration |
+| [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
+| [src/Console.ps1](src/Console.ps1) | the sandboxed runspace, the game's cmdlets, pricing and carrying out requests |
+| [src/Terminal.ps1](src/Terminal.ps1) | terminal mode: keys, text screens, presenting a frame |
+| [src/Scaler.cs](src/Scaler.cs), [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs) | **the only C#**: the pixel loops (screen and terminal), XInput and keyboard state declarations |
 | [src/SelfTest.ps1](src/SelfTest.ps1) | headless tests and the screenshots for this README |
 
 A few details for the curious:
@@ -295,6 +418,16 @@ A few details for the curious:
   optimisation in one.
 * **Determinism:** the game's random numbers are seeded per floor, cosmetic randomness has its own generator. That is
   what makes demos possible – a demo is just the seed plus the input of every frame.
+* **Snapshots and the forecast:** saved games go through JSON, which is far too slow to do twice a second. Undo and
+  `-WhatIf` use a second kind of snapshot: arrays are cloned, living actors copied field by field, the dead shared.
+  That costs a few milliseconds. The forecast swaps in a throw-away random generator, mutes sound, messages and damage,
+  runs doors and actors ahead for two seconds, notes where everybody went and who reached a firing state, and restores.
+* **The console's sandbox:** the cmdlets inside cannot touch the game at all. `Get-Enemy` returns copies made when the
+  line is run; `Stop-Enemy` merely *outputs* a request object. The game picks requests out of the pipeline's output,
+  prices them and carries them out – which is also how `-WhatIf` on them comes for free.
+* **Sprite order:** `[Array]::Sort(keys, items)` called from PowerShell sorts the keys and leaves an `object[]` of items
+  alone – for a long time every enemy was drawn over every column. The sprites are now sorted through an index array,
+  and a self-test puts a guard behind a column to make sure.
 * **Network:** the host owns the world and sends the guest what has changed, twenty times a second, as lines of text
   over TCP; the guest simulates only its own player and *asks* the host for everything else ("I hit actor 17 for 23",
   "use the tile in front of me"). For the enemies to fight two players, the host swaps the remote player in as
@@ -324,6 +457,7 @@ and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements
 |---|---|
 | `SS Sb Sp` `BB Bc` `WW Wp Ws` `RR Rb` `MM` | walls: stone, blue stone, wood, brick, steel (+ decorated variants) |
 | `GG Gv` `TT Tl` | mossy rock (+ vines), tech panels (+ console) |
+| `St Bt Wt Rt Mt Gt Tt` · `Sh Wh Rh` · `Me Te` · `Mn Tn` · `Sg Rg` | PowerShell on the wall: console · `Get-Help` poster · error screen · neon `>_` · graffiti (first letter = wall type) |
 | `MX` / `MY` | lift switch (the exit) / secret lift switch (to the bonus floor) |
 | `?S ?s ?B ?b ?W ?w ?R ?r ?M ?G ?g ?T ?t` | secret push-wall (upper case plain, lower case decorated) |
 | `!S !B !W !R !M !G !T` | cracked wall – only an explosion brings it down |
@@ -339,9 +473,11 @@ and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements
 | `@1`–`@9` | teleporter pad (two pads with the same number form a pair) |
 | `+d +f +h` `+a +o +z` `+m +c +p +r +l +t +j` `+g +s` `+1 +2 +3 +4` `+u +q` | dog food, food, first aid · clip, rockets, Force charge · machine gun, chain gun, Pipeline Cannon, Force Blaster, rocket launcher, flamethrower, throwing knives · keys · treasures · extra life, SUDO |
 | `*l *h *L *t *b *p *a *c *f *x *v *s *u *k *B *m *g` `*e` | decoration: ceiling lamp, chandelier, floor lamp, table, barrel, plant, suit of armour, column, flag, crates, vat, bones, puddle, dead guard, bed, console, stalagmite · **explosive barrel** |
+| `*r *T *n` | server rack and desk with a CRT (both open the console when "used"), a neon `>_` hanging from the ceiling |
 
 The bundled maps are generated by [tools/New-Levels.ps1](tools/New-Levels.ps1) from room lists – rooms are rectangles
-carved out of solid rock; where they touch they merge into corridors and caves. The game only ever reads the `.map`
+carved out of solid rock; where they touch they merge into corridors and caves – and decorated with PowerShell
+scenery by position, so they come out the same every time. The game only ever reads the `.map`
 files, though, so you can just as well edit them by hand or in the editor. Validate and play:
 
 ```powershell
@@ -354,7 +490,10 @@ files, though, so you can just as well edit them by hand or in the editor. Valid
 ```powershell
 ./Start-Polf3D.ps1 -SelfTest   # headless: renders PNGs into ./selftest and tests combat, stealth, weapons, machinery,
                                # bosses, saved games, demo determinism, the network protocol (both sides, over
-                               # loopback) and the music - plus a soak test of every floor that fights every boss
+                               # loopback), sprite order, the face, snapshots and every power, the console (which
+                               # tries three ways to delete a canary file), dungeons (valid, reproducible, a run
+                               # verifies, a doctored one does not), terminal frames, transcripts, the example mod
+                               # and the music - plus a soak test of every floor that fights every boss
 ./tools/Test-Level.ps1         # validates all maps and prints an overview of each
 ./tools/Test-Verbs.ps1         # every function uses an approved verb
 ./Start-Polf3D.ps1 -BalanceTest 1   # a bot plays floor 1 on every difficulty and duels its bosses: who wins how often?
@@ -366,7 +505,7 @@ POLF 3D is **neither a clone nor a port**. The source code of the 1992 grandfath
 id Software, was first analysed and described *in our own words* – how the code is structured and how levels, enemies,
 weapons, items and doors work. Only from that description was the game written anew. What was adopted are concepts and
 game mechanics; **nothing** of the original is contained in this repository: own code, own levels, own names, own
-procedurally generated graphics, sounds and music – and the `>_` prompt as a coat of arms.
+procedurally generated graphics, sounds, speech and music – and the `>_` prompt as a coat of arms.
 
 ## License
 

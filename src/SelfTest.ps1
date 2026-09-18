@@ -720,7 +720,7 @@ function Export-Screenshots([string]$OutDir) {
 
     # title
     $script:HighScores = @([pscustomobject]@{ Name = 'root'; Score = 184300; Result = 'VICTORY' }, [pscustomobject]@{ Name = 'sysadmin'; Score = 96500; Result = 'killed' }, [pscustomobject]@{ Name = 'intern'; Score = 12400; Result = 'killed' })
-    Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'title.png')
+    $script:Difficulty = 1; Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'title.png'); $script:Difficulty = 3
 
     # floor 1: the hub hall
     $script:LevelIndex = 0; Start-Level $false $false; $script:Message = $null
@@ -826,6 +826,52 @@ function Export-Screenshots([string]$OutDir) {
     }
     $bmp.Save((Join-Path $OutDir 'cast.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
 
+    # floor 1: -WhatIf in the hub - where will they be in two seconds, and who will shoot?
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    Set-TestCamera 20.5 24.5 45; $script:P.Privilege = 100.0
+    $fire = $idle.Clone(); $fire.Fire = $true
+    for ($f = 0; $f -lt 50; $f++) { Show-PlayFrame; Update-World 2.0 $(if ($f -lt 4) { $fire } else { $idle }) }      # a shot: now they are on their way
+    $whatIf = $idle.Clone(); $whatIf.Ability = 1
+    Update-World 1.0 $whatIf; Update-World 1.0 $idle
+    Save-Shot $OutDir 'whatif'
+    Stop-WhatIf
+
+    # ... and the console, a few lines in
+    $script:P.Privilege = 100.0; $script:Con = $null
+    Open-Console
+    foreach ($line in 'Get-Enemy | Sort-Object Distance | Select-Object -First 4', 'Get-Enemy | sort Distance | select -First 1 | Stop-Enemy -WhatIf',
+        'Get-Enemy | ? State -eq attacking | Suspend-Enemy', "Get-Door | ? Lock -ne '-' | ft Id, Lock, State, Distance", 'Remove-Item C:\ -Recurse -Force') { Invoke-ConsoleLine $line }
+    Show-PlayFrame; Show-Console; Save-BackBuffer (Join-Path $OutDir 'console.png')
+    Close-Console
+
+    # the face in the status bar, from fresh to dead and in all its moods
+    $sheet = [System.Drawing.Bitmap]::new(7 * 124 + 16, 2 * 170 + 8)
+    $sg = [System.Drawing.Graphics]::FromImage($sheet); $sg.Clear([System.Drawing.Color]::FromArgb(255, 10, 16, 32))
+    $sg.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor; $sg.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+    $sg.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAlias
+    $label = [System.Drawing.Font]::new('Consolas', 9); $centre = [System.Drawing.StringFormat]::new(); $centre.Alignment = [System.Drawing.StringAlignment]::Center
+    $cells = @(@('100-80', 0, 'idle'), @('79-60', 1, 'idle'), @('59-40', 2, 'idle'), @('39-20', 3, 'idle'), @('19-1', 4, 'idle'), @('dead', 5, 'idle'), @('ouch!', 2, 'pain')),
+             @(@('new weapon', 0, 'grin'), @('trigger held', 1, 'rage'), @('sneaking', 0, 'sneak'), @('SUDO', 0, 'sudo'), @('god mode', 0, 'god'), @('grin, battered', 3, 'grin'), @('rage at 15', 4, 'rage'))
+    for ($row = 0; $row -lt 2; $row++) {
+        for ($i = 0; $i -lt 7; $i++) {
+            $c = $cells[$row][$i]; $x = 8 + $i * 124; $y = 6 + $row * 170
+            $sg.FillRectangle((Get-Brush 'FF101A2C'), $x, $y, 120, 136)
+            $sg.DrawImage((Get-FaceBitmap $c[1] $c[2] 0), [System.Drawing.Rectangle]::new($x, $y, 120, 136))
+            $sg.DrawString($c[0], $label, (Get-Brush 'FFC0C8D8'), [System.Drawing.RectangleF]::new($x - 2, $y + 142, 124, 18), $centre)
+        }
+    }
+    $sheet.Save((Join-Path $OutDir 'faces.png'), [System.Drawing.Imaging.ImageFormat]::Png); $sg.Dispose(); $sheet.Dispose(); $label.Dispose()
+
+    # a dungeon from a number
+    $null = Start-Dungeon 20260918; $script:Recording = $null; $script:Message = $null
+    $foe = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert } | Sort-Object { [Math]::Abs($_.X - $script:P.X) + [Math]::Abs($_.Y - $script:P.Y) } | Select-Object -First 1
+    for ($f = 0; $f -lt 6; $f++) { Show-PlayFrame }
+    $script:KeyDown[77] = $true; $script:MapBmp = $null
+    for ($i = 0; $i -lt $script:Vis.Length; $i++) { $script:Vis[$i] = 1 }      # the whole plan, for the picture
+    Save-Shot $OutDir 'dungeon'
+    $script:KeyDown[77] = $false
+    Stop-Dungeon
+
     # the same hall the way -Terminal shows it: 150 x 47 character cells, two pixels each, status lines as text
     $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
     Set-TestCamera 20.5 24.5 45; Update-View
@@ -919,7 +965,7 @@ function Export-Banner([string]$Path) {
     $g.FillRectangle((Get-Brush 'FF40E0FF'), ($px + 386), ($py + 12), 16, 29)
 
     $g.DrawString('A 90s-style ray casting shooter - written in PowerShell.', $small, (Get-Brush 'FFE8ECF4'), ($px - 3), ($py + 78))
-    $g.DrawString('5 floors   11 enemies   9 weapons   co-op & duel   everything procedural', $small, (Get-Brush 'FF8FB0FF'), ($px - 3), ($py + 108))
+    $g.DrawString('a real PowerShell console   -WhatIf / -Confirm / -Force as powers   a daily dungeon   co-op & duel', $small, (Get-Brush 'FF8FB0FF'), ($px - 3), ($py + 108))
     $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, 0, $W, 8); $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, ($H - 8), $W, 8)
 
     $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
