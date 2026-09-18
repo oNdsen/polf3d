@@ -72,6 +72,7 @@ function Reset-MouseCenter {
 # Starting and restarting
 # ---------------------------------------------------------------------------------------------
 function Reset-ScreenEffects {
+    $script:GlitchTics = 0.0
     $script:DamageFlash = 0.0; $script:BonusFlash = 0.0; $script:BeamFlash = 0.0; $script:ForceFlash = 0.0
     $script:MuzzleFlash = 0.0; $script:Shake = 0.0
 }
@@ -240,6 +241,7 @@ function Update-World([double]$Tics, [hashtable]$In) {
 
 function Show-PlayFrame {
     Update-View
+    if ($script:GlitchTics -gt 0) { $script:GlitchTics -= 1.6; Add-Glitch }      # BLUE SCREEN's crash tears the picture
     if ($script:TerminalMode) { return }                         # the terminal shows the frame buffer itself, and text
     Copy-ViewToBack
     Show-Overlays

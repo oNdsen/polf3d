@@ -480,6 +480,14 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
 # ---------------------------------------------------------------------------------------------
 function Update-Player([double]$Tics, [hashtable]$In) {
     $p = $script:P
+    if ($script:Stats.Freeze -gt 0) {
+        # BLUE SCREEN has crashed the controls: nothing gets through until they are back
+        $script:Stats.Freeze -= $Tics
+        $In = $In.Clone()
+        foreach ($k in 'Forward', 'Strafe', 'Turn', 'MouseTurn') { $In[$k] = 0 }
+        foreach ($k in 'Fire', 'Use', 'Run') { if ($In.ContainsKey($k)) { $In[$k] = $false } }
+        $In.Weapon = -1
+    }
     $p.Sneaking = [bool]$In.Sneak
     $p.Running = [bool]$In.Run -and -not $p.Sneaking
     $script:StepNoise = 0.0                                      # how far this frame's footsteps and doors can be heard

@@ -598,7 +598,7 @@ Save-Level 9 'The Executive Floor' 720 '2A2030' '584A5C' 'WW' -Look '@floortex f
 # =====================================================================================================
 # FLOOR 10 - Ring 0.  Two rings around the core. Patrols walk the outer ring; the gates to the inner
 # ring hang on two levers (north-east room, the silver arsenal in the south-east). A commander in the
-# inner ring has the gold key to the core - and in the core wait two printers, the last commander and,
+# inner ring has the gold key to the core - and in the dark of the core wait two printers, BLUE SCREEN and,
 # in the middle of it all, the lift.
 # =====================================================================================================
 New-Grid 51 51
@@ -634,7 +634,7 @@ Add-Things @(
     12, 12, '+h',  36, 36, '+a',  14, 36, '+a',  14, 14, '+o',  36, 14, '+o'
     # the core
     19, 19, '*c',  31, 19, '*c',  19, 31, '*c',  31, 31, '*c',  19, 25, '*c',  31, 25, '*c'
-    25, 19, 'b^',  19, 28, 'u^',  31, 28, 'u^',  17, 17, 'e>',  33, 17, 'e<',  17, 33, 'k^',  33, 33, 'k^',  22, 30, 'h^',  28, 30, 'h^'
+    25, 19, 'x^',  19, 28, 'u^',  31, 28, 'u^',  17, 17, 'e>',  33, 17, 'e<',  17, 33, 'k^',  33, 33, 'k^',  22, 30, 'h^',  28, 30, 'h^'
     23, 17, 'tn',  27, 17, 'tn',  20, 4, 'ce',   30, 46, 'cw'          # two sentry guns cover the door of the core, cameras watch the outer ring
     16, 16, '+h',  34, 16, '+h',  16, 34, '+h',  34, 34, '+h',  17, 16, '+a',  33, 16, '+a',  17, 34, '+o',  33, 34, '+o',  16, 25, '+z',  34, 25, '+z',  25, 33, '+q'
 )

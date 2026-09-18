@@ -311,6 +311,20 @@ function Write-HudBar([string]$Color, [double]$X, [double]$Y, [double]$W, [doubl
     $script:BackG.FillRectangle((Get-Brush $Color), [single]($X * $s), [single]($Y * $s), [single]($W * $s), [single]($H * $s))
 }
 
+# BLUE SCREEN's crash: for a second and a half bands of the picture slip sideways and some of them turn blue.
+function Add-Glitch {
+    $fb = $script:FB; $w = $script:ViewW; $h = $script:ViewH; $rng = $script:FxRng
+    $row = [int[]]::new($w)
+    for ($b = 0; $b -lt 9; $b++) {
+        $y0 = $rng.Next($h - 10); $rows = 2 + $rng.Next(9); $shift = $rng.Next(-30, 31); $blue = $rng.Next(4) -eq 0
+        for ($y = $y0; $y -lt $y0 + $rows; $y++) {
+            if ($blue) { for ($x = 0; $x -lt $w; $x++) { $fb[$y * $w + $x] = -16777046 }; continue }      # 0xFF0000AA
+            [Array]::Copy($fb, $y * $w, $row, 0, $w)
+            if ($shift -gt 0) { [Array]::Copy($row, 0, $fb, $y * $w + $shift, $w - $shift) } elseif ($shift -lt 0) { [Array]::Copy($row, - $shift, $fb, $y * $w, $w + $shift) }
+        }
+    }
+}
+
 function Show-Overlays {
     $viewH = $script:ViewH
     $g = $script:BackG; $sc = $script:Scale
@@ -369,7 +383,7 @@ function Show-Overlays {
     }
     if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 19) 40 8 }
     # the building's execution policy: how nervous the floor is
-    if (-not $script:NetClient) { $policy = Get-Policy; Write-HudText $policy.Name 'Small' $policy.Color 104 ($viewH - 10) 52 8 }
+    if (-not $script:NetClient) { $policy = Get-Policy; Write-HudBar '70101A2C' 2 2 46 7; Write-HudText $policy.Name 'Small' $policy.Color 2 2.4 46 7 }
     # a boss on your heels: his name and what is left of him
     $boss = $null
     foreach ($a in $script:Actors) { if ($a.Shootable -and $a.AttackMode -and $script:BossNames.ContainsKey($a.Kind) -and (-not $boss -or $a.Depth -lt $boss.Depth)) { $boss = $a } }

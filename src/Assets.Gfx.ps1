@@ -846,6 +846,8 @@ function Initialize-Sprites {
     Add-ThingSprites
     Add-BotSprites              # after the things: the bot dies in the rocket's explosion frames
     Add-SecuritySprites
+    Add-BsodSprites
+    $script:Spr['uber.jam'] = New-Sprite { Add-MechArt 'stand'; Add-Box 'F4F4F4' 25 27 14 10; Add-Box 'B0B0B0' 27 30 10 1; Add-Box 'B0B0B0' 27 33 8 1; Add-Box 'FF2020' 27 22 10 3 }
     Add-WhatIfSprites
     Add-WeaponSprites
 }
@@ -944,6 +946,37 @@ function Add-BotArt([string]$Pose) {
     Add-Oval '101418' 27 40 10 8; Add-Oval $(if ($blink) { 'FF2020' } else { '801010' }) 29 41 6 6
     if ($blink) { Add-Oval 'FFA0A0' 31 42 2 2 }
     Add-Box '8A929A' 31 30 2 7; Add-Oval $(if ($blink) { 'FFD040' } else { 'C03030' }) 30 27 4 4
+}
+
+# BLUE SCREEN: an old monitor riding on a tangle of cables. What is on the screen tells what it is about to do.
+function Add-BsodArt([string]$Pose) {
+    $bob = switch ($Pose) { 'w1' { -1 } 'w3' { 1 } default { 0 } }
+    if ($Pose -eq 'dead') {
+        Add-Oval '101010' 14 55 36 7
+        Add-Poly 'A8A090' @(16, 60, 20, 44, 46, 47, 48, 60); Add-Poly '101418' @(21, 58, 24, 47, 43, 49, 44, 58)
+        Add-Box '0000AA' 27 51 5 3; Add-Box '20262C' 12 58 8 2; Add-Box '20262C' 44 57 9 2
+        return
+    }
+    Add-Oval '101010' 18 57 28 6
+    foreach ($c in @(24, 40, 20, 60), @(30, 40, 28, 60), @(34, 40, 37, 60), @(40, 40, 45, 60)) { Add-Poly '20262C' @($c[0], $c[1], ($c[0] + 3), $c[1], ($c[2] + 3), $c[3], $c[2], $c[3]) }
+    Add-Box '20262C' 22 50 20 3
+    $y = 8 + $bob
+    Add-Box 'C8C0B0' 13 $y 38 32; Add-Box 'A8A090' 13 ($y + 29) 38 3; Add-Box '8A8478' 28 ($y + 32) 8 3
+    $screen = switch ($Pose) { 'fire' { 'FFFFFF' } 'rocket' { 'FF8020' } 'glitch' { 'FF00FF' } 'die1' { '6060FF' } 'die2' { 'FFFFFF' } 'die3' { '202020' } default { '0000AA' } }
+    Add-Box $screen 16 ($y + 3) 32 23
+    if ($Pose -eq 'glitch') { foreach ($b in 0..5) { Add-Box $(if ($b % 2) { '00FFFF' } else { 'FFFF00' }) (16 + ($b * 7) % 20) ($y + 4 + $b * 4) (8 + $b * 3) 2 } ; return }
+    if ($Pose -in 'die2', 'die3') { Add-Poly '101418' @(18, ($y + 5), 30, ($y + 14), 24, ($y + 24), 34, ($y + 12), 46, ($y + 22), 36, ($y + 8)); return }
+    $ink = if ($Pose -in 'fire', 'rocket') { '000000' } else { 'FFFFFF' }
+    Add-Box $ink 22 ($y + 8) 3 3; Add-Box $ink 22 ($y + 14) 3 3                                  # :
+    Add-Box $ink 30 ($y + 7) 2 2; Add-Box $ink 28 ($y + 9) 2 6; Add-Box $ink 30 ($y + 15) 2 2       # (
+    Add-Box $ink 19 ($y + 21) 18 1; Add-Box $ink 19 ($y + 23) 12 1
+    if ($Pose -eq 'aim') { Add-Box 'FF2020' 16 ($y + 3) 32 1; Add-Box 'FF2020' 16 ($y + 25) 32 1 }
+    if ($Pose -eq 'fire') { Add-Oval 'FFE070' 4 ($y + 12) 10 10; Add-Oval 'FFE070' 50 ($y + 12) 10 10 }
+    Add-Box $(if ($Pose -in 'aim', 'fire', 'rocket') { 'FF2020' } else { '20C020' }) 46 ($y + 29) 3 2
+}
+
+function Add-BsodSprites {
+    foreach ($pose in 's', 'w1', 'w2', 'w3', 'w4', 'aim', 'fire', 'rocket', 'glitch', 'die1', 'die2', 'die3', 'dead') { $script:Spr["bsod.$pose"] = New-Sprite { Add-BsodArt $pose } }
 }
 
 # Cameras hang from the ceiling, sentry guns stand on a tripod. Both blink while they are awake.

@@ -83,7 +83,7 @@ map format, HUD, menus, music, network protocol.
 | ![Terminal mode](media/terminal.png) | ![The daily dungeon](media/dungeon.png) |
 | `-Terminal`: the same game as half-block characters | The plan of a generated dungeon: the lift behind the gold door, the key with the boss |
 | ![The Data Centre](media/datacentre.png) | ![Ring 0](media/ring0.png) |
-| Floor 6: a cold aisle of the data centre – there is a sniper at the far end of every one | Floor 10: the core of Ring 0. The last commander is expecting you |
+| Floor 6: a cold aisle of the data centre – there is a sniper at the far end of every one | Floor 10: the core of Ring 0 – dark, and something in there is glowing blue |
 | ![A floor's tests](media/tests.png) | ![The player list](media/players.png) |
 | Every floor is a test suite, and Pester reports: a pacifist run through the catacombs | `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban |
 
@@ -143,7 +143,7 @@ ends with a tally (kills, secrets, treasures, a bonus for beating the par time).
 | 7 | The Archive | 46 / ~3700 | Two halls of shelves to get lost in, with things waiting between them. Four secrets – the microfiche knows them all |
 | 8 | The Foundry | 35 / ~5500 | A production line: a conveyor with three crushers and a gate, three levers – and THE PRINTER in the assembly hall |
 | 9 | The Executive Floor | 46 / ~7000 | Carpet and plants. A gallery of offices, the board (two commanders) behind the silver door, and a CEO who keeps a printer |
-| 10 | Ring 0 | 47 / ~8800 | Two rings around the core. Patrols outside, levers for the gates, and in the core two printers, the last commander – and the lift in the middle of it |
+| 10 | Ring 0 | 47 / ~10000 | Two rings around the core. Patrols outside, levers for the gates, and in the dark of the core two printers, **BLUE SCREEN** – and the lift in the middle of it |
 
 **Every floor is a test suite.** When you throw the lift switch the run is put through ten tests and the result is
 printed the way Pester prints it – `[+] beats the par time 24ms`, `[-] fires no gun (blades are fine) 19ms` – on the
@@ -205,7 +205,8 @@ all: there you need cover, the special weapons and a plan.
 | Security camera | 8–12 | hangs from the ceiling and sweeps a quarter turn to either side. Harmless – but every second it sees you heats the [execution policy](#stealth) by eight points. Not a kill; `Get-Enemy -Kind camera \| Stop-Enemy` switches it off quietly |
 | Sentry gun | 35–65 | never moves, fires bursts, explodes when destroyed. `Get-Enemy -Kind turret \| Set-Turret -Owner Me` (25 privilege) makes it change sides: from then on it shoots whoever else comes within ten tiles |
 | Commander – *LEGACY.BAT* | 350–1200 | "runs as SYSTEM, nobody dares to touch it". Twin machine guns: three rounds per salvo, then a pause – that is your moment. Drops the gold key |
-| War machine – *THE PRINTER* | 550–1800 | "PC LOAD LETTER". Super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover) |
+| War machine – *THE PRINTER* | 550–1800 | "PC LOAD LETTER". Super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover). After every second salvo it has a **paper jam**: four seconds of helpless blinking and triple damage – but the first three times it also finishes two print jobs, and they come rolling at you |
+| *BLUE SCREEN* | 700–2200 | ":( your admin ran into a problem". The last one, in the core of Ring 0: a monitor riding on a tangle of cables. Bursts, a rocket – and **the crash**: the picture tears and your controls hang for most of a second (Undo still works). When it dies the system halts: everybody left stands still for twenty seconds |
 | Pilot – *THE PRINTER DRIVER* | 140–500 | "unsigned". Phase 2: climbs out of the war machine's wreck – few hit points, but very fast |
 
 The AI works on the tile grid: enemies patrol along waypoints, open doors, chase you in a zig-zag and have a reaction
@@ -332,7 +333,7 @@ Anyone who has not noticed you yet takes **double damage**. What they notice:
 * **Sight:** enemies only see what is in front of them. Sneaking, you can get right behind them.
 * The knife and throwing knives are silent. Shield bearers are best dealt with exactly this way.
 
-**The building has an execution policy** – how nervous the whole floor is, shown next to the noise meter. Being seen
+**The building has an execution policy** – how nervous the whole floor is, shown in the top left corner. Being seen
 and making noise heat it up, keeping quiet lets it cool down again:
 
 | Policy | The house | What it means |
@@ -567,6 +568,7 @@ and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements
 | `..` | floor |
 | `P^ P> Pv P<` | player start and view direction |
 | `g d e o m s h k b u` + direction | guard, dog, elite, officer, mutant, sniper, shield bearer, kamikaze bot, commander, war machine |
+| `x` + direction | BLUE SCREEN |
 | `c t` + `n e s w` | security camera, sentry gun (floors 6–10 have them) |
 | direction `^ > v <` / `n e s w` / `N E S W` | standing / standing and "deaf" (ambush, reacts to sight only) / patrolling |
 | `:^ :> :v :<` | waypoint: patrols turn here |

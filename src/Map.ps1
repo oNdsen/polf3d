@@ -16,6 +16,7 @@
 #   D1..D9  X1..X9                           remote door and the wall lever (same number) that opens it for good
 #   ..                                       floor
 #   P^ P> Pv P<                              player start + view direction
+#   x  +  direction                              BLUE SCREEN, the last boss
 #   c t  +  nesw                                 security camera, sentry gun (they only see, so: always the "deaf" letters)
 #   g d e o m s h k b u  +  ^>v< | nesw | NESW   enemy: standing | standing & deaf (ambush) | patrolling
 #                                            (guard dog elite officer mutant sniper shield-bearer kamikaze-bot boss super-boss)
@@ -236,7 +237,7 @@ function Initialize-Level([string]$Path) {
                 $mode = if ('NESW'.Contains([string]$b)) { 'patrol' } elseif ('nesw'.Contains([string]$b)) { 'ambush' } else { 'stand' }
                 # the easier difficulties thin out the rank and file - always the same ones, decided by where they stand
                 $kind = $script:EnemyCodes[$a]
-                if ($kind -notin 'boss', 'uber' -and (($x * 73 + $y * 151) % 100) -lt 100 * $script:Difficulties[$script:Difficulty].Thin) { continue }
+                if ($kind -notin 'boss', 'uber', 'bsod' -and (($x * 73 + $y * 151) % 100) -lt 100 * $script:Difficulties[$script:Difficulty].Thin) { continue }
                 if ($script:ModReplace.Count) { $kind = Get-ModdedKind $kind $x $y }
                 Add-Enemy $kind $x $y $dir $mode
             }
@@ -274,7 +275,7 @@ function New-Enemy([string]$Kind, [int]$X, [int]$Y, [int]$Dir, [string]$Mode) {
     $a.HP = $def.HP[$script:Difficulty]
     $a.Shootable = $true
     $a.Area = $script:AreaOf[$Y * $script:MapW + $X]
-    $a.Ambush = ($Mode -eq 'ambush') -or ($Kind -in 'boss', 'uber')
+    $a.Ambush = ($Mode -eq 'ambush') -or ($Kind -in 'boss', 'uber', 'bsod')
     if ($Mode -eq 'patrol') {
         $a.State = "$Kind.path1"; $a.Active = $true
         $a.TX += $script:DirDX[$Dir]; $a.TY += $script:DirDY[$Dir]; $a.Dist = 1.0

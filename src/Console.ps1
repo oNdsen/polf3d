@@ -262,8 +262,8 @@ function Invoke-SandboxScript([string]$Text) {
 # The price of a request, or a string explaining why it cannot be done.
 function Get-ConsoleActionCost([string]$Name, $Target) {
     switch ($Name) {
-        'Stop-Enemy'    { if ($Target.Kind -in 'boss', 'uber', 'pilot') { "Access is denied: the $($Target.Kind) runs as SYSTEM" } else { 10 + [int][Math]::Ceiling($Target.HP / 2.0) } }
-        'Suspend-Enemy' { if ($Target.Kind -in 'boss', 'uber', 'pilot') { 30 } else { 12 } }
+        'Stop-Enemy'    { if ($Target.Kind -in 'boss', 'uber', 'pilot', 'bsod') { "Access is denied: the $($Target.Kind) runs as SYSTEM" } else { 10 + [int][Math]::Ceiling($Target.HP / 2.0) } }
+        'Suspend-Enemy' { if ($Target.Kind -in 'boss', 'uber', 'pilot', 'bsod') { 30 } else { 12 } }
         'Set-Turret'    { if ($Target.Kind -ne 'turret') { "that is a $($Target.Kind), not a sentry gun" } elseif ($Target.Hacked) { 'it answers to you already' } else { 25 } }
         'Open-Door'     { if ($Target.Lock -in 1, 2, 4 -and -not $Target.Unlocked) { 25 } else { 8 } }
         'Close-Door'    { 5 }

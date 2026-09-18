@@ -79,5 +79,5 @@ function Get-AlertSound([Actor]$a) {
 
 function Get-DeathSound([Actor]$a) {
     $lines = $script:Voices["$($a.Kind).die"]
-    if ($lines -and ($a.Kind -in 'boss', 'uber' -or $script:FxRng.Next(100) -lt 40)) { $lines[$script:FxRng.Next($lines.Count)] } else { $a.Def.DieSnd }
+    if ($lines -and ($a.Kind -in 'boss', 'uber', 'bsod' -or $script:FxRng.Next(100) -lt 40)) { $lines[$script:FxRng.Next($lines.Count)] } else { $a.Def.DieSnd }
 }

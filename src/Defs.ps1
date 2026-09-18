@@ -182,7 +182,7 @@ $script:EnemyCodes = @{
     [char]'g' = 'guard'; [char]'d' = 'dog'; [char]'e' = 'elite'
     [char]'o' = 'officer'; [char]'m' = 'mutant'; [char]'b' = 'boss'; [char]'u' = 'uber'
     [char]'s' = 'sniper'; [char]'h' = 'shield'; [char]'k' = 'bot'
-    [char]'c' = 'camera'; [char]'t' = 'turret'
+    [char]'c' = 'camera'; [char]'t' = 'turret'; [char]'x' = 'bsod'
 }
 
 $script:EnemyDefs = @{
@@ -283,8 +283,18 @@ $script:EnemyDefs = @{
         Accuracy = 1.5; Drop = $null; AlertSnd = 'alert_uber'; ShotSnd = 'shot_boss'; DieSnd = 'die_uber'
         Shoot = @(, @('aim', 30, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 8, $false)) + @(, @('fire', 8, $true)) +
                 @(, @('aim', 8, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 30, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 12, $false)) +
-                @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 12, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 20, $false))
+                @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 12, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 20, 'Jam'))
         DieTics = 20; DieAction = 'SpawnPilot'
+    }
+    # The last one: BLUE SCREEN. A monitor on a tangle of cables. Bursts, a rocket - and the crash: the picture tears and
+    # the player's controls hang for most of a second. When it dies, everything that depended on it stands still.
+    bsod = @{
+        HP = @(700, 1200, 1700, 2200); Points = 20000; Patrol = 0.0078; Chase = 0.026; Machine = $true
+        ReactBase = 1; ReactDiv = 0; Doors = $false; Pain = $false; Rotates = $false
+        Accuracy = 1.5; Drop = $null; AlertSnd = 'alert_uber'; ShotSnd = 'shot_boss'; DieSnd = 'die_uber'
+        Shoot = @(, @('aim', 25, $false)) + @(, @('glitch', 22, 'Glitch')) + @(, @('aim', 10, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 6, $false)) +
+                @(, @('fire', 8, $true)) + @(, @('aim', 6, $false)) + @(, @('fire', 8, $true)) + @(, @('aim', 20, $false)) + @(, @('rocket', 12, 'Rocket')) + @(, @('aim', 25, $false))
+        DieTics = 22; DieAction = 'Halt'
     }
     # ... phase 2: the pilot bails out - little armour, but fast and trigger-happy.
     pilot = @{
@@ -302,6 +312,7 @@ $script:BossNames = @{
     boss  = 'LEGACY.BAT  -  runs as SYSTEM, nobody dares to touch it'
     uber  = 'THE PRINTER  -  PC LOAD LETTER'
     pilot = 'THE PRINTER DRIVER  -  unsigned'
+    bsod  = 'BLUE SCREEN  -  :(  your admin ran into a problem'
 }
 
 # things that live in the actor list without being enemies
@@ -367,6 +378,13 @@ function Initialize-States {
         Add-State "$kind.die3" "$kind.die3" $false $t $null $def.DieAction "$kind.dead"
         Add-State "$kind.dead" "$kind.dead" $false 0 $null $null "$kind.dead"
     }
+
+    # THE PRINTER's paper jam: it stands there blinking, takes triple damage - and prints reinforcements
+    Add-State 'uber.jam1' 'uber.jam' $false 90 $null $null 'uber.jam2'
+    Add-State 'uber.jam2' 'uber.s'   $false 20 $null $null 'uber.jam3'
+    Add-State 'uber.jam3' 'uber.jam' $false 90 $null $null 'uber.jam4'
+    Add-State 'uber.jam4' 'uber.s'   $false 20 $null $null 'uber.jam5'
+    Add-State 'uber.jam5' 'uber.jam' $false 60 $null $null 'uber.chase1'
 
     # the dog's leap
     Add-State 'dog.jump1' 'dog.jump1' $false 10 $null $null   'dog.jump2'

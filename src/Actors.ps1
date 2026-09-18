@@ -606,6 +606,44 @@ function Invoke-ActionSpawnPilot([Actor]$a) {
     Show-Message 'The pilot bails out!'
 }
 
+# THE PRINTER, after every second salvo: a paper jam. For four seconds it only blinks and takes triple damage -
+# but the first three times it also finishes two print jobs ($a.VX counts the salvos, $a.VY the print runs).
+function Invoke-ActionJam([Actor]$a) {
+    $a.VX += 1
+    if ([int]$a.VX % 2 -ne 0) { return }
+    Set-ActorState $a 'uber.jam1'
+    Start-Sfx 'clang' $a.X $a.Y
+    Show-Message 'PAPER JAM!  Now - it takes triple damage'
+    if ($a.VY -ge 3) { return }
+    $a.VY += 1; $printed = 0
+    foreach ($n in @(1, 0), @(-1, 0), @(0, 1), @(0, -1), @(1, 1), @(-1, -1), @(1, -1), @(-1, 1)) {
+        $x = $a.TX + $n[0]; $y = $a.TY + $n[1]
+        if ($printed -ge 2 -or -not (Test-TileFree $x $y) -or ([int][Math]::Floor($script:P.X) -eq $x -and [int][Math]::Floor($script:P.Y) -eq $y)) { continue }
+        $job = New-Enemy 'bot' $x $y 6 'stand'
+        $job.Active = $true
+        $script:ActorAt[$y * $script:MapW + $x] = $job
+        $script:NewActors.Add($job); $script:Stats.KillTotal++
+        Start-Attack $job
+        $printed++
+    }
+}
+
+# BLUE SCREEN's crash: the picture tears (Render.ps1) and the player's controls hang (Update-Player). Only with a line of sight.
+function Invoke-ActionGlitch([Actor]$a) {
+    if ($script:NetAsPeer -or -not $script:AreaByPlayer[$a.Area] -or -not (Test-LineToPlayer $a.X $a.Y)) { return }
+    $script:Stats.Freeze = 50.0
+    if ($script:Predicting) { return }
+    $script:GlitchTics = 110.0
+    Start-Sfx 'noway' $a.X $a.Y
+    Show-Message ':(   Your admin ran into a problem and needs to restart.   0 % complete'
+}
+
+# ... and its end: everything that depended on it stands still for twenty seconds.
+function Invoke-ActionHalt([Actor]$a) {
+    foreach ($o in $script:Actors) { if ($o.Shootable -and -not $o.Def.Inert -and $o.Kind -notin 'peer', 'whatif') { $o.Stun = 1400.0 } }
+    Show-Message 'The system has halted. Whatever depended on it stands still.'
+}
+
 # ---------------------------------------------------------------------------------------------
 # State machine driver
 # ---------------------------------------------------------------------------------------------
@@ -649,6 +687,9 @@ function Update-Actor([Actor]$a, [double]$Tics) {
                 'DeathScream' { Start-Sfx (Get-DeathSound $a) $a.X $a.Y }
                 'Rocket'      { Invoke-ActionRocket $a }
                 'SpawnPilot'  { Invoke-ActionSpawnPilot $a }
+                'Jam'         { Invoke-ActionJam $a }
+                'Glitch'      { Invoke-ActionGlitch $a }
+                'Halt'        { Invoke-ActionHalt $a }
                 'Explode'     { Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $a }
                 'Remove'      { $a.State = 'gone'; return }
             }
@@ -687,6 +728,7 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
     }
     if ($Source -in 'bullet', 'knife', 'beam') { Add-HitEffect $a }
     if (-not $a.AttackMode) { $Damage *= $(if (Test-Perk 'Pester') { 3 } else { 2 }) }      # caught off guard: double damage
+    if ($a.State.StartsWith('uber.jam')) { $Damage *= 3 }     # THE PRINTER's paper jam: the one moment it is soft
     if ($script:P.SudoTics -gt 0) { $Damage *= 2 }            # sudo: elevated damage
     if ($script:OneHitKill) { $Damage = [Math]::Max($Damage, $a.HP) }
     $a.HP -= $Damage

@@ -410,6 +410,29 @@ function Invoke-SelfTest([string]$OutDir) {
     if (@($script:DarkArea | Where-Object { $_ }).Count -ne 1 -or $sums[1].Brightness -le $sums[0].Brightness * 1.3 -or $sums[0].Seen -or -not $sums[1].Seen -or $script:Darkness -ne 0) { throw 'darkness test failed.' }
     $script:LevelIndex = 0
 
+    # ---- the bosses: THE PRINTER jams after every second salvo (triple damage, two print jobs), BLUE SCREEN crashes the controls and halts everything when it dies ----
+    $script:LevelIndex = 9; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    $keepGod = $script:GodMode; $script:GodMode = $true
+    $printer = $script:Actors | Where-Object Kind -eq 'uber' | Select-Object -First 1
+    $bsod = $script:Actors | Where-Object Kind -eq 'bsod' | Select-Object -First 1
+    Set-TestCamera 25.5 17.5 270
+    $total = $script:Stats.KillTotal; $count = $script:Actors.Count
+    Invoke-ActionJam $printer; $first = $printer.State; Invoke-ActionJam $printer; $second = $printer.State
+    Update-Actors 0.01
+    $printed = @($script:Actors | Where-Object { $_.Kind -eq 'bot' -and $_.AttackMode -and [Math]::Abs($_.X - $printer.X) -lt 2 }).Count
+    $hp = $printer.HP; Invoke-ActorDamage $printer 10 'bullet'; $jamDamage = $hp - $printer.HP
+    $bsod.AttackMode = $true; Set-ActorState $bsod 'bsod.shoot2'
+    Invoke-ActionGlitch $bsod
+    $walk = $idle.Clone(); $walk.Forward = 1
+    $y = $script:P.Y; Update-Player 10 $walk; $frozenMove = [Math]::Abs($script:P.Y - $y)
+    Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-bsod.png')
+    $script:Stats.Freeze = 0.0; Update-Player 10 $walk; $freeMove = [Math]::Abs($script:P.Y - $y)
+    Invoke-ActionHalt $bsod
+    $halted = @($script:Actors | Where-Object { $_.Shootable -and $_.Stun -gt 0 }).Count
+    Write-Step "boss test: the printer's salvos lead to '$first', then '$second' with $printed print jobs (kill total $total -> $($script:Stats.KillTotal)); 10 damage during the jam cost it $jamDamage; frozen the player moved $([Math]::Round($frozenMove, 3)), free $([Math]::Round($freeMove, 3)); the halt stopped $halted"
+    if ($first -eq 'uber.jam1' -or $second -ne 'uber.jam1' -or $printed -ne 2 -or $script:Stats.KillTotal -ne $total + 2 -or $jamDamage -lt 30 -or $frozenMove -gt 0.001 -or $freeMove -lt 0.05 -or $halted -lt 10 -or -not $bsod) { throw 'boss test failed.' }
+    $script:GodMode = $keepGod; $script:GlitchTics = 0.0; $script:LevelIndex = 0
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
@@ -1190,9 +1213,9 @@ function Export-Screenshots([string]$OutDir) {
     Save-Shot $OutDir 'datacentre'
     $script:LevelIndex = 9; Start-Level $false $false; $script:Message = $null
     $script:P.Owned = (New-OwnedList $true); $script:P.Ammo = 99; $script:P.Weapon = 4; $script:P.ChosenWeapon = 4
-    Set-TestCamera 25.5 16.4 270
-    for ($f = 0; $f -lt 8; $f++) { Show-PlayFrame }
-    Save-Shot $OutDir 'ring0'
+    Set-TestCamera 25.5 16.4 270; $script:P.Light = $true
+    for ($f = 0; $f -lt 40; $f++) { Show-PlayFrame }
+    $script:Message = $null; Save-Shot $OutDir 'ring0'
 
     # a floor's test report (the epilogue is NOT among the pictures: it has to be earned)
     $script:LevelIndex = 2; Start-Level $false $false; $script:P.Cheated = $false
