@@ -34,6 +34,7 @@ function Initialize-Renderer([int]$Scale, [int]$ColumnStep) {
         Big   = [System.Drawing.Font]::new('Consolas', [single](8.5 * $Scale), [System.Drawing.FontStyle]::Bold)
         Huge  = [System.Drawing.Font]::new('Consolas', [single](22 * $Scale), [System.Drawing.FontStyle]::Bold)
     }
+    $script:RadarPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 255, 112, 96), [single][Math]::Max(1.5, $Scale * 0.6))
     $script:Centered = [System.Drawing.StringFormat]::new()
     $script:Centered.Alignment = [System.Drawing.StringAlignment]::Center
     $script:Centered.LineAlignment = [System.Drawing.StringAlignment]::Center
@@ -558,7 +559,12 @@ function Show-MiniMap {
         if (-not $a.AttackMode -or -not $a.Shootable) { continue }
         $dx = $a.X - $p.X; $dy = $a.Y - $p.Y
         if ([Math]::Abs($dx) -ge $radius -or [Math]::Abs($dy) -ge $radius) { continue }
-        $g.FillEllipse((Get-Brush 'FF3030'), [single]($cx + $dx * $unit - $dot / 2), [single]($cy + $dy * $unit - $dot / 2), $dot, $dot)
+        $ex = $cx + $dx * $unit; $ey = $cy + $dy * $unit
+        if ($a.Dir -ge 0 -and $a.Dir -lt 8) {                        # a nose: where he is facing, which is where he is going
+            $nose = $a.Dir * [Math]::PI / 4
+            $g.DrawLine($script:RadarPen, [single]$ex, [single]$ey, [single]($ex + [Math]::Cos($nose) * $unit * 1.8), [single]($ey - [Math]::Sin($nose) * $unit * 1.8))
+        }
+        $g.FillEllipse((Get-Brush 'FF3030'), [single]($ex - $dot / 2), [single]($ey - $dot / 2), $dot, $dot)
     }
     if ($script:NetLive -and $script:Net.Mode -eq 'coop') {          # the partners: blue dots
         foreach ($pl in $script:Net.Players.Values) {
