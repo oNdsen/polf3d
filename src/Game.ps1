@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; B = 66; C = 67; D = 68; E = 69; F = 70; G = 71; J = 74; K = 75; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; U = 85; V = 86; W = 87; X = 88; Z = 90
+    A = 65; B = 66; C = 67; D = 68; E = 69; F = 70; G = 71; J = 74; K = 75; L = 76; M = 77; N = 78; O = 79; P = 80; Q = 81; R = 82; S = 83; T = 84; U = 85; V = 86; W = 87; X = 88; Z = 90
     F1 = 112; F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
 }
 
@@ -126,19 +126,19 @@ function Set-Mode([string]$Mode) {
 # One frame of actual game play
 # ---------------------------------------------------------------------------------------------
 function Get-PlayerInput {
-    $k = $script:KeyDown; $vk = $script:VK
-    $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$vk.Shift]; Sneak = $k[$vk.C]; Weapon = $script:WeaponKey; Ability = [int]$script:AbilityKey
-        Fire = ($k[$vk.Ctrl] -or $k[$vk.LButton] -or $k[$vk.J]); Use = ($k[$vk.Space] -or $k[$vk.E] -or $k[$vk.RButton])
+    $k = $script:KeyDown; $vk = $script:VK; $b = $script:Bind        # the keys can be changed in the options menu
+    $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$b.Run]; Sneak = $k[$b.Sneak]; Weapon = $script:WeaponKey; Ability = [int]$script:AbilityKey
+        Fire = ($k[$b.Fire] -or $k[$vk.LButton] -or $k[$vk.J]); Use = ($k[$b.Use] -or $k[$vk.E] -or $k[$vk.RButton])
     }
-    if ($k[$vk.W] -or $k[$vk.Up]) { $in.Forward += 1 }
-    if ($k[$vk.S] -or $k[$vk.Down]) { $in.Forward -= 1 }
-    if ($k[$vk.D]) { $in.Strafe += 1 }
-    if ($k[$vk.A]) { $in.Strafe -= 1 }
-    if ($k[$vk.Right]) { $in.Turn += 1 }
-    if ($k[$vk.Left]) { $in.Turn -= 1 }
+    if ($k[$b.Forward] -or $k[$vk.Up]) { $in.Forward += 1 }
+    if ($k[$b.Back] -or $k[$vk.Down]) { $in.Forward -= 1 }
+    if ($k[$b.StrafeRight]) { $in.Strafe += 1 }
+    if ($k[$b.StrafeLeft]) { $in.Strafe -= 1 }
+    if ($k[$b.TurnRight]) { $in.Turn += 1 }
+    if ($k[$b.TurnLeft]) { $in.Turn -= 1 }
     if ($script:MouseLook) {
         $pos = [System.Windows.Forms.Cursor]::Position
-        $in.MouseTurn = ($pos.X - $script:MouseCenter.X) * 0.12
+        $in.MouseTurn = ($pos.X - $script:MouseCenter.X) * $script:Settings.Mouse
         if ($pos -ne $script:MouseCenter) { [System.Windows.Forms.Cursor]::Position = $script:MouseCenter }
     }
     $script:WeaponKey = -1; $script:AbilityKey = 0
@@ -239,7 +239,7 @@ function Show-PlayFrame {
     if ($script:TerminalMode) { return }                         # the terminal shows the frame buffer itself, and text
     Copy-ViewToBack
     Show-Overlays
-    if ($script:KeyDown[$script:VK.M] -and $script:Mode -eq 'play') { Show-AutoMap }
+    if ($script:KeyDown[$script:Bind.Map] -and $script:Mode -eq 'play') { Show-AutoMap }
     elseif ($script:ShowMiniMap) { Show-MiniMap }
     if ($script:HudDirty) { Show-Hud }
 }
@@ -268,7 +268,7 @@ function Show-TitleScreen {
         $best = Get-DungeonBest (Get-DailySeed)
         Write-HudText "G = today's dungeon #$(Get-DailySeed)$(if ($best) { "   (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })" 'Small' '40E0FF' 0 131 320 8
     }
-    Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
+    Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     O = options     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
     $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nZ -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo`nT / Tab  PowerShell console (or use a terminal)`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
@@ -366,7 +366,7 @@ function Show-DoneScreen {
 function Start-GameLoop {
     $script:Running = $true
     $script:MouseLook = $false
-    $script:ShowMiniMap = $true
+    Update-Settings
     $script:WeaponKey = -1
     $script:HighScores = Get-HighScores
     $vk = $script:VK
@@ -402,8 +402,8 @@ function Start-GameLoop {
             }
             elseif ($script:PadHit -band $pad.Y) { $hits += $vk.N }
         }
-        if ($script:PadState) { $script:KeyDown[$vk.M] = [bool]($script:PadButtons -band $script:PAD.Back) }
-        if ($hits -contains $vk.F3) { $script:ShowFps = -not $script:ShowFps }
+        if ($script:PadState) { $script:KeyDown[$script:Bind.Map] = [bool]($script:PadButtons -band $script:PAD.Back) }
+        if ($hits -contains $vk.F3) { $script:Settings.Fps = -not $script:Settings.Fps; Update-Settings }
         if ($script:Net -and $hits -contains $vk.F1 -and $script:Mode -in 'title', 'play') { Open-NetPanel; $hits = @() }      # who is here? (the host: and who should not be)
         if ($hits -contains $vk.F4) { Switch-Music }
         Update-Network $tics
@@ -457,6 +457,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.L -and -not $script:Net -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
                     elseif ($h -eq $vk.G -and -not $script:Net) { if (Start-Dungeon 0) { Set-Mode 'play' } }
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
+                    elseif ($h -eq $vk.O) { Open-Options }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
                 if ($script:Mode -eq 'title') {
@@ -490,13 +491,13 @@ function Start-GameLoop {
                     if ($h -ge 49 -and $h -le 57) { $script:WeaponKey = $h - 49 }
                     elseif ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'paused' }
                     elseif ($h -eq $vk.F2) { Set-MouseLook (-not $script:MouseLook) }
-                    elseif ($h -eq $vk.N) { $script:ShowMiniMap = -not $script:ShowMiniMap }
-                    elseif ($h -in 9, $vk.T) { Open-Console }                          # Tab or T: the PowerShell console
-                    elseif ($h -eq $vk.Z) { $script:AbilityKey = 1 }
-                    elseif ($h -eq $vk.X) { $script:AbilityKey = 2 }
-                    elseif ($h -eq $vk.V) { $script:AbilityKey = 3 }
-                    elseif ($h -eq $vk.F) { $script:AbilityKey = 4 }
-                    elseif ($h -eq $vk.R) { $script:AbilityKey = 5 }
+                    elseif ($h -eq $vk.N) { $script:Settings.MiniMap = -not $script:Settings.MiniMap; Update-Settings }
+                    elseif ($h -in 9, $script:Bind.Console) { Open-Console }           # Tab or T: the PowerShell console
+                    elseif ($h -eq $script:Bind.WhatIf) { $script:AbilityKey = 1 }
+                    elseif ($h -eq $script:Bind.Confirm) { $script:AbilityKey = 2 }
+                    elseif ($h -eq $script:Bind.Verbose) { $script:AbilityKey = 3 }
+                    elseif ($h -eq $script:Bind.Force) { $script:AbilityKey = 4 }
+                    elseif ($h -eq $script:Bind.Undo) { $script:AbilityKey = 5 }
                     elseif ($h -eq $vk.F6) { Invoke-Cheat 'GiveAll' }
                     elseif ($h -eq $vk.F7) { Invoke-Cheat 'Ammo' }
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }
@@ -515,6 +516,12 @@ function Start-GameLoop {
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
                 elseif ($script:LevelDone) { Complete-Level }
+            }
+
+            'options' {
+                Update-Options $hits
+                if ($script:Mode -eq 'options' -and $script:NetLive) { Update-World $tics (New-IdleInput); if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' } }
+                if ($script:Mode -eq 'options') { Show-Options }
             }
 
             'players' {
@@ -538,6 +545,7 @@ function Start-GameLoop {
                 foreach ($h in $hits) {
                     if ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'play'; $script:HudDirty = $true }
                     elseif ($h -eq $vk.Q) { Set-Mode 'title' }
+                    elseif ($h -eq $vk.O) { Open-Options }
                     elseif ($script:Net -or $script:DungeonSeed) { }          # no saving or loading in a network game or in the dungeon
                     elseif ($h -ge 49 -and $h -le 51) { Save-Game "$($h - 48)" }
                     elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'paused'; Set-Mode 'load' }
@@ -551,7 +559,7 @@ function Start-GameLoop {
                     Show-PlayFrame
                     Write-HudBar 'A0000000' 0 0 320 200
                     Write-HudText $(if ($script:NetLive) { 'MENU' } else { 'PAUSE' }) 'Big' 'FFFFFF' 0 70 320 24
-                    Write-HudText $(if ($script:NetLive) { 'Esc / P = resume     Q = leave the game (the world does not wait!)' } else { 'Esc / P = resume     1-3 = save to slot     L = load     Q = main menu' }) 'Small' 'FFE860' 0 100 320 10
+                    Write-HudText $(if ($script:NetLive) { 'Esc / P = resume     O = options     Q = leave the game (the world does not wait!)' } else { 'Esc / P = resume     1-3 = save to slot     L = load     O = options     Q = main menu' }) 'Small' 'FFE860' 0 100 320 10
                     if ($script:Message -and $script:Clock.Elapsed.TotalSeconds -lt $script:MessageUntil) { Write-HudText $script:Message 'Mid' '60FF80' 0 116 320 10 }
                 }
             }

@@ -88,7 +88,7 @@ function Get-TerminalScreen([string]$Mode) {
             $lines.Add('')
             if ($script:Net) { $lines.Add("$c   $(Get-NetStatus)$r") }
             if (-not $script:Net) { $lines.Add("$c   G = today's dungeon #$(Get-DailySeed)$r") }
-            $lines.Add("$y   $(if ($script:HasSaves -and -not $script:Net) { 'L = load a saved game     ' })T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit$r"); $lines.Add('')
+            $lines.Add("$y   $(if ($script:HasSaves -and -not $script:Net) { 'L = load a saved game     ' })T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     O = options     Esc = quit$r"); $lines.Add('')
             $lines.Add("$d   W/S move   A/D strafe   arrows turn   Shift run   C sneak   Ctrl or J fire   Space/E use   1-9 weapon$r")
             $lines.Add("$d   Z -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo   T console   P pause   F4 music   F5/F9 save/load$r"); $lines.Add('')
             $lines.Add("$d   HIGH SCORES$r")
@@ -100,6 +100,7 @@ function Get-TerminalScreen([string]$Mode) {
             for ($i = 0; $i -lt $script:SaveList.Count; $i++) { $lines.Add("   $($i + 1)   $($script:SaveList[$i].Text)") }
             $lines.Add(''); $lines.Add("$y   press the number of a saved game     Esc = back$r")
         }
+        'options' { foreach ($row in (Get-OptionLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $($row[0])$r") } }
         'players' { foreach ($row in (Get-NetPanelLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $($row[0])$r") } }
         'gameover' { $lines.Add(''); $lines.Add("`e[38;2;255;64;48m   G A M E   O V E R$r"); $lines.Add(''); $lines.Add("   Score: $($script:P.Score)"); $lines.Add(''); $lines.Add("$y   Enter = main menu$r") }
         'done' {

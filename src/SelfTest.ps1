@@ -242,6 +242,20 @@ function Invoke-SelfTest([string]$OutDir) {
         $text -notmatch 'sandbox' -or $text -notmatch 'two seconds' -or $text -notmatch 'terminated' -or -not $gold -or $script:Mode -ne 'play') { throw "console test failed:`n$text" }
     Remove-Item -LiteralPath $canary
 
+    # ---- options: change a value, rebind a key (the old owner of the key gets the other one), save, load ----
+    Remove-Item -LiteralPath (Get-SettingsPath) -ErrorAction SilentlyContinue
+    Open-Options
+    $script:Options.Row = 0; Update-Options @($script:VK.Right, $script:VK.Right)                    # mouse sensitivity up twice
+    $script:Options.Row = 7; Update-Options @($script:VK.Enter); Update-Options @(65)                # "forward" becomes A - which was "strafe left"
+    Show-Options; Save-BackBuffer (Join-Path $OutDir 'screen-options.png')
+    Update-Options @($script:VK.Esc)
+    $script:Bind.Forward = 1; $script:Settings.Mouse = 9
+    Import-Settings
+    Write-Step "options test: mouse $($script:Settings.Mouse), forward = $(Get-KeyName $script:Bind.Forward), strafe left = $(Get-KeyName $script:Bind.StrafeLeft), back in mode '$($script:Mode)'"
+    if ($script:Settings.Mouse -ne 0.16 -or $script:Bind.Forward -ne 65 -or $script:Bind.StrafeLeft -ne 87) { throw 'options test failed.' }
+    foreach ($key in $script:BindDefaults.Keys) { $script:Bind[$key] = $script:BindDefaults[$key] }; $script:Settings.Mouse = 0.12
+    Remove-Item -LiteralPath (Get-SettingsPath) -ErrorAction SilentlyContinue
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

@@ -177,7 +177,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Demo', 'Dungeon', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Demo', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo
@@ -189,7 +189,14 @@ if (-not $NoMods -and (-not $headless -or $VerifyDemo)) {
     Import-Mods (Join-Path $PSScriptRoot 'mods')
     if ($script:Mods) { Write-Step "mods: $($script:Mods -join ', ')" }
 }
+if (-not $headless) {
+    # what the player has set in the options menu - unless the command line says otherwise
+    Import-Settings
+    if (-not $PSBoundParameters.ContainsKey('Scale')) { $Scale = [int]$script:Settings.Scale }
+    if ($FlatFloors) { $script:Settings.FlatFloors = $true }
+}
 Write-Step 'compiling scaler (C#) ...';       Initialize-Scaler
+if (-not $headless) { Update-Settings }
 Write-Step 'building state tables ...';        Initialize-States
 Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initialize-Flats
 Write-Step 'painting sprites ...';             Initialize-Sprites
