@@ -27,6 +27,7 @@ ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight sec
               Disable-Trap (10)     Set-Turret -Owner Me (25: a sentry gun changes sides)     Get-Enemy -Kind camera | Stop-Enemy
               Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
+MODULES       Get-Module shows what you have installed between the floors.
 JOBS          Start-Job (30): a drone collects what lies around in the rooms open to you - six things or thirty seconds
               Get-Job shows how it is doing, Receive-Job drops its load at your feet, Stop-Job calls it back
 PROFILE       function kn { Get-Enemy | select -First 1 | Stop-Enemy }      Set-Alias ge Get-Enemy
@@ -71,6 +72,8 @@ function Initialize-Console {
         'Set-Hotkey' = 'param([Parameter(Position = 0)][int]$Key, [Parameter(Position = 1)][string]$Command) [pscustomobject]@{ PolfAction = "Set-Hotkey"; Id = $Key; WhatIf = $false; Value = $Command }'
         'Get-Hotkey' = '$PolfHotkeys'
         'Get-ExecutionPolicy' = '$PolfPolicy'
+        'Get-Module' = 'if ($PolfModules) { $PolfModules } else { "No modules installed. The lift offers three after every floor." }'
+        'Install-Module' = '"Install-Module: the repository can only be reached from the lift - between two floors."'
         'Get-Job' = 'if ($PolfJobs) { $PolfJobs } else { "No jobs. Start-Job sends out a drone." }'
         'Start-Job' = 'param([string]$Name, [Parameter(Position = 0)]$ScriptBlock) [pscustomobject]@{ PolfAction = "Start-Job"; Id = 0; WhatIf = $false }'
         'Receive-Job' = 'param([Parameter(Position = 0)]$Id, [string]$Name, [switch]$Keep, [switch]$Wait) [pscustomobject]@{ PolfAction = "Receive-Job"; Id = 0; WhatIf = $false }'
@@ -230,6 +233,7 @@ function Update-ConsoleData {
     }
     $proxy.SetVariable('PolfFiles', @($files)); $proxy.SetVariable('PolfFileText', $texts)
     $proxy.SetVariable('PolfPolicy', (Get-Policy).Name)
+    $proxy.SetVariable('PolfModules', @(foreach ($m in @($p.Modules)) { if ($m) { [pscustomobject]@{ Type = 'Module'; Name = $m; Description = $script:ModulePerks[$m] } } }))
     $drone = Get-Drone
     $proxy.SetVariable('PolfJobs', @(if ($drone) { [pscustomobject]@{ Type = 'Job'; Id = 1; Name = 'Drone'; State = $(if ($drone.Hacked) { 'Completed' } else { 'Running' }); HasMoreData = [bool]@($script:Stats.Cargo).Count
         Carrying = (@($script:Stats.Cargo) -join ', '); Distance = (Get-Range $drone.X $drone.Y); Bearing = (Get-Bearing $drone.X $drone.Y) } }))
@@ -278,10 +282,11 @@ function Invoke-ConsoleAction($Action) {
     }
     if ($name -eq 'Start-Job') {
         if (Get-Drone) { Write-ConsoleLine 'Start-Job: one drone is all you have. Receive-Job takes its load and sends it home.' 'F14C4C'; return $true }
-        if ($p.Privilege -lt 30 -and -not $script:InfiniteAmmo) { Write-ConsoleLine "Start-Job: Access is denied - a drone costs 30 privilege, you have $([int]$p.Privilege)." 'F14C4C'; return $false }
-        if (-not $script:InfiniteAmmo) { Add-Privilege (-30) }
+        $price = if (Test-Perk 'ThreadJob') { 15 } else { 30 }
+        if ($p.Privilege -lt $price -and -not $script:InfiniteAmmo) { Write-ConsoleLine "Start-Job: Access is denied - a drone costs $price privilege, you have $([int]$p.Privilege)." 'F14C4C'; return $false }
+        if (-not $script:InfiniteAmmo) { Add-Privilege (- $price) }
         $null = Start-Drone; $script:Run.Console++
-        Write-ConsoleLine "Id 1  Drone  Running  -  it collects what lies around in the rooms open to you.  (-30 privilege, $([int]$p.Privilege) left)" '60FF80'
+        Write-ConsoleLine "Id 1  Drone  Running  -  it collects what lies around in the rooms open to you.  (-$price privilege, $([int]$p.Privilege) left)" '60FF80'
         return $true
     }
     if ($name -eq 'Stop-Job') {

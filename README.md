@@ -150,6 +150,20 @@ completion screen, in terminal mode and in the transcript. Reaching the lift, pa
 treasure, noticed by nobody, no guns, never below 50 health, no powers and no console, no cheats: what has been passed
 once stays passed (`saves/achievements.json`), and the title screen counts them – there are a hundred to get.
 
+**`Install-Module`.** The lift has a repository: after every floor it offers three modules, and one of them – `1`, `2`
+or `3` – can be installed for the rest of the run. `Get-Module` in the console lists what you have.
+
+| Module | What it does |
+|---|---|
+| `PSReadLine` | the powers cost a quarter less privilege |
+| `ThreadJob` | the drone costs 15, carries ten things and flies half as fast again |
+| `SecretManagement` | secret and cracked walls are marked on the automap of every floor |
+| `Pester` | whoever has not noticed you takes triple instead of double damage |
+| `PSScriptAnalyzer` | `-Verbose` is free and lasts twice as long |
+| `PowerShellGet` | every clip holds a quarter more rounds |
+| `Microsoft.PowerShell.Archive` | food and first aid heal half as much again |
+| `PSWindowsUpdate` | privilege comes back half as fast again |
+
 **It is worth finishing.** Whoever throws the last switch on floor 10 gets a proper ending, with a piece of music
 written for it. There is no picture of it here, on purpose: it has to be earned.
 
@@ -471,6 +485,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
 | [src/Policy.ps1](src/Policy.ps1) | the building's execution policy: the alarm level of a floor |
+| [src/Perks.ps1](src/Perks.ps1) | `Install-Module`: the perks offered between the floors |
 | [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
 | [src/Story.ps1](src/Story.ps1) | the files on the terminals, and what their codes and tokens do |
 | [src/Console.ps1](src/Console.ps1) | the sandboxed runspace, the game's cmdlets, pricing and carrying out requests, the profile and the hotkeys |

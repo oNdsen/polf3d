@@ -119,16 +119,17 @@ function Invoke-Ability([int]$Id) {
     if (-not $ab -or $p.Health -le 0) { return }
     if ($Id -eq 1 -and $script:WhatIfTics -gt 0) { Stop-WhatIf; return }               # pressing it again ends it
     if ($script:NetLive -and $Id -ne 3) { Show-Message "$($ab.Name) does not work in a shared world"; Start-Sfx 'noway'; return }
-    if ($p.Privilege -lt $ab.Cost -and -not $script:InfiniteAmmo) { Show-Message "$($ab.Name) needs $($ab.Cost) privilege - you have $([int]$p.Privilege)"; Start-Sfx 'noway'; return }
+    $cost = Get-AbilityCost $Id                                  # what is installed may make it cheaper
+    if ($p.Privilege -lt $cost -and -not $script:InfiniteAmmo) { Show-Message "$($ab.Name) needs $cost privilege - you have $([int]$p.Privilege)"; Start-Sfx 'noway'; return }
     $ok = switch ($Id) {
         1 { Start-WhatIf }
         2 { $script:ConfirmTics = 350.0; Start-Sfx 'sudo'; Show-Message '-Confirm: are you sure? Take your time.'; $true }
-        3 { $script:VerboseTics = 700.0; Start-Sfx 'key'; Show-Message '-Verbose'; $true }
+        3 { $script:VerboseTics = $(if (Test-Perk 'PSScriptAnalyzer') { 1400.0 } else { 700.0 }); Start-Sfx 'key'; Show-Message '-Verbose'; $true }
         4 { Invoke-Force }
         5 { Undo-World }
     }
     if ($ok) { $script:Run.Powers++; Add-TranscriptLine "Invoke-Ability $($ab.Name)" }
-    if ($ok -and -not $script:InfiniteAmmo) { Add-Privilege (- $ab.Cost) }
+    if ($ok -and -not $script:InfiniteAmmo) { Add-Privilege (- $cost) }
 }
 
 # -WhatIf: run the world ahead for two seconds with a throw-away random generator, note where everybody
@@ -234,7 +235,7 @@ function Update-Abilities([double]$Tics, [hashtable]$In) {
     $p = $script:P
     if ($null -eq $p.Privilege) { $p.Privilege = 50.0 }
     if ($In.Ability) { Invoke-Ability ([int]$In.Ability) }
-    Add-Privilege ($Tics / 45.0 * $(if ([int]$script:Stats.Policy -eq 0) { 1.3 } else { 1.0 }))      # Restricted: nobody watches the logs
+    Add-Privilege ($Tics / 45.0 * $(if ([int]$script:Stats.Policy -eq 0) { 1.3 } else { 1.0 }) * $(if (Test-Perk 'PSWindowsUpdate') { 1.5 } else { 1.0 }))      # Restricted: nobody watches the logs
     if ($script:UndoFlash -gt 0) { $script:UndoFlash -= $Tics }
     if ($script:VerboseTics -gt 0) { $script:VerboseTics -= $Tics }
     if ($script:WhatIfTics -gt 0) {

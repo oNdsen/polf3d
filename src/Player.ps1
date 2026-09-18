@@ -29,6 +29,7 @@ function New-Player {
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0; PainTics = 0.0; RageTics = 0.0; LookHold = 0.0; FaceKey = ''
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
+        Modules = @()                                             # Install-Module between the floors (Perks.ps1)
     }
 }
 
@@ -353,10 +354,13 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
 # ---------------------------------------------------------------------------------------------
 # Items
 # ---------------------------------------------------------------------------------------------
-function Add-Health([int]$Points) { $script:P.Health = [Math]::Min(100, $script:P.Health + $Points) }
+function Add-Health([int]$Points) {
+    if (Test-Perk 'Microsoft.PowerShell.Archive') { $Points = [int][Math]::Round($Points * 1.5) }
+    $script:P.Health = [Math]::Min(100, $script:P.Health + $Points)
+}
 
 # Clips and the start kit are worth more on the easier difficulties.
-function Get-AmmoCount([int]$Rounds) { [int][Math]::Round($Rounds * $script:Difficulties[$script:Difficulty].Ammo) }
+function Get-AmmoCount([int]$Rounds) { [int][Math]::Round($Rounds * $script:Difficulties[$script:Difficulty].Ammo * $(if (Test-Perk 'PowerShellGet') { 1.25 } else { 1.0 })) }
 
 function Add-Ammo([int]$Count) {
     $p = $script:P

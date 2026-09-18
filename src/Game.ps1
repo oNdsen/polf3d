@@ -90,6 +90,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     if (-not $KeepKit) { Reset-PlayerKit }
     $script:LevelStartScore = $script:P.Score
     Reset-PlayerForLevel
+    if (Test-Perk 'SecretManagement') { $script:StorySecrets = $true }
     Set-Background
     Reset-ScreenEffects
     Reset-Abilities
@@ -331,6 +332,7 @@ function Complete-Level {
     $r.Bonus = $r.TimeBonus + 10000 * (@($r.Kills, $r.Secrets, $r.Treasures) -eq 100).Count
     $script:Result = $r
     Add-Score $r.Bonus
+    $r.Offer = if ($r.Last) { @() } else { @(Get-PerkOffer) }      # Install-Module: one of three, in the lift
     if ($r.Last) { Add-HighScore $script:P.Score "VICTORY$(if ($script:P.Cheated) { ' (cheat)' })"; $script:HighScores = Get-HighScores }
     Set-Mode 'done'
 }
@@ -361,6 +363,11 @@ function Show-DoneScreen {
         $ty = 49.0
         foreach ($line in $r.Tests.Lines) { $script:BackG.DrawString($line[0], $script:Fonts.Term, (Get-Brush $line[1]), [single](161 * $script:Scale), [single]($ty * $script:Scale)); $ty += 9.0 }
     }
+    if ($r.Installed) { Write-HudText "Install-Module $($r.Installed)   -   $($script:ModulePerks[$r.Installed])" 'Small' '60FF80' 0 186 320 8 }
+    elseif ($r.Offer) {
+        Write-HudText 'Install-Module   -   the lift has a repository. Pick one, it stays for the rest of the run:' 'Small' '8FB0FF' 0 179 320 8
+        for ($i = 0; $i -lt $r.Offer.Count; $i++) { Write-HudText "[$($i + 1)]  $($r.Offer[$i])   -   $($script:ModulePerks[$r.Offer[$i]])" 'Small' 'FFFFFF' 0 (185.5 + $i * 5.5) 320 8 }
+    }
     if ($r.Transcript) { Write-HudText "`"$($r.Transcript.Verdict)`"" 'Small' 'C0C8D8' 0 173 320 8 }
     if ($r.DungeonDemo) {
         $was = if ($r.DungeonBest) { "best so far $(Format-Time ([double]$r.DungeonBest.Seconds) -Tenths)" } else { 'first run of this dungeon' }
@@ -368,7 +375,7 @@ function Show-DoneScreen {
         Write-HudText "proof: saves/$($r.DungeonDemo)   (check it with -VerifyDemo)" 'Small' '8FB0FF' 0 190 320 8
     }
     $foot = if ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected -and -not $r.Last) { 'Waiting for the host to call the lift ...' } elseif ($r.Last) { $(if ($script:DungeonSeed -or $script:MapFiles.Count -le 1) { 'Completed - thanks for playing!   Enter = main menu' } else { 'All floors completed!   Enter = the way out' }) } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
-    Write-HudText $foot 'Small' 'FFE860' 0 200 320 10
+    Write-HudText $foot 'Small' 'FFE860' 0 204 320 10
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -636,6 +643,8 @@ function Start-GameLoop {
             }
 
             'done' {
+                $res = $script:Result
+                foreach ($h in $hits) { if ($res.Offer -and -not $res.Installed -and $h -ge 49 -and $h -lt 49 + $res.Offer.Count) { $res.Installed = $res.Offer[$h - 49]; Install-Perk $res.Installed } }
                 Show-DoneScreen
                 if ($script:ModeTics -gt 50 -and ($hits -contains $vk.Enter -or $hits -contains $vk.Esc)) {
                     if ($script:Result.Last -and -not $script:DungeonSeed -and $script:MapFiles.Count -gt 1) { Start-Ending }      # the campaign is over: the epilogue

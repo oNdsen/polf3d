@@ -111,6 +111,8 @@ function Get-TerminalScreen([string]$Mode) {
                 $lines.Add(("   $d{0,-12}$r {1}" -f $row[0], $row[1]))
             }
             if ($res.Tests) { $lines.Add(''); foreach ($t in $res.Tests.Lines) { $lines.Add("   $(if ($t[1] -eq 'F14C4C') { "`e[38;2;241;76;76m" } elseif ($t[1] -eq 'F0D040') { "`e[38;2;240;208;64m" } else { "`e[38;2;96;255;128m" })$($t[0])$r") } }
+            if ($res.Installed) { $lines.Add(''); $lines.Add("`e[38;2;96;255;128m   Install-Module $($res.Installed)  -  $($script:ModulePerks[$res.Installed])$r") }
+            elseif ($res.Offer) { $lines.Add(''); $lines.Add("$d   Install-Module - pick one, it stays for the rest of the run:$r"); for ($i = 0; $i -lt $res.Offer.Count; $i++) { $lines.Add("   [$($i + 1)]  $($res.Offer[$i])  -  $($script:ModulePerks[$res.Offer[$i]])") } }
             if ($res.Transcript) { $lines.Add(''); $lines.Add("$d   `"$($res.Transcript.Verdict)`"$r") }
             $lines.Add(''); $lines.Add("$y   $(if ($res.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($res.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' })$r")
         }

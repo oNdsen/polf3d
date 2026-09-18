@@ -338,7 +338,7 @@ function Invoke-ThinkDrone([Actor]$a, [double]$Tics) {
     $items = $script:Items; $w = $script:MapW
     if (-not $a.Hacked) {
         $a.Cool -= $Tics
-        if ($a.Cool -le 0 -or @($script:Stats.Cargo).Count -ge $a.Def.Capacity) { $a.Hacked = $true }
+        if ($a.Cool -le 0 -or @($script:Stats.Cargo).Count -ge $(if (Test-Perk 'ThreadJob') { 10 } else { $a.Def.Capacity })) { $a.Hacked = $true }
     }
     if (-not $a.Hacked -and ($a.HP -lt 0 -or $a.HP -ge $items.Count -or $items[$a.HP].Removed)) {
         $a.HP = -1; $best = 1e9
@@ -353,7 +353,7 @@ function Invoke-ThinkDrone([Actor]$a, [double]$Tics) {
     if ($a.Hacked) { $tx = $script:P.X; $ty = $script:P.Y; $stop = 0.9 } else { $tx = $items[$a.HP].X + 0.5; $ty = $items[$a.HP].Y + 0.5; $stop = 0.25 }
     $dx = $tx - $a.X; $dy = $ty - $a.Y; $len = [Math]::Sqrt($dx * $dx + $dy * $dy)
     if ($len -gt $stop) {
-        $move = [Math]::Min($len - $stop + 0.01, $a.Def.Speed * $Tics * $(if ($a.Hacked) { 1.6 } else { 1.0 }))
+        $move = [Math]::Min($len - $stop + 0.01, $a.Def.Speed * $Tics * $(if ($a.Hacked) { 1.6 } else { 1.0 }) * $(if (Test-Perk 'ThreadJob') { 1.5 } else { 1.0 }))
         $a.X += $dx / $len * $move; $a.Y += $dy / $len * $move
         $a.TX = [int][Math]::Floor($a.X); $a.TY = [int][Math]::Floor($a.Y)
         return
@@ -684,7 +684,7 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
         return
     }
     if ($Source -in 'bullet', 'knife', 'beam') { Add-HitEffect $a }
-    if (-not $a.AttackMode) { $Damage *= 2 }                  # caught off guard: double damage
+    if (-not $a.AttackMode) { $Damage *= $(if (Test-Perk 'Pester') { 3 } else { 2 }) }      # caught off guard: double damage
     if ($script:P.SudoTics -gt 0) { $Damage *= 2 }            # sudo: elevated damage
     if ($script:OneHitKill) { $Damage = [Math]::Max($Damage, $a.HP) }
     $a.HP -= $Damage

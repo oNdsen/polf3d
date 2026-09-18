@@ -376,6 +376,22 @@ function Invoke-SelfTest([string]$OutDir) {
         $text -notmatch 'one drone is all' -or $text -notmatch 'Completed' -or $text -notmatch 'Received:' -or $text -notmatch 'No jobs') { throw "drone test failed:`n$text" }
     $script:Con.Runspace.Dispose(); $script:Con = $null
 
+    # ---- Install-Module: three on offer, none of them installed already, and every one of them does what it says ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2
+    $offer = @(Get-PerkOffer); $again = @(Get-PerkOffer)
+    $plain = "$(Get-AbilityCost 1)/$(Get-AbilityCost 3)/$(Get-AmmoCount 8)"; $script:P.Health = 50; Add-Health 10; $plainHealth = $script:P.Health
+    foreach ($m in $script:ModulePerks.Keys) { Install-Perk $m }; Install-Perk 'PSReadLine'
+    $with = "$(Get-AbilityCost 1)/$(Get-AbilityCost 3)/$(Get-AmmoCount 8)"; $script:P.Health = 50; Add-Health 10
+    $none = @(Get-PerkOffer)
+    Start-Level $true $true
+    $script:Result = @{ Last = $false; Exact = 100.0; Previous = 0; Kills = 50; Secrets = 25; Treasures = 10; Bonus = 0; Offer = $offer; Tests = (Invoke-FloorTests); Transcript = @{ Verdict = 'Completed.' } }
+    Show-DoneScreen; Save-BackBuffer (Join-Path $OutDir 'screen-perks.png')
+    Write-Step "perk test: offered $($offer -join ', '); cost of -WhatIf/-Verbose and rounds per clip $plain -> $with; 10 health heal $($plainHealth - 50) -> $($script:P.Health - 50); $($script:P.Modules.Count) installed, the secrets are on the map: $($script:StorySecrets)"
+    if ($offer.Count -ne 3 -or @($offer | Select-Object -Unique).Count -ne 3 -or ($offer -join ',') -ne ($again -join ',') -or $plain -ne '25/15/8' -or $with -ne '19/0/10' -or
+        $plainHealth -ne 60 -or $script:P.Health -ne 65 -or $script:P.Modules.Count -ne $script:ModulePerks.Count -or $none.Count -ne 0 -or -not $script:StorySecrets) { throw 'perk test failed.' }
+    $script:Difficulty = $keepDifficulty; New-Player
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
