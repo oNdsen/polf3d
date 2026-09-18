@@ -71,7 +71,7 @@ function Update-View {
     $fogK = [double]$script:FogPerTile; $maxFog = 205
     # light and darkness: in a dark room the haze closes in and turns black. A shot lights the room up for a moment,
     # the flashlight thins the haze in the middle of the picture (one factor per column, also used by the floor caster).
-    $wantDark = if ($script:DarkArea -and $script:P.Area -ge 0 -and $script:DarkArea[$script:P.Area]) { 1.0 } else { 0.0 }
+    $wantDark = if ($script:Stats.PowerOut -gt 0 -or ($script:DarkArea -and $script:P.Area -ge 0 -and $script:DarkArea[$script:P.Area])) { 1.0 } else { 0.0 }
     $script:Darkness += ($wantDark - $script:Darkness) * 0.15
     if ([Math]::Abs($wantDark - $script:Darkness) -lt 0.01) { $script:Darkness = $wantDark }
     $script:LightFlash = if ($script:MadeNoise) { 1.0 } else { $script:LightFlash * 0.55 }
@@ -384,6 +384,9 @@ function Show-Overlays {
     if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 19) 40 8 }
     # the building's execution policy: how nervous the floor is
     if (-not $script:NetClient) { $policy = Get-Policy; Write-HudBar '70101A2C' 2 2 46 7; Write-HudText $policy.Name 'Small' $policy.Color 2 2.4 46 7 }
+    # what the floor has scheduled: Patch Tuesday's countdown, a lockdown or a power failure about to happen
+    $notice = Get-EventNotice
+    if ($notice) { Write-HudBar '70101A2C' 2 10 72 7; Write-HudText $notice.Text 'Small' $notice.Color 2 10.4 72 7 }
     # a boss on your heels: his name and what is left of him
     $boss = $null
     foreach ($a in $script:Actors) { if ($a.Shootable -and $a.AttackMode -and $script:BossNames.ContainsKey($a.Kind) -and (-not $boss -or $a.Depth -lt $boss.Depth)) { $boss = $a } }

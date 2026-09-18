@@ -433,6 +433,26 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($first -eq 'uber.jam1' -or $second -ne 'uber.jam1' -or $printed -ne 2 -or $script:Stats.KillTotal -ne $total + 2 -or $jamDamage -lt 30 -or $frozenMove -gt 0.001 -or $freeMove -lt 0.05 -or $halted -lt 10 -or -not $bsod) { throw 'boss test failed.' }
     $script:GodMode = $keepGod; $script:GlitchTics = 0.0; $script:LevelIndex = 0
 
+    # ---- what a floor has scheduled: the power fails, the doors lock, Patch Tuesday heals - each once, and Undo takes it back ----
+    $script:LevelIndex = 9; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2
+    Set-TestCamera 25.5 45.5 90
+    $scheduled = ($script:LevelEvents | ForEach-Object { "$($_.Kind)@$([int]($_.At / 70))" }) -join ' '
+    $victim = $script:Actors | Where-Object { $_.Kind -eq 'elite' -and $_.Shootable } | Select-Object -First 1; $victim.HP = 5
+    $script:Stats.Tics = 70 * 239; Update-Events 1; $before = [int]$script:Stats.EventsDone
+    $snapshot = New-WorldSnapshot
+    $script:Stats.Tics = 70 * 241; Update-Events 1; $dark = $script:Stats.PowerOut
+    for ($f = 0; $f -lt 30; $f++) { Show-PlayFrame }; Save-BackBuffer (Join-Path $OutDir 'view-powerfail.png')
+    $script:Stats.Tics = 70 * 421; Update-Events 1; $sealed = @($script:Doors | Where-Object { $_.Jam -gt 0 }).Count
+    $notice = (Get-EventNotice).Text
+    $heat = $script:Stats.Heat; $script:Stats.Tics = 70 * 661; Update-Events 1; Update-Events 1
+    $healed = $victim.HP; $fired = [int]$script:Stats.EventsDone; $heated = $script:Stats.Heat - $heat
+    Restore-WorldSnapshot $snapshot
+    Write-Step "event test: floor 10 has $scheduled; power out for $([int]($dark / 70)) s, $sealed doors sealed, notice '$notice', Patch Tuesday took the elite from 5 to $healed health and heated the house by $([int]$heated) before the Undo; fired $before -> $fired -> $([int]$script:Stats.EventsDone)"
+    if ($scheduled -ne 'powerfail@240 lockdown@420 patch@660' -or $before -ne 0 -or [int]($dark / 70) -ne 25 -or $sealed -lt 5 -or $notice -notmatch 'POWER FAILURE|PATCH TUESDAY in' -or $healed -le 5 -or $heated -lt 29 -or $fired -ne 7 -or
+        [int]$script:Stats.EventsDone -ne 0 -or $script:Stats.PowerOut -gt 0) { throw 'event test failed.' }
+    $script:Difficulty = $keepDifficulty; $script:LevelIndex = 0
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
@@ -1330,12 +1350,12 @@ function Invoke-BalanceTest([int]$Floor, [int]$Runs = 6, [int]$Seconds = 120) {
     # the boss duels: full health, the guns one has by then, four tiles in front of the boss - and no cover at all
     for ($d = 0; $d -lt 4; $d++) {
         $script:Difficulty = $d; $script:LevelIndex = $Floor - 1; $script:NextSeed = 77; Start-Level $false $false
-        $bosses = @($script:Actors | Where-Object { $_.Kind -in 'boss', 'uber' } | ForEach-Object { "$($_.TX),$($_.TY)" })
+        $bosses = @($script:Actors | Where-Object { $_.Kind -in 'boss', 'uber', 'bsod' } | ForEach-Object { "$($_.TX),$($_.TY)" })
         foreach ($spot in $bosses) {
             $won = 0; $left = 0; $time = 0.0
             for ($run = 0; $run -lt $Runs; $run++) {
                 $script:GodMode = $false; $script:NextSeed = 2000 + $run; Start-Level $false $false; $script:BotStep = $null
-                $boss = $script:Actors | Where-Object { "$($_.TX),$($_.TY)" -eq $spot -and $_.Kind -in 'boss', 'uber' } | Select-Object -First 1
+                $boss = $script:Actors | Where-Object { "$($_.TX),$($_.TY)" -eq $spot -and $_.Kind -in 'boss', 'uber', 'bsod' } | Select-Object -First 1
                 $kind = $boss.Kind
                 # everybody else stays out of it
                 foreach ($other in @($script:Actors)) { if ($other -ne $boss -and -not $other.Def.Inert) { $script:ActorAt[$other.TY * $script:MapW + $other.TX] = $null; $null = $script:Actors.Remove($other) } }

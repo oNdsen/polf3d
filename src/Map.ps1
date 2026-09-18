@@ -29,6 +29,7 @@
 # Header lines "@floortex flat_stone|flat_wood|flat_moss|flat_tech|flat_carpet", "@ceiltex ceil_plain|ceil_rock|ceil_tech"
 # and "@fog RRGGBB <tiles>" choose the floor/ceiling textures and the distance haze.
 # Header line "@spawn <min difficulty 1-4> <x> <y> <enemy code>": reinforcements for the higher difficulties.
+# Header line "@event lockdown|powerfail|patch <seconds>": something that happens to the floor at that time (see Events.ps1).
 # Header line "@dark <x> <y>": the room that tile is in is dark - flashlight (L) and muzzle flashes are all the light there is.
 #
 # Unlike the 1992 format there are no hand-numbered "areas": rooms are found by flood fill.
@@ -47,11 +48,17 @@ function Read-MapFile([string]$Path) {
     $rows = [System.Collections.Generic.List[string]]::new()
     $spawns = [System.Collections.Generic.List[object]]::new()
     $darks = [System.Collections.Generic.List[object]]::new()
+    $events = [System.Collections.Generic.List[object]]::new()
     $inMap = $false
     foreach ($line in [System.IO.File]::ReadAllLines($Path)) {
         if ($line.StartsWith(';')) { continue }
         if ($inMap) { if ($line.Trim().Length -gt 0) { $rows.Add($line.TrimEnd()) }; continue }
         if ($line.StartsWith('@map')) { $inMap = $true; continue }
+        if ($line.StartsWith('@event ')) {                          # @event lockdown|powerfail|patch <seconds>
+            $f = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+            if ($f.Count -ne 3 -or $f[1] -notin 'lockdown', 'powerfail', 'patch') { throw "Map '$Path': malformed line '$line'" }
+            $events.Add(@{ Kind = $f[1]; At = [double]$f[2] * 70.0 }); continue
+        }
         if ($line.StartsWith('@dark ')) {                           # @dark <x> <y>: the room this tile is in has no light
             $f = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
             if ($f.Count -ne 3) { throw "Map '$Path': malformed line '$line'" }
@@ -71,7 +78,7 @@ function Read-MapFile([string]$Path) {
     if ($rows.Count -eq 0) { throw "Map '$Path' has no @map block." }
     $w = $rows[0].Length / 2
     foreach ($r in $rows) { if ($r.Length -ne $w * 2) { throw "Map '$Path': every row must be $($w * 2) characters long (found: $($r.Length))." } }
-    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks }
+    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks; Events = $events }
 }
 
 function Initialize-Level([string]$Path) {
@@ -177,6 +184,7 @@ function Initialize-Level([string]$Path) {
     $script:DarkArea = [bool[]]::new([Math]::Max(1, $area))      # rooms without light (Render.ps1, Test-Sight)
     foreach ($d in $map.Darks) { $at = $script:AreaOf[$d[1] * $w + $d[0]]; if ($at -ge 0) { $script:DarkArea[$at] = $true } }
     $script:Darkness = 0.0; $script:LightFlash = 0.0; $script:DarkTold = $false
+    $script:LevelEvents = @($map.Events)                          # what the floor has scheduled (Events.ps1)
     $script:AreaConnect = New-Object 'int[,]' $area, $area
     $script:AreaByPlayer = [bool[]]::new($area)
     foreach ($d in $script:Doors) {

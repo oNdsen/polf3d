@@ -55,7 +55,7 @@ function Test-Sight([Actor]$a) {
     $near = if ($script:P.Sneaking) { 0.7 } else { 1.5 }                                # a sneaking player can get right behind them
     if ([Math]::Abs($dx) -lt $near -and [Math]::Abs($dy) -lt $near) { return $true }     # too close to miss
     # in a dark room nobody sees further than three and a half tiles - unless the player carries a light around
-    if ($script:P.Area -ge 0 -and $script:DarkArea[$script:P.Area] -and -not $script:P.Light -and $dx * $dx + $dy * $dy -gt 12.25) { return $false }
+    if (-not $script:P.Light -and $dx * $dx + $dy * $dy -gt 12.25 -and ($script:Stats.PowerOut -gt 0 -or ($script:P.Area -ge 0 -and $script:DarkArea[$script:P.Area]))) { return $false }
     switch ($a.Dir) {                                                                  # looking the other way?
         0 { if ($dx -lt 0) { return $false } }
         2 { if ($dy -gt 0) { return $false } }

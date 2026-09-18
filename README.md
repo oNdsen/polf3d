@@ -352,6 +352,11 @@ down again, for 15 privilege a step. (Setting it to `Unrestricted` is free. You 
   shot lights the room up for a moment. `L` switches on a flashlight that opens a cone of light in the middle of the
   picture. It cuts both ways: in the dark nobody sees further than three and a half tiles – unless you carry a light
   around. A map marks them with `@dark <x> <y>`.
+* **The floor has a schedule** (floors 6–10; `@event <kind> <seconds>` in a map). A **lockdown** slams every plain
+  door shut and seals it for fifteen seconds – only your own hand still opens them, so nobody can follow you, or come
+  to help. A **power failure** turns the whole floor into a dark room for twenty-five seconds. And **Patch Tuesday**
+  has a countdown in the corner of the screen: when it runs out, every enemy still alive is as good as new and the
+  execution policy heats up by thirty. It pays to be quick.
 * **Doors** slide into the wall and close again by themselves; gold and silver locks need the matching key.
 * **Lever doors** cannot be opened by hand: somewhere there is a wall lever with the same number.
 * **Secret push-walls** slide back two tiles when you press against them. **Cracked walls** only give way to explosions.
@@ -490,6 +495,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
+| [src/Events.ps1](src/Events.ps1) | what a floor has scheduled: lockdown, power failure, Patch Tuesday |
 | [src/Policy.ps1](src/Policy.ps1) | the building's execution policy: the alarm level of a floor |
 | [src/Perks.ps1](src/Perks.ps1) | `Install-Module`: the perks offered between the floors |
 | [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
