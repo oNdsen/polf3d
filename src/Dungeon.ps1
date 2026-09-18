@@ -171,7 +171,6 @@ function New-DungeonLayout([int]$Seed, [int]$Attempt) {
         if ($rng.Next(100) -lt 65) { & $put $r '+a' }
         if ($rng.Next(100) -lt 40) { & $put $r $(if ($rng.Next(2)) { '+h' } else { '+f' }) }
         if ($rng.Next(100) -lt 30) { & $put $r ('+1', '+2', '+3')[$rng.Next(3)] }
-        if ($rng.Next(100) -lt 45) { & $put $r '*n' 1 }
         if ($g[$r.CX, ($r.Y)] -eq '..' -and $rng.Next(100) -lt 70) { $g[$r.CX, $r.Y] = '*l' }
     }
 

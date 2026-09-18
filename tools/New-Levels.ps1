@@ -98,12 +98,6 @@ function Add-Scenery([int]$Salt) {
                 for ($dy = -2; $dy -le 2 -and $clear; $dy++) { for ($dx = -2; $dx -le 2; $dx++) { $xx = $x + $dx; $yy = $y + $dy; if ($xx -lt 0 -or $yy -lt 0 -or $xx -ge $w -or $yy -ge $h) { continue }; $o = $g[$xx, $yy]; if ($null -ne $o -and $o -ne '..' -and $o -cnotmatch '^[SBWRMGT][A-Za-z]$') { $clear = $false } } }
                 if ($walls -eq 1 -and $clear) { $g[$x, $y] = if ($base -in 'M', 'T') { '*r' } else { '*T' } }
             }
-            elseif ($c -eq '..' -and -not $taken["$x,$y"] -and (($x * 7 + $y * 11 + $Salt * 5) % 17) -eq 0) {
-                # out in the open: a neon prompt under the ceiling (it blocks nothing)
-                $open = $true
-                for ($dy = -1; $dy -le 1; $dy++) { for ($dx = -1; $dx -le 1; $dx++) { if ($g[($x + $dx), ($y + $dy)] -ne '..') { $open = $false } } }
-                if ($open) { $g[$x, $y] = '*n' }
-            }
         }
     }
 }

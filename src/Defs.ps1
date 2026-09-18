@@ -171,7 +171,6 @@ $script:DecoCodes = @{
     [char]'g' = @('stalagmite', $true)
     [char]'e' = @('barrel_red', $true)     # explosive - spawned as a shootable actor, see Map.ps1
     [char]'r' = @('rack', $true);          [char]'T' = @('crt', $true)       # server rack, a desk with a PowerShell terminal
-    [char]'n' = @('sign_ps', $false)                                         # a neon prompt hanging from the ceiling
 }
 
 # ---------------------------------------------------------------------------------------------

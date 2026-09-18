@@ -710,11 +710,6 @@ function Add-ThingSprites {
         Add-TinyText 'F9F1A5' 23 20 'PS>'; Add-TinyText 'EEEDF0' 23 27 'GCI'; Add-Box 'EEEDF0' 36 27 3 5
         Add-Box 'C8C4B4' 14 38 24 3; Add-Box '9A9688' 15 39 22 1; Add-Oval 'C8C4B4' 42 37 6 4                                     # keyboard and mouse
     }
-    $S['sign_ps'] = New-Sprite {
-        Add-Box '30343C' 22 0 1 8; Add-Box '30343C' 41 0 1 8
-        Add-Box '0A0E16' 14 8 36 18; Add-Box '141A26' 15 9 34 16
-        Set-Pivot 19 10 0 0.62 0.62; Add-BigPrompt '5040E0FF' -1 -1 6; Add-BigPrompt '40E0FF' 0 0 4; Add-BigPrompt 'D8FFFF' 1 1 2; Reset-Pivot
-    }
     $S['table'] = New-Sprite { Add-Box '5A3414' 16 44 4 18; Add-Box '5A3414' 44 44 4 18; Add-Box '8A5A28' 12 40 40 5; Add-Box '6A421C' 12 45 40 2; Add-Box '7A4A20' 4 48 8 14; Add-Box '7A4A20' 4 38 2 12; Add-Box '7A4A20' 52 48 8 14; Add-Box '7A4A20' 58 38 2 12 }
     $S['barrel'] = New-Sprite { Add-Oval '3A6A3A' 20 56 24 7; Add-Box '3A6A3A' 20 34 24 26; Add-Oval '4A8A4A' 20 31 24 7; Add-Oval '2A4A2A' 23 32 18 4; Add-Box '2A4A2A' 20 40 24 2; Add-Box '2A4A2A' 20 52 24 2; Add-Box '5A9A5A' 23 35 2 24 }
     # hit feedback: blood at chest height, sparks where a bullet meets a wall
