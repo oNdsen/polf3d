@@ -2,8 +2,8 @@
 
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
 <i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
-verifiable runs,<br>five floors and a secret one, eleven kinds of enemies, nine weapons, co-op and deathmatch for up to four over the network, a terminal
-mode –<br>procedurally generated graphics, sound, speech and music, and about 200 lines of C#.</i></p>
+verifiable runs,<br>ten floors, a secret one and an ending worth playing for, eleven kinds of enemies, nine weapons, co-op and deathmatch for up to four over the network, a terminal
+mode –<br>procedurally generated graphics, sound, speech and music, and under 400 lines of C#.</i></p>
 
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
 
@@ -14,8 +14,9 @@ cd polf3d
 ```
 
 Requirements: **Windows** and **PowerShell 7.2+**. Nothing else – no modules, no asset files, no installation.
-On first start the three small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Gamepad.cs](src/Gamepad.cs),
-[src/Terminal.cs](src/Terminal.cs)) are compiled once into `bin/`; the music and the enemies' spoken lines are
+On first start the four small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Mixer.cs](src/Mixer.cs),
+[src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs)) are compiled once into `bin/` - every later start
+just loads the DLLs, until a source file changes; the music and the enemies' spoken lines are
 composed, spoken and cached there the first time they are needed.
 
 ---
@@ -81,8 +82,10 @@ map format, HUD, menus, music, network protocol.
 | `-WhatIf`: time stands still, ghosts show where everybody will be in two seconds – the red ones will open fire | The console: real pipelines, real `-WhatIf`, no way out of the sandbox |
 | ![Terminal mode](media/terminal.png) | ![The daily dungeon](media/dungeon.png) |
 | `-Terminal`: the same game as half-block characters | The plan of a generated dungeon: the lift behind the gold door, the key with the boss |
-| ![The player list](media/players.png) | |
-| `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban | |
+| ![The Data Centre](media/datacentre.png) | ![Ring 0](media/ring0.png) |
+| Floor 6: a cold aisle of the data centre – there is a sniper at the far end of every one | Floor 10: the core of Ring 0. The last commander is expecting you |
+| ![A floor's tests](media/tests.png) | ![The player list](media/players.png) |
+| Every floor is a test suite, and Pester reports: a pacifist run through the catacombs | `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban |
 
 <p align="center"><img src="media/faces.png" alt="The face in the status bar" width="880"></p>
 
@@ -102,12 +105,14 @@ map format, HUD, menus, music, network protocol.
 | `1`–`9` | weapons (see below) |
 | `Z` `X` `V` `F` `R` | the powers: `-WhatIf`, `-Confirm`, `-Verbose`, `-Force`, Undo (see [below](#powershell-is-the-point)) |
 | `T`, `Tab` | the PowerShell console – or "use" a terminal or a server rack |
+| `G` `H` `B` `Y` | the four console hotkeys: whatever command line you put on them with `Set-Hotkey` |
 | `M` (hold) / `N` | automap / radar minimap on and off |
 | `F2` / `F3` / `F4` | mouse look / fps display / music on and off |
 | `F5` / `F9` | quick save / quick load |
 | `F12` | record a demo (press again to stop and save) |
 | `P`, `Esc` | pause: `1`–`3` save to a slot, `L` load, `Q` main menu |
 | `G` (title screen) | today's dungeon |
+| `O` (title screen, pause) | options: mouse sensitivity, volumes, radar, fps, floors, window size – **and every key above** |
 | `F1` (network games) | the player list – on the host with kick and ban |
 
 **Game pad (XInput):** left stick move and strafe, right stick turn, `RT` fire, `LT` run, `A` use, `B` sneak,
@@ -121,7 +126,7 @@ who have noticed something or are coming for you, and the radar with alerted ene
 
 ## The campaign
 
-Five floors that keep getting harder, plus a secret one. The lift takes you to the next floor; you keep your weapons,
+Ten floors that keep getting harder, plus a secret one. The lift takes you to the next floor; you keep your weapons,
 ammunition and health, but not your keys. If you die you restart the floor with a pistol and 8 rounds. Every floor
 ends with a tally (kills, secrets, treasures, a bonus for beating the par time).
 
@@ -132,7 +137,21 @@ ends with a tally (kills, secrets, treasures, a bonus for beating the par time).
 | – | *The Treasury* | 12 / ~500 | The secret floor: gold everywhere, kamikaze bots between the chests |
 | 3 | The Catacombs | 43 / ~3400 | Caves without doors – noise carries far. Dogs in the fog, mutants lying in ambush behind every pillar |
 | 4 | Lab Zero | 37 / ~5800 | A ring corridor with elite patrols around the reactor hall, windows to shoot (and be shot) through, snipers, **the first war machine** |
-| 5 | The Citadel | 40 / ~6500 | The finale: a great hall with three patrols, two commanders, and a throne hall with a war machine and its escort |
+| 5 | The Citadel | 40 / ~6500 | The end of the first half: a great hall with three patrols, two commanders, and a throne hall with a war machine and its escort |
+| 6 | The Data Centre | 44 / ~4100 | Six cold aisles between two cross corridors: snipers at the far ends, windows in the rack rows, a commander in the silver cage |
+| 7 | The Archive | 46 / ~3700 | Two halls of shelves to get lost in, with things waiting between them. Four secrets – the microfiche knows them all |
+| 8 | The Foundry | 35 / ~5500 | A production line: a conveyor with three crushers and a gate, three levers – and THE PRINTER in the assembly hall |
+| 9 | The Executive Floor | 46 / ~7000 | Carpet and plants. A gallery of offices, the board (two commanders) behind the silver door, and a CEO who keeps a printer |
+| 10 | Ring 0 | 47 / ~8800 | Two rings around the core. Patrols outside, levers for the gates, and in the core two printers, the last commander – and the lift in the middle of it |
+
+**Every floor is a test suite.** When you throw the lift switch the run is put through ten tests and the result is
+printed the way Pester prints it – `[+] beats the par time 24ms`, `[-] fires no gun (blades are fine) 19ms` – on the
+completion screen, in terminal mode and in the transcript. Reaching the lift, par time, all kills, all secrets, all
+treasure, noticed by nobody, no guns, never below 50 health, no powers and no console, no cheats: what has been passed
+once stays passed (`saves/achievements.json`), and the title screen counts them – there are a hundred to get.
+
+**It is worth finishing.** Whoever throws the last switch on floor 10 gets a proper ending, with a piece of music
+written for it. There is no picture of it here, on purpose: it has to be earned.
 
 \* on *root*, where everybody shows up.
 
@@ -224,7 +243,21 @@ Get-Trap | Disable-Trap ;  Get-Loot -Name key* ;  Get-Secret ;  Get-Player ;  Ge
 ```
 
 Logging on at one of the terminals or server racks in the levels ("use") opens the same console and grants 30
-privilege once. It is safe to type anything: the console runs in a second runspace whose session state starts
+privilege once. **Those terminals have files** – `Get-ChildItem`, `Get-Content mail-0412.eml` – and the files tell
+what happened at Shellstein, floor by floor: tickets nobody could close, a duty roster, the minutes of the board. Some
+of them give things away: `Unlock-Door -Code 4711` opens what the mail says it opens, `Use-Token NIGHTSHIFT` marks the
+floor's secrets on the automap. A code works once per floor.
+
+**It has a `$PROFILE`.** Define a function or an alias in the console and `Save-Profile` writes it to
+`saves/profile.ps1`, which is run – inside the sandbox, like everything else – whenever the console starts. And
+`Set-Hotkey 1 'kn'` puts a command line on a key, to be run in the middle of the game without opening the console:
+
+```powershell
+function kn { Get-Enemy | Sort-Object Distance | Select-Object -First 1 | Stop-Enemy }
+Set-Hotkey 1 'kn'          # G - the four keys are G H B Y, Get-Hotkey shows them, the options menu rebinds them
+Save-Profile               # Get-Content $PROFILE shows it, Clear-Content $PROFILE empties it
+```
+ It is safe to type anything: the console runs in a second runspace whose session state starts
 *empty* – no providers (so no file system), no external programs, a dozen harmless cmdlets added back,
 `ConstrainedLanguage`, and two seconds per line. `Remove-Item C:\ -Recurse -Force` gets a polite answer.
 
@@ -330,7 +363,14 @@ time-bending powers are switched off in a network game (`-Verbose` works), and m
 Every track is composed in code and rendered once: a solemn **anthem** that plays only on the title screen, then
 one style per floor – **rock** for the dungeon, a **march** for the barracks, a **creepy drone with far-away bells**
 for the catacombs, **techno** for the lab, a **galloping finale** in harmonic minor for the citadel and a carefree
-ditty for the treasury. Further floors you add cycle through the styles, transposed. `F4` or `-NoMusic` turns it off.
+ditty for the treasury. The second half picks what suits it – techno for the data centre, the drone for the archive,
+rock for the foundry, the march for the executive floor, the finale for Ring 0 – transposed and with melodies of
+their own. And there is one more piece, which you will only hear once you have finished the game.
+`F4` or `-NoMusic` turns it off.
+
+Sound and music go through a small software mixer on `waveOut` ([src/Mixer.cs](src/Mixer.cs)): many sounds at once,
+each placed left or right of you and quieter with distance, and music that loops without a gap. The volumes are in
+the options menu.
 
 ## Mods
 
@@ -391,7 +431,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [Start-Polf3D.ps1](Start-Polf3D.ps1) | parameters, loading the modules, compiling the C# (DLL cache in `bin/`), start |
 | [src/Defs.ps1](src/Defs.ps1) | constants, the classes `Actor`/`Door`/`Static`, tables for enemies, states, weapons, items |
 | [src/Assets.Gfx.ps1](src/Assets.Gfx.ps1) | procedural textures, flats and sprites |
-| [src/Assets.Sfx.ps1](src/Assets.Sfx.ps1) | sound synthesis, playback on one channel with priorities |
+| [src/Assets.Sfx.ps1](src/Assets.Sfx.ps1) | sound synthesis; playing a sound at a place in the world |
 | [src/Voices.ps1](src/Voices.ps1) | the enemies' lines, spoken once by Windows' speech synthesiser (SAPI through COM) and cached |
 | [src/Music.ps1](src/Music.ps1) | the composer: styles, melodies written as text, wave patterns, SIMD mixing, WAV cache |
 | [src/Map.ps1](src/Map.ps1) | loads the text map, finds rooms ("areas") by flood fill, places things |
@@ -404,13 +444,17 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Mods.ps1](src/Mods.ps1) | merges `mods/*.psd1` into the tables |
 | [src/SaveGame.ps1](src/SaveGame.ps1) | saved games as JSON, speedrun records, high score list |
 | [src/Transcript.ps1](src/Transcript.ps1) | the transcript of a floor and its verdict |
+| [src/Achievements.ps1](src/Achievements.ps1) | every floor as a test suite: the ten tests, what has been passed, the Pester-style report |
+| [src/Settings.ps1](src/Settings.ps1) | the options menu, the key bindings, `saves/settings.json` |
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
 | [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
-| [src/Console.ps1](src/Console.ps1) | the sandboxed runspace, the game's cmdlets, pricing and carrying out requests |
+| [src/Story.ps1](src/Story.ps1) | the files on the terminals, and what their codes and tokens do |
+| [src/Console.ps1](src/Console.ps1) | the sandboxed runspace, the game's cmdlets, pricing and carrying out requests, the profile and the hotkeys |
+| [src/Ending.ps1](src/Ending.ps1) | what happens after the last floor (spoilers) |
 | [src/Terminal.ps1](src/Terminal.ps1) | terminal mode: keys, text screens, presenting a frame |
-| [src/Scaler.cs](src/Scaler.cs), [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs) | **the only C#**: the pixel loops (screen and terminal), XInput and keyboard state declarations |
+| [src/Scaler.cs](src/Scaler.cs), [src/Mixer.cs](src/Mixer.cs), [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs) | **the only C#**: the pixel loops (screen and terminal), the audio callback, XInput and keyboard state declarations. Compiled once, then loaded from `bin/` |
 | [src/SelfTest.ps1](src/SelfTest.ps1) | headless tests and the screenshots for this README |
 
 A few details for the curious:

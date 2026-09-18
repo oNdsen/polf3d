@@ -1080,6 +1080,26 @@ function Export-Screenshots([string]$OutDir) {
     $tg.DrawString('Floor 1: Shellstein Dungeon', $mono, (Get-Brush 'FFFFE860'), 16, ($ty + 2 * $cellH))
     $term.Save((Join-Path $OutDir 'terminal.png'), [System.Drawing.Imaging.ImageFormat]::Png); $tg.Dispose(); $term.Dispose(); $ui.Dispose(); $mono.Dispose()
 
+    # the second half: a cold aisle of the data centre, and the core of Ring 0
+    $script:LevelIndex = 5; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    $script:P.Owned = (New-OwnedList $true); $script:P.Ammo = 64; $script:P.Weapon = 2; $script:P.ChosenWeapon = 2
+    Set-TestCamera 13.5 27.5 90
+    for ($f = 0; $f -lt 8; $f++) { Show-PlayFrame }
+    Save-Shot $OutDir 'datacentre'
+    $script:LevelIndex = 9; Start-Level $false $false; $script:Message = $null
+    $script:P.Owned = (New-OwnedList $true); $script:P.Ammo = 99; $script:P.Weapon = 4; $script:P.ChosenWeapon = 4
+    Set-TestCamera 25.5 16.4 270
+    for ($f = 0; $f -lt 8; $f++) { Show-PlayFrame }
+    Save-Shot $OutDir 'ring0'
+
+    # a floor's test report (the epilogue is NOT among the pictures: it has to be earned)
+    $script:LevelIndex = 2; Start-Level $false $false; $script:P.Cheated = $false
+    $st = $script:Stats; $st.Tics = 70 * 371; $st.Kills = $st.KillTotal; $st.Secrets = $st.SecretTotal; $st.Treasures = $st.TreasureTotal - 2
+    $script:Run.Alerts = 9; $script:Run.Shots = 0; $script:Run.MinHealth = 61; $script:P.Score = 48200; $script:P.RunTics = 70 * 1284; $script:P.RunTics = 70 * 1284
+    $script:Result = @{ Last = $false; Exact = 371.4; Previous = 0; Kills = 100; Secrets = 100; Treasures = 77; Bonus = 44500; Tests = (Invoke-FloorTests)
+        Transcript = @{ Verdict = 'Completed without firing a shot. The catacombs are quieter than they have ever been.' } }
+    Show-DoneScreen; Save-BackBuffer (Join-Path $OutDir 'tests.png')
+
     Export-Banner (Join-Path $OutDir 'banner.png')
 
     Remove-Item -LiteralPath $script:SaveDir -Recurse -Force -ErrorAction SilentlyContinue
