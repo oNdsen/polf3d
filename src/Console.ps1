@@ -15,6 +15,8 @@ $script:Con = $null
 
 $script:ConsoleHelp = @'
 LOOK          Get-Enemy [-Kind guard]   Get-Door   Get-Loot [-Name clip*]   Get-Trap   Get-Player   Get-Secret (20)
+READ          At a terminal or server rack:  Get-ChildItem (ls, dir)   Get-Content <file> (cat, type)
+              What the files give away:      Unlock-Door -Code <number>      Use-Token <word>
 ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight seconds)
               Open-Door (8, locked ones 25)   Close-Door (5)   Lock-Door (15, jams it for twenty seconds)
               Disable-Trap (10)
@@ -53,7 +55,10 @@ function Initialize-Console {
         'sudo'        = '"sudo: you are already root of your own misfortune."'
         'Remove-Item' = '"Remove-Item: nice try. This console is a sandbox - the only thing you can delete from here is the opposition."'
         'Invoke-WebRequest' = '"Invoke-WebRequest: no route to host. The only network down here wants you dead."'
-        'Get-ChildItem' = '$PolfLoot'
+        'Get-ChildItem' = 'if ($PolfFiles) { $PolfFiles } else { "No file system here. Log on at a terminal or a server rack in the building: walk up to it and press use." }'
+        'Get-Content' = 'param([Parameter(Position = 0)][string]$Path = "*") $hit = $PolfFiles | Where-Object Name -like $Path | Select-Object -First 1; if ($hit) { $PolfFileText[$hit.Name] } elseif ($PolfFiles) { throw "Cannot find path ''$Path'' because it does not exist." } else { throw "No file system here. Log on at a terminal first." }'
+        'Unlock-Door' = 'param([Parameter(Position = 0)][string]$Code) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Code }'
+        'Use-Token' = 'param([Parameter(Position = 0)][string]$Token) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Token }'
         'Get-Process' = '$PolfEnemies | Select-Object Id, @{ n = "ProcessName"; e = { $_.Kind } }, @{ n = "WS(HP)"; e = { $_.Health } }, State'
     }
     # the acting cmdlets all look the same: ids in, requests out
@@ -70,7 +75,7 @@ process {
     foreach ($a in @('?', 'Where-Object'), @('where', 'Where-Object'), @('%', 'ForEach-Object'), @('foreach', 'ForEach-Object'), @('select', 'Select-Object'), @('sort', 'Sort-Object'),
         @('measure', 'Measure-Object'), @('group', 'Group-Object'), @('ft', 'Format-Table'), @('fl', 'Format-List'), @('gm', 'Get-Member'), @('echo', 'Write-Output'),
         @('help', 'Get-Help'), @('man', 'Get-Help'), @('gcm', 'Get-Command'), @('kill', 'Stop-Enemy'), @('spps', 'Stop-Enemy'), @('ps', 'Get-Process'), @('gps', 'Get-Process'),
-        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
+        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
         $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateAliasEntry]::new($a[0], $a[1]))
     }
     $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
@@ -122,6 +127,13 @@ function Update-ConsoleData {
     $st = $script:Stats
     $player = [pscustomobject]@{ Type = 'Player'; Health = $p.Health; Ammo = $p.Ammo; Privilege = [int]$p.Privilege; Floor = $script:LevelName
         Kills = "$($st.Kills)/$($st.KillTotal)"; Secrets = "$($st.Secrets)/$($st.SecretTotal)"; Treasure = "$($st.Treasures)/$($st.TreasureTotal)" }
+    # the files of this floor - but only at one of the building's own terminals
+    $files = @(); $texts = @{}
+    $floor = Get-StoryFloor
+    if ($script:Con.AtTerminal -and $floor) {
+        $files = foreach ($name in $floor.Files.Keys) { $texts[$name] = "$($floor.Files[$name])".TrimEnd(); [pscustomobject]@{ Type = 'File'; Mode = '-a---'; Length = $texts[$name].Length; Name = $name } }
+    }
+    $proxy.SetVariable('PolfFiles', @($files)); $proxy.SetVariable('PolfFileText', $texts)
     $proxy.SetVariable('PolfEnemies', @($enemies | Sort-Object Distance)); $proxy.SetVariable('PolfDoors', @($doors | Sort-Object Distance))
     $proxy.SetVariable('PolfLoot', @($loot | Sort-Object Distance)); $proxy.SetVariable('PolfTraps', @($traps | Sort-Object Distance)); $proxy.SetVariable('PolfPlayer', $player)
 }
@@ -156,6 +168,11 @@ function Get-ConsoleActionCost([string]$Name, $Target) {
 
 function Invoke-ConsoleAction($Action) {
     $name = [string]$Action.PolfAction; $id = [int]$Action.Id; $p = $script:P
+    if ($name -eq 'Use-Code') {
+        $answer = Invoke-StoryCode ([string]$Action.Value)
+        if ($answer) { Write-ConsoleLine $answer '60FF80'; Start-Sfx 'key' } else { Write-ConsoleLine "'$($Action.Value)' means nothing on this floor." 'F14C4C'; Start-Sfx 'noway' }
+        return $true
+    }
     $target = switch -Wildcard ($name) {
         '*-Enemy' { $script:Actors | Where-Object { $_.NetId -eq $id -and $_.Shootable -and -not $_.Def.Inert } | Select-Object -First 1 }
         '*-Door'  { if ($id -ge 0 -and $id -lt $script:Doors.Count) { $script:Doors[$id] } }
@@ -244,6 +261,8 @@ function Open-Console([int]$TerminalIndex = -1) {
         Add-Privilege 30
         Write-ConsoleLine "Logged on at a terminal of the house: +30 privilege ($([int]$script:P.Privilege) now)." '60FF80'
     }
+    $con.AtTerminal = $TerminalIndex -ge 0
+    if ($con.AtTerminal) { Write-ConsoleLine "This terminal has files: Get-ChildItem lists them, Get-Content <name> reads one." 'A0A8B8' }
     $con.Input = ''; $con.Scroll = 0; $con.Opened = $script:Clock.Elapsed.TotalSeconds
     $script:CharQueue.Clear()
     Set-Mode 'console'

@@ -103,6 +103,7 @@ function Initialize-Level([string]$Path) {
     $script:Teleporters = [System.Collections.Generic.List[hashtable]]::new()
     $script:TeleLock = $false
     $script:TerminalAt = @{}; $script:TerminalUsed = @{}          # scenery that opens the console when "used"
+    $script:StoryUsed = @{}; $script:StorySecrets = $false        # codes from the terminals' files: once per floor
     $script:NextNetId = 0
     $script:Stats = @{ KillTotal = 0; Kills = 0; SecretTotal = 0; Secrets = 0; TreasureTotal = 0; Treasures = 0; Tics = 0.0 }
     $script:PW = @{ Active = $false; X = 0; Y = 0; DX = 0; DY = 0; Pos = 0.0; Moved = 0; TexId = 0 }

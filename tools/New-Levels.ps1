@@ -71,6 +71,7 @@ function Add-Scenery([int]$Salt) {
     $taken = @{}
     foreach ($sp in $script:spawns) { $f = $sp.Split(' '); $taken["$($f[2]),$($f[3])"] = $true }
     $near = @(-1, 0), @(1, 0), @(0, -1), @(0, 1)
+    $terminals = 0; $spares = [System.Collections.Generic.List[object]]::new()
     for ($y = 1; $y -lt $h - 1; $y++) {
         for ($x = 1; $x -lt $w - 1; $x++) {
             $c = $g[$x, $y]
@@ -83,7 +84,8 @@ function Add-Scenery([int]$Salt) {
                     $g[$x, $y] = $set[($x * 13 + $y * 7 + $Salt) % $set.Count]
                 }
             }
-            elseif ($c -eq '..' -and -not $taken["$x,$y"] -and (($x * 29 + $y * 41 + $Salt * 3) % 9) -eq 0) {
+            elseif ($c -eq '..' -and -not $taken["$x,$y"]) {
+                $chosen = (($x * 29 + $y * 41 + $Salt * 3) % 9) -eq 0
                 # open floor with a plain stretch of wall on exactly one side and nothing else around it
                 $walls = 0; $clear = $true; $base = ''
                 for ($dy = -1; $dy -le 1; $dy++) {
@@ -94,11 +96,21 @@ function Add-Scenery([int]$Salt) {
                         if ($o -cmatch '^[SBWRMGT][A-Za-z]$' -and ($dx -eq 0 -or $dy -eq 0)) { $walls++; $base = $o[0] } elseif ($o -cmatch '^[SBWRMGT][A-Za-z]$') { } else { $clear = $false }
                     }
                 }
-                # ... and the second row out must be free as well, so that nothing gets walled in
-                for ($dy = -2; $dy -le 2 -and $clear; $dy++) { for ($dx = -2; $dx -le 2; $dx++) { $xx = $x + $dx; $yy = $y + $dy; if ($xx -lt 0 -or $yy -lt 0 -or $xx -ge $w -or $yy -ge $h) { continue }; $o = $g[$xx, $yy]; if ($null -ne $o -and $o -ne '..' -and $o -cnotmatch '^[SBWRMGT][A-Za-z]$') { $clear = $false } } }
-                if ($walls -eq 1 -and $clear) { $g[$x, $y] = if ($base -in 'M', 'T') { '*r' } else { '*T' } }
+                # ... and in the second row out nothing that blocks, so that nothing gets walled in
+                for ($dy = -2; $dy -le 2 -and $clear; $dy++) { for ($dx = -2; $dx -le 2; $dx++) { $xx = $x + $dx; $yy = $y + $dy; if ($xx -lt 0 -or $yy -lt 0 -or $xx -ge $w -or $yy -ge $h) { continue }; $o = $g[$xx, $yy]; if ($o -cmatch '^(D.|\?.|\*[^lhsuk]|P.)$') { $clear = $false } } }      # no door, secret wall, other furniture or the start close by
+                if ($walls -eq 1 -and $clear) {
+                    if ($chosen -and $terminals -lt 6) { $g[$x, $y] = if ($base -in 'M', 'T') { '*r' } else { '*T' }; $terminals++ } else { $spares.Add(@($x, $y, $base)) }
+                }
             }
         }
+    }
+    # every floor needs terminals (there are files to read on them): top up from the spares, spread over the map
+    for ($k = 0; $terminals -lt 3 -and $spares.Count; $k++) {
+        $pick = $spares[[int](($spares.Count - 1) * (0.2, 0.8, 0.5)[$k % 3])]
+        $null = $spares.Remove($pick)
+        $free = $true
+        for ($dy = -2; $dy -le 2; $dy++) { for ($dx = -2; $dx -le 2; $dx++) { if ($g[($pick[0] + $dx), ($pick[1] + $dy)] -cin '*r', '*T') { $free = $false } } }
+        if ($free) { $g[$pick[0], $pick[1]] = if ($pick[2] -in 'M', 'T') { '*r' } else { '*T' }; $terminals++ }
     }
 }
 

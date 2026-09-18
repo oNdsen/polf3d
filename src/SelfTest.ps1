@@ -256,6 +256,23 @@ function Invoke-SelfTest([string]$OutDir) {
     foreach ($key in $script:BindDefaults.Keys) { $script:Bind[$key] = $script:BindDefaults[$key] }; $script:Settings.Mouse = 0.12
     Remove-Item -LiteralPath (Get-SettingsPath) -ErrorAction SilentlyContinue
 
+    # ---- the files on the terminals: none on the player's own console, a floor's worth at a terminal; the door code works once ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $terminal = @($script:TerminalAt.Keys)[0]
+    $silver = $script:Doors | Where-Object { $_.Lock -eq 2 } | Select-Object -First 1
+    $script:Con = $null
+    Open-Console; Invoke-ConsoleLine 'Get-ChildItem'; $own = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"; Close-Console
+    $privilege = $script:P.Privilege
+    Open-Console $terminal
+    foreach ($line in 'ls', 'cat mail*', 'Unlock-Door -Code 4711', 'Unlock-Door 4711', 'Use-Token nonsense') { Invoke-ConsoleLine $line }
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"
+    Show-PlayFrame; Show-Console; Save-BackBuffer (Join-Path $OutDir 'view-console-files.png')
+    Close-Console
+    Write-Step "story test: $($script:TerminalAt.Count) terminals on floor 1, logging on gave $($script:P.Privilege - $privilege) privilege, the silver door's lock is now $($silver.Lock)"
+    if ($own -notmatch 'No file system here' -or $text -notmatch 'mail-0412\.eml' -or $text -notmatch 'service code 4711' -or $text -notmatch 'lock\(s\) on this floor are open' -or
+        $text -notmatch 'used on this floor already' -or $text -notmatch 'means nothing' -or $silver.Lock -ne 0 -or $script:TerminalAt.Count -lt 3) { throw "story test failed:`n$text" }
+    foreach ($floor in $script:StoryFiles.Keys) { foreach ($code in $script:StoryFiles[$floor].Codes.Keys) { if (-not (($script:StoryFiles[$floor].Files.Values -join ' ') -match [regex]::Escape($code))) { throw "story test failed: nothing on floor '$floor' mentions the code '$code'." } } }
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

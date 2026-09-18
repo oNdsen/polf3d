@@ -511,11 +511,13 @@ function Update-MapBitmap {
     $mg = $null
     $vis = $script:Vis; $tiles = $script:Tiles; $drawn = $script:MapDrawn
     for ($i = 0; $i -lt $drawn.Length; $i++) {
-        if ($vis[$i] -eq 0) { continue }                                     # never seen
         $t = $tiles[$i]
+        $secret = $script:StorySecrets -and ($script:PushTex[$i] -ne 0 -or $script:Breakable[$i])      # a token from a terminal gives them away
+        if ($secret) { $t = 9000 }
+        if ($vis[$i] -eq 0 -and -not $secret) { continue }                   # never seen
         if ($drawn[$i] -eq $t + 1) { continue }                              # already painted like this
         if ($null -eq $mg) { $mg = [System.Drawing.Graphics]::FromImage($script:MapBmp) }
-        $c = if ($t -eq 0) { '5A5A5A' } elseif ($t -ge 200) { '8A8A8A' } elseif ($t -ge 100) { ('40E0E0', 'E8C020', 'D0D8E0', 'FFFFFF', 'E040E0')[[Math]::Min(4, $script:Doors[$t - 100].Lock)] } else { $script:MapColors[$t] }
+        $c = if ($secret) { 'FF40FF' } elseif ($t -eq 0) { '5A5A5A' } elseif ($t -ge 200) { '8A8A8A' } elseif ($t -ge 100) { ('40E0E0', 'E8C020', 'D0D8E0', 'FFFFFF', 'E040E0')[[Math]::Min(4, $script:Doors[$t - 100].Lock)] } else { $script:MapColors[$t] }
         if (-not $c) { $c = '8A8A8A' }
         $x = $i % $mw; $y = [int][Math]::Floor($i / $mw)
         $mg.FillRectangle((Get-Brush $c), ($x + $pad) * $cell, ($y + $pad) * $cell, $cell - 1, $cell - 1)
