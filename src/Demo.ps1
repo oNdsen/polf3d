@@ -34,6 +34,7 @@ function Stop-DemoRecording([string]$Path) {
     if (-not $Path) { $Path = Join-Path $script:SaveDir ("demo-{0:yyyyMMdd-HHmmss}.json" -f (Get-Date)) }
     $demo = [ordered]@{
         Version = 1; Map = Split-Path $script:MapFile -Leaf; Difficulty = $script:Difficulty; Seed = $rec.Seed
+        Mods = @($script:Mods)                                                    # they change the rules
         Dungeon = $script:DungeonSeed; ColumnStep = $script:ColumnStep           # a dungeon is rebuilt from its number; the ray count decides who is seen
         Completed = [bool]$script:LevelDone; Seconds = [Math]::Round($script:Stats.Tics / $script:TICRATE, 2)
         # where the recording ended - playback must arrive at exactly the same numbers
@@ -51,6 +52,7 @@ function Stop-DemoRecording([string]$Path) {
 function Start-DemoPlayback([string]$Path) {
     try {
         $demo = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable
+        if ((@($demo.Mods) -join '|') -ne (@($script:Mods) -join '|')) { throw "recorded with the mods '$(@($demo.Mods) -join ', ')', running with '$(@($script:Mods) -join ', ')'" }
         $index = -1
         if ($demo.Dungeon) { $script:DungeonSeed = [int]$demo.Dungeon; $script:DungeonMap = New-DungeonMap $script:DungeonSeed; $index = 0 }
         else {

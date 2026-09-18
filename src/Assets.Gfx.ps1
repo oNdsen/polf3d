@@ -839,6 +839,7 @@ function Add-WhatIfSprites {
 function Initialize-Sprites {
     $script:Spr = @{}
     foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield', 'peer') { Add-SoldierSprites $k }
+    foreach ($k in $script:ModKinds) { Add-SoldierSprites $k }     # newcomers from mods: a palette is all they need
     Add-ShieldOverlay
     Add-BossSprites
     Add-UberSprites

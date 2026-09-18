@@ -46,6 +46,8 @@
     Do not look for an XInput game pad.
 .PARAMETER NoSound
     Skip sound synthesis (faster start, no sound effects).
+.PARAMETER NoMods
+    Ignore the mods in ./mods (every *.psd1 there is merged into the game's tables, see src/Mods.ps1).
 .PARAMETER NoVoices
     The enemies beep instead of talking (they talk through Windows' speech synthesiser, if it has an English voice).
 .PARAMETER NoMusic
@@ -85,6 +87,7 @@ param(
     [switch]$FlatFloors,
     [switch]$NoGamepad,
     [switch]$NoSound,
+    [switch]$NoMods,
     [switch]$NoVoices,
     [switch]$NoMusic,
     [switch]$GodMode,
@@ -161,7 +164,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Dungeon', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Demo', 'Dungeon', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo
@@ -169,6 +172,10 @@ $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
 $script:AttractDemo = Join-Path $PSScriptRoot 'demos/attract.json'
 
+if (-not $NoMods -and (-not $headless -or $VerifyDemo)) {
+    Import-Mods (Join-Path $PSScriptRoot 'mods')
+    if ($script:Mods) { Write-Step "mods: $($script:Mods -join ', ')" }
+}
 Write-Step 'compiling scaler (C#) ...';       Initialize-Scaler
 Write-Step 'building state tables ...';        Initialize-States
 Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initialize-Flats

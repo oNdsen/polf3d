@@ -665,6 +665,20 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     Write-Step "music test: $($lengths -join ', ')"
 
+    # ---- mods: the example must load, its newcomer must get states and sprites and turn up on the floor ----
+    # (last of all the tests that play: a mod changes the game's tables for good)
+    Import-Mod (Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot '../mods/examples/purple-interns.psd1'))
+    Initialize-States
+    foreach ($k in $script:ModKinds) { Add-SoldierSprites $k }
+    $script:LevelIndex = 0; $script:BonusMap = $null; $script:Difficulty = 2; Start-Level $false $false
+    $interns = @($script:Actors | Where-Object Kind -eq 'intern'); $guards = @($script:Actors | Where-Object Kind -eq 'guard')
+    Set-TestCamera ($interns[0].X + 0.1) ($interns[0].Y + 2.2) 90; $interns[0].Dir = 6
+    Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-mod-intern.png')
+    for ($f = 0; $f -lt 60; $f++) { Update-View; Update-World 2.0 $idle }
+    Write-Step "mod test: $($interns.Count) interns with $($interns[0].HP) health next to $($guards.Count) guards; the pistol is now called '$($script:Weapons[1].Name)'"
+    if (-not $interns.Count -or -not $guards.Count -or $interns[0].HP -ne 12 -or $script:Weapons[1].Name -ne 'Service pistol' -or -not $script:States['intern.chase1']) { throw 'mod test failed.' }
+    $script:Difficulty = 1
+
     # ---- title screen ----
     $script:HighScores = @()
     Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'screen-title.png')

@@ -225,6 +225,7 @@ function Initialize-Level([string]$Path) {
                 # the easier difficulties thin out the rank and file - always the same ones, decided by where they stand
                 $kind = $script:EnemyCodes[$a]
                 if ($kind -notin 'boss', 'uber' -and (($x * 73 + $y * 151) % 100) -lt 100 * $script:Difficulties[$script:Difficulty].Thin) { continue }
+                if ($script:ModReplace.Count) { $kind = Get-ModdedKind $kind $x $y }
                 Add-Enemy $kind $x $y $dir $mode
             }
             else { throw "Unknown map code '$a$b' at $x,$y" }
