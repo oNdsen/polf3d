@@ -394,6 +394,7 @@ function Invoke-Pickup([string]$Item) {
             $script:Stats.Treasures++; Start-Sfx 'oneup'; Show-Message 'Extra life!'
         }
     }
+    if ($Item -notin 'dogfood', 'food', 'medkit', 'clip', 'clip_small', 'rockets', 'charge', 'coins', 'goblet', 'chest') { Add-TranscriptLine "picked up: $Item" 'VERBOSE' }
     $script:BonusFlash = 18.0
     $script:HudDirty = $true
     $true
@@ -423,7 +424,9 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     if ($p.SudoTics -gt 0) { $Points = [int][Math]::Floor($Points / 2) }
     if ($script:OneHitKill) { $Points = 999 }                    # the cheat cuts both ways: every hit is fatal
     if ($Points -le 0) { return }
+    $before = $p.Health
     if (-not $script:GodMode) { $p.Health -= $Points }
+    if ($before -gt 25 -and $p.Health -le 25 -and $p.Health -gt 0) { Add-TranscriptLine "health is down to $($p.Health)" 'WARNING' }
     $script:DamageFlash += $Points
     $script:Shake = [Math]::Min(14.0, $script:Shake + $Points / 2.0)      # the view jolts with every hit
     $p.GrinTics = 0
@@ -439,6 +442,7 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
         $p.Health = 0
         $script:Killer = $Attacker
         $script:PlayerDied = $true
+        Add-TranscriptLine "killed by $(if ($Attacker) { "a $($Attacker.Kind)" } else { 'the building itself' })" 'ERROR'
         if ($script:NetLive -and $Attacker -and $Attacker.Kind -eq 'peer') { $script:Net.PeerFrags++; Send-NetMessage 'F' }
         Start-Sfx 'player_die'
     }

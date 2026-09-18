@@ -107,6 +107,7 @@ function Get-TerminalScreen([string]$Mode) {
             foreach ($row in @('Time', (Format-Time $res.Exact -Tenths)), @('Par', (Format-Time $script:ParSeconds)), @('Kills', "$($res.Kills) %"), @('Secrets', "$($res.Secrets) %"), @('Treasures', "$($res.Treasures) %"), @('Bonus', "$($res.Bonus)"), @('Score', "$($script:P.Score)")) {
                 $lines.Add(("   $d{0,-12}$r {1}" -f $row[0], $row[1]))
             }
+            if ($res.Transcript) { $lines.Add(''); $lines.Add("$d   `"$($res.Transcript.Verdict)`"$r") }
             $lines.Add(''); $lines.Add("$y   $(if ($res.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($res.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' })$r")
         }
     }

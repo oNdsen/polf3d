@@ -101,6 +101,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:HudDirty = $true
     if ($script:Net -and $script:Net.Connected) { Initialize-NetLevel $KeepPlayer $KeepKit }
     elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
+    Start-RunTranscript
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
     $script:MusicWanted = if ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
@@ -113,6 +114,7 @@ function Set-Mode([string]$Mode) {
     if ($Mode -eq 'title' -and $script:NetLive) { Send-NetMessage 'B' }                # takes the other player along
     if ($Mode -in 'title', 'done', 'gameover') { $script:NetLive = $false; $script:NetClient = $false }
     if ($Mode -ne 'play') { Set-MouseLook $false }
+    if ($Mode -eq 'dying') { $null = Stop-RunTranscript $false } elseif ($Mode -eq 'title') { $script:Transcript = $null }
     if ($script:Recording -and $Mode -notin 'play', 'paused') { if ($script:DungeonSeed) { $null = Save-DungeonRun $false } else { Stop-DemoRecording } }
     if ($Mode -eq 'title' -and $script:KeepColumnStep) { $script:ColumnStep = $script:KeepColumnStep; $script:KeepColumnStep = 0 }
     if ($Mode -eq 'title') { Stop-Dungeon }
@@ -319,6 +321,7 @@ function Complete-Level {
         $r.DungeonDemo = Save-DungeonRun $true
     }
     $r.Previous = Add-SpeedrunResult $r.Exact $r.Last
+    $r.Transcript = Stop-RunTranscript $true
     $r.TimeBonus = [Math]::Max(0, $script:ParSeconds - $seconds) * 500
     $r.Bonus = $r.TimeBonus + 10000 * (@($r.Kills, $r.Secrets, $r.Treasures) -eq 100).Count
     $script:Result = $r
@@ -347,6 +350,7 @@ function Show-DoneScreen {
         $y += 14
     }
     if ($script:Net -and $script:Net.Mode -eq 'duel') { Write-HudText "FRAGS     you $($script:Net.Frags) : $($script:Net.PeerFrags) opponent" 'Mid' '60C0FF' 0 180 320 12 }
+    if ($r.Transcript) { Write-HudText "`"$($r.Transcript.Verdict)`"" 'Small' 'C0C8D8' 0 173 320 8 }
     if ($r.DungeonDemo) {
         $was = if ($r.DungeonBest) { "best so far $(Format-Time ([double]$r.DungeonBest.Seconds) -Tenths)" } else { 'first run of this dungeon' }
         Write-HudText "Dungeon #$($script:DungeonSeed)   $was" 'Small' '40E0FF' 0 182 320 8

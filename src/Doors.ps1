@@ -136,6 +136,7 @@ function Start-PushWall([int]$X, [int]$Y, [int]$DX, [int]$DY) {
     $script:PushTex[$idx] = 0
     $pw.Active = $true; $pw.X = $X; $pw.Y = $Y; $pw.DX = $DX; $pw.DY = $DY; $pw.Pos = 0.0; $pw.Moved = 0; $pw.TexId = $tex
     $script:Stats.Secrets++
+    Add-TranscriptLine 'found a wall that moves' 'VERBOSE'
     Start-Sfx 'pushwall'
     Show-Message 'A secret passage!'
 }

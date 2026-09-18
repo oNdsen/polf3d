@@ -169,7 +169,7 @@ function Invoke-ConsoleAction($Action) {
     if ($Action.WhatIf) { Write-ConsoleLine "What if: Performing the operation `"$name`" on target `"$label`". It would cost $cost privilege." ; return $true }
     if ($p.Privilege -lt $cost -and -not $script:InfiniteAmmo) { Write-ConsoleLine "${name}: Access is denied - $label costs $cost privilege, you have $([int]$p.Privilege)." 'F14C4C'; return $false }
     switch ($name) {
-        'Stop-Enemy'    { $target.AttackMode = $true; Stop-Actor $target; $done = 'terminated' }
+        'Stop-Enemy'    { $script:KillCause = 'console'; Stop-Actor $target; $script:KillCause = $null; $done = 'terminated' }
         'Suspend-Enemy' { $target.Stun = 560.0; $done = 'suspended for eight seconds' }
         'Open-Door'     { if ($target.Lock -in 1, 2, 4) { $target.Unlocked = $true; if ($target.Lock -ne 4) { $target.Lock = 0; $target.TexId = $script:TEX_DOOR } }; $target.Jam = 0.0; Open-Door $id; $done = 'opening' }
         'Close-Door'    { Close-Door $id; $done = if ($target.Action -in 'closing', 'closed') { 'closing' } else { 'somebody is standing in it' } }
@@ -200,6 +200,7 @@ function Invoke-ConsoleLine([string]$Text) {
     if ($Text -match '^(exit|quit|logout)$') { Close-Console; return }
     if ($Text -match '^(cls|clear|Clear-Host)$') { $con.Lines.Clear(); return }
 
+    Add-TranscriptLine "PS> $Text"
     Update-ConsoleData
     $result = Invoke-SandboxScript $Text
     $show = [System.Collections.Generic.List[object]]::new()

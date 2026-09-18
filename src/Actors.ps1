@@ -578,7 +578,7 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
     if ($script:P.SudoTics -gt 0) { $Damage *= 2 }            # sudo: elevated damage
     if ($script:OneHitKill) { $Damage = [Math]::Max($Damage, $a.HP) }
     $a.HP -= $Damage
-    if ($a.HP -le 0) { Stop-Actor $a; return }
+    if ($a.HP -le 0) { $script:KillCause = $Source; Stop-Actor $a; $script:KillCause = $null; return }
     if (-not $a.AttackMode) { $a.React = 0; Start-Attack $a }
     if ($a.Def.Pain) { Set-ActorState $a "$($a.Kind).pain" }
 }
@@ -602,6 +602,10 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
         return
     }
     if (-not $NoScore) { Add-Score $a.Def.Points }
+    if (-not $script:NetAsPeer) {
+        $cause = switch ($script:KillCause) { 'explosion' { 'an explosion' } 'console' { 'the console' } 'trap' { 'a crusher' } default { "the $($script:Weapons[$script:P.Weapon].Name.ToLower())" } }
+        Add-TranscriptLine "Stop-Enemy -Kind $($a.Kind)$(if (-not $a.AttackMode) { ' -Unaware' })   # with $cause"
+    }
     Set-ActorState $a "$($a.Kind).die1"
     switch ($a.Def.Drop) {
         'clip_small'   { Add-Item 'clip_small' $tx $ty }

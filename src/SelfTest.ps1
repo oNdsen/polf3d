@@ -665,6 +665,15 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     Write-Step "music test: $($lengths -join ', ')"
 
+    # ---- the transcript of a floor ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $victim = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert } | Select-Object -First 1
+    Invoke-ActorDamage $victim 999 'bullet'; $null = Invoke-Pickup 'mgun'; $script:Stats.Tics = 4321
+    $done = Stop-RunTranscript $true
+    $log = Get-Content -LiteralPath $done.File
+    Write-Step "transcript test: $($log.Count) lines in $(Split-Path $done.File -Leaf); verdict: $($done.Verdict)"
+    if ($log[1] -ne 'PowerShell transcript start' -or -not ($log -match 'Stop-Enemy -Kind') -or -not ($log -match 'picked up: mgun') -or -not $done.Verdict) { throw 'transcript test failed.' }
+
     # ---- mods: the example must load, its newcomer must get states and sprites and turn up on the floor ----
     # (last of all the tests that play: a mod changes the game's tables for good)
     Import-Mod (Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot '../mods/examples/purple-interns.psd1'))
