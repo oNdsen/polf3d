@@ -406,7 +406,6 @@ function Start-GameLoop {
         if ($hits -contains $vk.F3) { $script:ShowFps = -not $script:ShowFps }
         if ($script:Net -and $hits -contains $vk.F1 -and $script:Mode -in 'title', 'play') { Open-NetPanel; $hits = @() }      # who is here? (the host: and who should not be)
         if ($hits -contains $vk.F4) { Switch-Music }
-        Update-Music
         Update-Network $tics
 
         if ($script:AutoQuit -lt 0) {

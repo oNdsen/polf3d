@@ -77,7 +77,7 @@ function Test-Gunfire([Actor]$a) {
 
 function Start-Attack([Actor]$a) {
     $a.AlertTics = 50
-    Start-Sfx (Get-AlertSound $a)
+    Start-Sfx (Get-AlertSound $a) $a.X $a.Y
     Set-ActorState $a "$($a.Kind).chase1"
     $a.Speed = $a.Def.Chase
     $a.AttackMode = $true
@@ -316,7 +316,7 @@ function Invoke-ThinkBotChase([Actor]$a, [double]$Tics) {
 function Invoke-ActionShoot([Actor]$a) {
     if (-not $script:AreaByPlayer[$a.Area]) { return }
     if (-not (Test-LineToPlayer $a.X $a.Y)) { return }
-    Start-Sfx $a.Def.ShotSnd
+    Start-Sfx $a.Def.ShotSnd $a.X $a.Y
     $aim = $script:Difficulties[$script:Difficulty].Aim         # beginners are shot at by worse marksmen
 
     if ($a.Def.Marksman) {                                     # snipers: distance means nothing, only your speed helps
@@ -335,7 +335,7 @@ function Invoke-ActionShoot([Actor]$a) {
 }
 
 function Invoke-ActionBite([Actor]$a) {
-    Start-Sfx 'bite'
+    Start-Sfx 'bite' $a.X $a.Y
     if ([Math]::Abs($script:P.X - $a.X) -gt 1.6 -or [Math]::Abs($script:P.Y - $a.Y) -gt 1.6) { return }
     if ((Get-Rnd) -lt 180 * $script:Difficulties[$script:Difficulty].Aim) { Invoke-PlayerDamage ((Get-Rnd) -shr 4) $a }
 }
@@ -376,7 +376,7 @@ function Find-WallPoint {
 # A blast: hurts the player and every shootable actor within $Radius, fading with distance.
 # Exploding barrels set each other off, which is where the chain reactions come from.
 function Invoke-Explosion([double]$X, [double]$Y, [double]$Radius, [double]$Damage, [Actor]$Owner) {
-    Start-Sfx 'boom'
+    Start-Sfx 'boom' $X $Y
     $script:MadeNoise = $true
     $px = $script:P.X - $X; $py = $script:P.Y - $Y
     $d = [Math]::Sqrt($px * $px + $py * $py)
@@ -422,7 +422,7 @@ function Invoke-ActionRocket([Actor]$a) {
     $r.Area = $a.Area; $r.Active = $true; $r.Corpse = $true        # "corpse": never blocks tiles or doors
     Set-ActorState $r 'rocket.fly'
     $script:NewActors.Add($r)
-    Start-Sfx 'rocket'
+    Start-Sfx 'rocket' $a.X $a.Y
 }
 
 function Invoke-ThinkProjectile([Actor]$a, [double]$Tics) {
@@ -534,7 +534,7 @@ function Update-Actor([Actor]$a, [double]$Tics) {
             switch ($st.Action) {
                 'Shoot'       { Invoke-ActionShoot $a }
                 'Bite'        { Invoke-ActionBite $a }
-                'DeathScream' { Start-Sfx (Get-DeathSound $a) }
+                'DeathScream' { Start-Sfx (Get-DeathSound $a) $a.X $a.Y }
                 'Rocket'      { Invoke-ActionRocket $a }
                 'SpawnPilot'  { Invoke-ActionSpawnPilot $a }
                 'Explode'     { Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $a }
@@ -569,7 +569,7 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
     if ($Source -ne 'knife') { $script:MadeNoise = $true }     # blades are silent: nobody else wakes up
     if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a)) {        # flames lick around it
         Add-Effect 'puff' ($a.X + ($script:P.X - $a.X) * 0.15) ($a.Y + ($script:P.Y - $a.Y) * 0.15)
-        Start-Sfx 'clang'
+        Start-Sfx 'clang' $a.X $a.Y
         if (-not $a.AttackMode) { $a.React = 0; Start-Attack $a }
         return
     }

@@ -842,9 +842,10 @@ function Invoke-NetMessage([string]$Line, [hashtable]$From) {
         }
         'W' { Start-PushWall ([int]$f[1]) ([int]$f[2]) ([int]$f[3]) ([int]$f[4]) }
         'Q' {
-            $script:NetScope = 'remote'
-            try { Start-Sfx $f[2] } finally { $script:NetScope = 'local' }
             $pl = $n.Players[[int]$f[1]]
+            $script:NetScope = 'remote'
+            try { if ($pl) { Start-Sfx $f[2] $pl.Ghost.X $pl.Ghost.Y } elseif ($f.Count -gt 4) { Start-Sfx $f[2] ([double]$f[3]) ([double]$f[4]) } else { Start-Sfx $f[2] } }
+            finally { $script:NetScope = 'local' }
             if ($pl -and $script:NetLoud.Contains($f[2]) -and $f[2] -notin 'pain', 'player_die', 'teleport') { $pl.Anim.Fire = 8.0 }
         }
         'X' {
@@ -903,7 +904,7 @@ function Invoke-NetGuestMessage([string[]]$f, [hashtable]$From) {
         }
         'Q' {
             $script:NetScope = 'remote'
-            try { Start-Sfx $f[2] } finally { $script:NetScope = 'local' }
+            try { Start-Sfx $f[2] $n.Players[$slot].Ghost.X $n.Players[$slot].Ghost.Y } finally { $script:NetScope = 'local' }
             if ($script:NetLoud.Contains($f[2]) -and $f[2] -notin 'pain', 'player_die', 'teleport') { $n.Players[$slot].Anim.Fire = 8.0 }
             Send-NetExcept $slot "Q|$slot|$($f[2])"
         }

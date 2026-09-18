@@ -8,14 +8,13 @@
 # Rendering trick: a note is one short wave pattern copied over and over with Buffer.BlockCopy,
 # and the channels are mixed with SIMD vectors, so PowerShell never has to loop over the
 # individual samples of a whole track.
-# Playback uses WPF's MediaPlayer, which mixes happily with the SoundPlayer used for effects.
+# Playback is the mixer's job (src/Mixer.cs): it loops a track without the slightest gap.
 
 $script:MUSIC_RATE = 22050
 $script:MUSIC_VERSION = 3                       # bump to invalidate cached tracks
 $script:MUSIC_BONUS = 99                        # track number of the secret floor
 $script:MusicEnabled = $true
-$script:MusicPlayer = $null
-$script:MusicSeconds = 0.0
+$script:MusicIds = @{}                          # track -> the mixer's id of its samples
 $script:MusicTrack = -1
 
 # Tempo (beats per minute), Root (Hz of scale step 0 in the bass octave), Bars (4/4, sixteen steps each),
@@ -434,8 +433,8 @@ function New-MusicTrack([int]$Track, [string]$Path) {
 function Get-MusicPath([int]$Track) { Join-Path $script:MusicDir ("track{0}-v{1}.wav" -f $Track, $script:MUSIC_VERSION) }
 
 function Start-Music([int]$Track) {
-    if (-not $script:MusicEnabled) { return }
-    if ($Track -eq $script:MusicTrack -and $script:MusicPlayer) { return }
+    if (-not $script:MusicEnabled -or -not $script:Mixer) { return }
+    if ($Track -eq $script:MusicTrack) { return }
     try {
         $path = Get-MusicPath $Track
         if (-not (Test-Path -LiteralPath $path)) {
@@ -444,14 +443,9 @@ function Start-Music([int]$Track) {
                 Where-Object Name -NotLike "*-v$($script:MUSIC_VERSION).wav" | Remove-Item -Force -ErrorAction SilentlyContinue
             New-MusicTrack $Track $path
         }
-        Stop-Music
-        $script:MusicSeconds = ((Get-Item -LiteralPath $path).Length - 44) / ($script:MUSIC_RATE * 2.0)
-        $script:MusicPlayer = [System.Windows.Media.MediaPlayer]::new()
-        $script:MusicPlayer.Open([Uri]::new($path))
-        $script:MusicPlayer.Volume = 0.35
-        $script:MusicPlayer.Play()
+        if (-not $script:MusicIds.ContainsKey($Track)) { $script:MusicIds[$Track] = $script:Mixer::LoadWav([System.IO.File]::ReadAllBytes($path)) }
+        $script:Mixer::SetMusic($script:MusicIds[$Track])                # the mixer loops it, sample-exact
         $script:MusicTrack = $Track
-        $script:MusicStarted = $script:Clock.Elapsed.TotalSeconds
     }
     catch {
         Write-Warning "Music disabled: $($_.Exception.Message)"
@@ -460,18 +454,8 @@ function Start-Music([int]$Track) {
 }
 
 function Stop-Music {
-    if ($script:MusicPlayer) { $script:MusicPlayer.Stop(); $script:MusicPlayer.Close(); $script:MusicPlayer = $null }
+    if ($script:Mixer) { $script:Mixer::SetMusic(-1) }
     $script:MusicTrack = -1
-}
-
-# Called every frame: restarts the loop when it has played through.
-function Update-Music {
-    if (-not $script:MusicPlayer) { return }
-    if ($script:Clock.Elapsed.TotalSeconds - $script:MusicStarted -ge $script:MusicSeconds - 0.03) {
-        $script:MusicPlayer.Position = [TimeSpan]::Zero
-        $script:MusicPlayer.Play()
-        $script:MusicStarted = $script:Clock.Elapsed.TotalSeconds
-    }
 }
 
 function Switch-Music {

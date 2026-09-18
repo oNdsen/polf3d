@@ -39,14 +39,14 @@ function Update-Traps([double]$Tics) {
             if ($t.Kind -eq 'crusher') {
                 $script:StaticBlock[$t.Y * $w + $t.X] = $state -eq 2
                 if ($state -eq 2) {
-                    if ($near) { Start-Sfx 'crusher' }
+                    if ($near) { Start-Sfx 'crusher' ($t.X + 0.5) ($t.Y + 0.5) }
                     if ($inside) { Invoke-PlayerDamage (40 + ((Get-Rnd) -shr 4)) $null }
                     $victim = $script:ActorAt[$t.Y * $w + $t.X]
                     if ($victim -and $victim.Shootable) { Invoke-ActorDamage $victim 60 'explosion' }
                 }
             }
             elseif ($state -eq 1) {
-                if ($near) { Start-Sfx 'spikes' }
+                if ($near) { Start-Sfx 'spikes' ($t.X + 0.5) ($t.Y + 0.5) }
                 if ($inside) { Invoke-PlayerDamage (10 + ((Get-Rnd) -shr 4)) $null; $t.Hurt = 0.0 }
             }
         }

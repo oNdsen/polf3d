@@ -48,7 +48,7 @@ function Close-Door([int]$Index) {
         if ($a.Corpse) { continue }
         if ([Math]::Abs($a.X - ($d.X + 0.5)) -lt 0.9 -and [Math]::Abs($a.Y - ($d.Y + 0.5)) -lt 0.9) { return }
     }
-    if ($script:AreaByPlayer[$d.Area1] -or $script:AreaByPlayer[$d.Area2]) { Start-Sfx 'door_close' }
+    if ($script:AreaByPlayer[$d.Area1] -or $script:AreaByPlayer[$d.Area2]) { Start-Sfx 'door_close' ($d.X + 0.5) ($d.Y + 0.5) }
     $d.Action = 'closing'
 }
 
@@ -80,7 +80,7 @@ function Update-Doors([double]$Tics) {
                     $script:AreaConnect[$d.Area1, $d.Area2]++
                     $script:AreaConnect[$d.Area2, $d.Area1]++
                     Update-AreaByPlayer
-                    if ($script:AreaByPlayer[$d.Area1]) { Start-Sfx 'door_open' }
+                    if ($script:AreaByPlayer[$d.Area1]) { Start-Sfx 'door_open' ($d.X + 0.5) ($d.Y + 0.5) }
                 }
                 $d.Open += $step
                 if ($d.Open -ge 1) { $d.Open = 1; $d.Timer = 0; $d.Action = 'open' }

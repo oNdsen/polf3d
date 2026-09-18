@@ -1,17 +1,16 @@
 # POLF 3D - Copyright (c) 2026 oNdsen. Licensed under the MIT License, see LICENSE.
 
-# Assets.Sfx.ps1 - sound effects are synthesised at start-up (8 bit, 11 kHz, mono) and played
-# through System.Media.SoundPlayer. Like the original's sound system there is ONE effect
-# channel: a new sound only interrupts the running one if its priority is equal or higher.
+# Assets.Sfx.ps1 - sound effects are synthesised at start-up (8 bit, 11 kHz, mono) and played through the
+# mixer (src/Mixer.cs): many at once, each as loud as it is near, and from the side it comes from.
+# The priority only matters when all 24 voices are taken: then the least important sound makes room.
 
 $script:SFX_RATE = 11025
+$script:SFX_RANGE = 22.0           # tiles at which a sound has faded to (almost) nothing
 $script:Sfx = @{}
 $script:SfxEnabled = $true
-$script:SfxBusyUntil = 0.0
-$script:SfxBusyPrio = 0
 
 # Segment = @(seconds, wave, freqStart, freqEnd, volStart, volEnd); wave: q=square s=saw n=noise
-function New-SfxPlayer([object[]]$Segments) {
+function New-SfxSample([object[]]$Segments) {
     $rate = $script:SFX_RATE
     $total = 0
     foreach ($s in $Segments) { $total += [int]($s[0] * $rate) }
@@ -38,17 +37,7 @@ function New-SfxPlayer([object[]]$Segments) {
         }
     }
 
-    $ms = [System.IO.MemoryStream]::new()
-    $bw = [System.IO.BinaryWriter]::new($ms)
-    $bw.Write([byte[]][char[]]'RIFF'); $bw.Write([int](36 + $total)); $bw.Write([byte[]][char[]]'WAVEfmt ')
-    $bw.Write([int]16); $bw.Write([int16]1); $bw.Write([int16]1); $bw.Write([int]$rate); $bw.Write([int]$rate)
-    $bw.Write([int16]1); $bw.Write([int16]8)
-    $bw.Write([byte[]][char[]]'data'); $bw.Write([int]$total); $bw.Write($data)
-    $bw.Flush()
-    $ms.Position = 0
-    $player = [System.Media.SoundPlayer]::new($ms)
-    $player.Load()
-    @{ Player = $player; Seconds = $total / $rate }
+    @{ Id = $script:Mixer::Load($data, 0, $total, 8, $rate); Seconds = $total / $rate }
 }
 
 function Initialize-Sounds {
@@ -103,7 +92,7 @@ function Initialize-Sounds {
     }
     try {
         foreach ($name in $defs.Keys) {
-            $p = New-SfxPlayer $defs[$name][1]
+            $p = New-SfxSample $defs[$name][1]
             $p.Prio = $defs[$name][0]
             $script:Sfx[$name] = $p
         }
@@ -114,21 +103,32 @@ function Initialize-Sounds {
     }
 }
 
-function Start-Sfx([string]$Name) {
+# Plays a sound. With a position it is as loud as it is near and comes from its side; without one it is the
+# player's own (or the interface's) and plays in the middle at full volume.
+function Start-Sfx([string]$Name, [double]$X = [double]::NaN, [double]$Y = [double]::NaN) {
     if ($script:Predicting) { return }                           # -WhatIf is only looking ahead: silence
     if ($script:NetLive -and $Name) {
-        # network game: the other player hears the world as well - and the louder things this one does
-        # Q|<whose>|<sound> - "whose" makes that player's ghost raise his gun; -1 = nobody's, the world's
-        if ($script:NetScope -eq 'peer') { Send-NetPeer "Q|-1|$Name"; return }
-        if ($script:NetScope -eq 'world') { Send-NetMessage "Q|-1|$Name" }
+        # network game: the others hear the world as well - and the louder things this player does
+        # Q|<whose>|<sound>|x|y - "whose" makes that player's ghost raise his gun; -1 = nobody's, the world's
+        if ($script:NetScope -eq 'peer') { Send-NetPeer "Q|-1|$Name|$X|$Y"; return }
+        if ($script:NetScope -eq 'world') { Send-NetMessage "Q|-1|$Name|$X|$Y" }
         elseif ($script:NetScope -eq 'local' -and $script:NetLoud.Contains($Name)) { Send-NetMessage "Q|$($script:Net.Slot)|$Name" }
     }
     if (-not $script:SfxEnabled -or -not $Name) { return }
     $s = $script:Sfx[$Name]
     if ($null -eq $s) { return }
-    $now = $script:Clock.Elapsed.TotalSeconds
-    if ($now -lt $script:SfxBusyUntil -and $s.Prio -lt $script:SfxBusyPrio) { return }
-    try { $s.Player.Play() } catch { $script:SfxEnabled = $false; return }
-    $script:SfxBusyUntil = $now + $s.Seconds
-    $script:SfxBusyPrio = $s.Prio
+    $left = 1.0; $right = 1.0
+    if (-not [double]::IsNaN($X)) {
+        $p = $script:P
+        $dx = $X - $p.X; $dy = $Y - $p.Y
+        $dist = [Math]::Sqrt($dx * $dx + $dy * $dy)
+        $volume = [Math]::Max(0.0, 1.0 - $dist / $script:SFX_RANGE); $volume = 0.06 + 0.94 * $volume * $volume
+        if ($dist -gt 0.4) {
+            # where is it, seen from where the player is looking? +1 = hard right, -1 = hard left
+            $pan = - [Math]::Sin([Math]::Atan2(- $dy, $dx) - $p.Angle * [Math]::PI / 180.0)
+            if ($pan -gt 0) { $left = 1.0 - 0.75 * $pan } else { $right = 1.0 + 0.75 * $pan }
+        }
+        $left *= $volume; $right *= $volume
+    }
+    $script:Mixer::Play($s.Id, [single]$left, [single]$right, [int]$s.Prio)
 }

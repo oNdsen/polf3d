@@ -1,6 +1,6 @@
 # POLF 3D - Copyright (c) 2026 oNdsen. Licensed under the MIT License, see LICENSE.
 
-# Voices.ps1 - the garrison talks. Windows' own speech synthesiser (SAPI, through COM - no assembly
+# Voices.ps1 - the garrison talks (and thanks to the mixer, several of them at once). Windows' own speech synthesiser (SAPI, through COM - no assembly
 # needed) says each line once into a WAV file in bin/voice, deliberately lo-fi at 11 kHz and 8 bits
 # so that it sits well next to the synthesised effects; after that the lines are ordinary sounds.
 # No speech engine, no English voice, -NoVoices: then everybody just beeps as before.
@@ -57,8 +57,9 @@ function Initialize-Voices {
                 $null = $sapi.Speak("<pitch middle=`"$($line[2])`"><rate speed=`"$($line[3])`">$text</rate></pitch>", 8)
                 $file.Close()
             }
-            $player = [System.Media.SoundPlayer]::new($path); $player.Load()
-            $script:Sfx[$name] = @{ Player = $player; Seconds = [Math]::Min(1.6, ((Get-Item -LiteralPath $path).Length - 44) / 11025.0); Prio = $line[5] }
+            $id = $script:Mixer::LoadWav([System.IO.File]::ReadAllBytes($path))
+            if ($id -lt 0) { throw "cannot read $path" }
+            $script:Sfx[$name] = @{ Id = $id; Seconds = $script:Mixer::Seconds($id); Prio = $line[5] }
             if (-not $script:Voices[$line[0]]) { $script:Voices[$line[0]] = @() }
             $script:Voices[$line[0]] += $name
         }

@@ -709,6 +709,21 @@ function Invoke-SelfTest([string]$OutDir) {
     Write-Step "terminal test: $rowsOut rows, $cells half-block cells, $([int]($text.Length / 1024)) KB for one frame"
     if ($rowsOut -ne 31 -or $cells -ne 3100 -or $text -notmatch '\e\[38;2;\d+;\d+;\d+m') { throw 'terminal test failed.' }
 
+    # ---- the mixer: open the sound device, play two sounds over a music loop, close (skipped without a device) ----
+    $mixer = Import-CSharpClass 'src/Mixer.cs' 'PolfMixer'
+    if ($mixer -and $mixer::Open()) {
+        $tone = [byte[]]::new(11025); for ($i = 0; $i -lt $tone.Length; $i++) { $tone[$i] = if (($i % 50) -lt 25) { 131 } else { 125 } }      # a very quiet second of 220 Hz
+        $id = $mixer::Load($tone, 0, $tone.Length, 8, 11025)
+        $mixer::MusicVolume = 0.02; $mixer::SetMusic($id)
+        $mixer::Play($id, 0.05, 0.0, 5); $mixer::Play($id, 0.0, 0.05, 5)
+        Start-Sleep -Milliseconds 400
+        $seconds = $mixer::Seconds($id)
+        $mixer::Close()
+        Write-Step "mixer test: device opened, a $([Math]::Round($seconds, 2)) s sample played left, right and as a music loop, device closed"
+        if ([Math]::Abs($seconds - 1.0) -gt 0.01) { throw 'mixer test failed.' }
+    }
+    else { Write-Step 'mixer test: no sound device (skipped)' }
+
     # ---- music: every style must render, stay within 16 bits and differ from the others ----
     $lengths = foreach ($track in 0, 1, 2, 3, 4, 5, $script:MUSIC_BONUS) {
         $wav = Join-Path $OutDir "music-$track.wav"

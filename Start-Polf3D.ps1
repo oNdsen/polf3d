@@ -112,7 +112,7 @@ Set-StrictMode -Off
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'POLF 3D needs Windows (Windows Forms / GDI+).' }
 
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing, PresentationCore
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
 $script:Clock = [System.Diagnostics.Stopwatch]::StartNew()
 $script:SaveDir = Join-Path $PSScriptRoot 'saves'
@@ -168,6 +168,12 @@ function Initialize-Scaler {
     if (-not $script:Scaler) { throw 'The scaler (src/Scaler.cs) could not be compiled.' }
     # the game pad is optional: no pad, no XInput or no compiler -> keyboard and mouse only
     $script:Pad = if ($NoGamepad) { $null } else { try { Import-CSharpClass 'src/Gamepad.cs' 'PolfGamepad' } catch { $null } }
+    # sound: a software mixer on waveOut. No sound device, no compiler -> a silent game
+    $script:Mixer = $null
+    if ($script:SfxEnabled -or $script:MusicEnabled) {
+        try { $script:Mixer = Import-CSharpClass 'src/Mixer.cs' 'PolfMixer'; if (-not $script:Mixer::Open()) { $script:Mixer = $null } } catch { $script:Mixer = $null }
+        if (-not $script:Mixer) { Write-Warning 'No sound: the mixer could not open an audio device.'; $script:SfxEnabled = $false; $script:MusicEnabled = $false }
+    }
 }
 
 Write-Step 'POLF 3D starting ...'
@@ -222,6 +228,7 @@ try {
     Start-GameLoop
 }
 finally {
+    if ($script:Mixer) { $script:Mixer::Close() }
     Stop-Terminal
     Stop-Network
     Stop-Music
