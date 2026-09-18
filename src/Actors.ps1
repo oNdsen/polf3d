@@ -77,7 +77,7 @@ function Test-Gunfire([Actor]$a) {
 
 function Start-Attack([Actor]$a) {
     $a.AlertTics = 50
-    Start-Sfx $a.Def.AlertSnd
+    Start-Sfx (Get-AlertSound $a)
     Set-ActorState $a "$($a.Kind).chase1"
     $a.Speed = $a.Def.Chase
     $a.AttackMode = $true
@@ -534,7 +534,7 @@ function Update-Actor([Actor]$a, [double]$Tics) {
             switch ($st.Action) {
                 'Shoot'       { Invoke-ActionShoot $a }
                 'Bite'        { Invoke-ActionBite $a }
-                'DeathScream' { Start-Sfx $a.Def.DieSnd }
+                'DeathScream' { Start-Sfx (Get-DeathSound $a) }
                 'Rocket'      { Invoke-ActionRocket $a }
                 'SpawnPilot'  { Invoke-ActionSpawnPilot $a }
                 'Explode'     { Invoke-Explosion $a.X $a.Y $a.Def.BlastRadius $a.Def.BlastDamage $a }

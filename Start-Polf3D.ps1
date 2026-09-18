@@ -46,6 +46,8 @@
     Do not look for an XInput game pad.
 .PARAMETER NoSound
     Skip sound synthesis (faster start, no sound effects).
+.PARAMETER NoVoices
+    The enemies beep instead of talking (they talk through Windows' speech synthesiser, if it has an English voice).
 .PARAMETER NoMusic
     No background music (toggle in game with F4).
 .PARAMETER GodMode
@@ -83,6 +85,7 @@ param(
     [switch]$FlatFloors,
     [switch]$NoGamepad,
     [switch]$NoSound,
+    [switch]$NoVoices,
     [switch]$NoMusic,
     [switch]$GodMode,
     [switch]$InfiniteAmmo,
@@ -158,7 +161,7 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Dungeon', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Dungeon', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo
@@ -171,6 +174,7 @@ Write-Step 'building state tables ...';        Initialize-States
 Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initialize-Flats
 Write-Step 'painting sprites ...';             Initialize-Sprites
 Write-Step 'synthesising sounds ...';          Initialize-Sounds
+if (-not $NoVoices) { Initialize-Voices }
 Initialize-Renderer $Scale ([int](320 / $Columns))
 
 if ($RecordAttractDemo) {
