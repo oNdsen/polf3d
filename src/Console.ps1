@@ -24,7 +24,7 @@ READ          At a terminal or server rack:  Get-ChildItem (ls, dir)   Get-Conte
               What the files give away:      Unlock-Door -Code <number>      Use-Token <word>
 ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight seconds)
               Open-Door (8, locked ones 25)   Close-Door (5)   Lock-Door (15, jams it for twenty seconds)
-              Disable-Trap (10)
+              Disable-Trap (10)     Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
 PROFILE       function kn { Get-Enemy | select -First 1 | Stop-Enemy }      Set-Alias ge Get-Enemy
               Set-Hotkey 1 'kn'   runs it from the game with a key (Get-Hotkey shows the four keys)
@@ -67,6 +67,8 @@ function Initialize-Console {
         'Get-ChildItem' = 'if ($PolfFiles) { $PolfFiles } else { "No file system here. Log on at a terminal or a server rack in the building: walk up to it and press use." }'
         'Set-Hotkey' = 'param([Parameter(Position = 0)][int]$Key, [Parameter(Position = 1)][string]$Command) [pscustomobject]@{ PolfAction = "Set-Hotkey"; Id = $Key; WhatIf = $false; Value = $Command }'
         'Get-Hotkey' = '$PolfHotkeys'
+        'Get-ExecutionPolicy' = '$PolfPolicy'
+        'Set-ExecutionPolicy' = 'param([Parameter(Position = 0)][string]$ExecutionPolicy, [string]$Scope, [switch]$Force) [pscustomobject]@{ PolfAction = "Set-Policy"; Id = 0; WhatIf = $false; Value = $ExecutionPolicy }'
         'Save-Profile' = '[pscustomobject]@{ PolfAction = "Save-Profile"; Id = 0; WhatIf = $false }'
         'Clear-Content' = 'param([Parameter(Position = 0)][string]$Path) if ($Path -eq $PROFILE) { [pscustomobject]@{ PolfAction = "Clear-Profile"; Id = 0; WhatIf = $false } } else { throw "Clear-Content: the only thing that can be cleared from here is `$PROFILE." }'
         'Get-Content' = 'param([Parameter(Position = 0)][string]$Path = "*") if ($Path -eq $PROFILE) { if ($PolfProfile) { return $PolfProfile } else { return "`$PROFILE is empty. Define a function, then Save-Profile." } }; $hit = $PolfFiles | Where-Object Name -like $Path | Select-Object -First 1; if ($hit) { $PolfFileText[$hit.Name] } elseif ($PolfFiles) { throw "Cannot find path ''$Path'' because it does not exist." } else { throw "No file system here. Log on at a terminal first." }'
@@ -210,7 +212,7 @@ function Update-ConsoleData {
     }
     $st = $script:Stats
     $player = [pscustomobject]@{ Type = 'Player'; Health = $p.Health; Ammo = $p.Ammo; Privilege = [int]$p.Privilege; Floor = $script:LevelName
-        Kills = "$($st.Kills)/$($st.KillTotal)"; Secrets = "$($st.Secrets)/$($st.SecretTotal)"; Treasure = "$($st.Treasures)/$($st.TreasureTotal)" }
+        Policy = (Get-Policy).Name; Kills = "$($st.Kills)/$($st.KillTotal)"; Secrets = "$($st.Secrets)/$($st.SecretTotal)"; Treasure = "$($st.Treasures)/$($st.TreasureTotal)" }
     # the files of this floor - but only at one of the building's own terminals
     $files = @(); $texts = @{}
     $floor = Get-StoryFloor
@@ -218,6 +220,7 @@ function Update-ConsoleData {
         $files = foreach ($name in $floor.Files.Keys) { $texts[$name] = "$($floor.Files[$name])".TrimEnd(); [pscustomobject]@{ Type = 'File'; Mode = '-a---'; Length = $texts[$name].Length; Name = $name } }
     }
     $proxy.SetVariable('PolfFiles', @($files)); $proxy.SetVariable('PolfFileText', $texts)
+    $proxy.SetVariable('PolfPolicy', (Get-Policy).Name)
     $profilePath = Get-ProfilePath
     $proxy.SetVariable('PolfProfile', $(if (Test-Path -LiteralPath $profilePath) { try { [System.IO.File]::ReadAllText($profilePath).TrimEnd() } catch { '' } } else { '' }))
     $proxy.SetVariable('PolfHotkeys', @(foreach ($slot in 1..4) { [pscustomobject]@{ Type = 'Hotkey'; Id = $slot; Key = (Get-KeyName $script:Bind["Macro$slot"]); Command = "$($script:Hotkeys[$slot])" } }))
@@ -259,6 +262,11 @@ function Invoke-ConsoleAction($Action) {
         $answer = Invoke-StoryCode ([string]$Action.Value)
         if ($answer) { Write-ConsoleLine $answer '60FF80'; Start-Sfx 'key' } else { Write-ConsoleLine "'$($Action.Value)' means nothing on this floor." 'F14C4C'; Start-Sfx 'noway' }
         return $true
+    }
+    if ($name -eq 'Set-Policy') {
+        $answer = Set-Policy ([string]$Action.Value)
+        Write-ConsoleLine $answer.Text $(if ($answer.Ok) { '60FF80' } else { 'F14C4C' })
+        return $answer.Ok
     }
     if ($name -eq 'Set-Hotkey') {
         $problem = Set-ConsoleHotkey $id ([string]$Action.Value)

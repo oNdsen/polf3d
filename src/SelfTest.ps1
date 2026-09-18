@@ -308,6 +308,24 @@ function Invoke-SelfTest([string]$OutDir) {
     Write-Step "cheat flash test: five fatal hits in god mode leave health $($script:P.Health) and a flash of $flash tics"
     if ($script:P.Health -ne 100 -or $flash -gt 60) { throw 'cheat flash test failed.' }
 
+    # ---- the execution policy: heat raises it, quiet lowers it, Undo takes it back, the console calms it down ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2; $script:MadeNoise = $false
+    Update-Policy 1; $start = (Get-Policy).Name
+    Add-PolicyHeat 30; Update-Policy 1; $second = Get-Policy
+    $snapshot = New-WorldSnapshot
+    Add-PolicyHeat 60; Update-Policy 1; $alarm = (Get-Policy).Name
+    Restore-WorldSnapshot $snapshot; $undone = (Get-Policy).Name
+    $heat = $script:Stats.Heat; Update-Policy 1400; $cooled = $heat - $script:Stats.Heat
+    $script:P.Privilege = 100; $script:Con = $null
+    Open-Console; Invoke-ConsoleLine 'Get-ExecutionPolicy'; Invoke-ConsoleLine 'Set-ExecutionPolicy Restricted'; Invoke-ConsoleLine 'Set-ExecutionPolicy Bypass'
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"; Close-Console
+    Write-Step "policy test: $start -> $($second.Name) (reaction x$($second.React)) -> $alarm -> undone to $undone; twenty quiet seconds cool it by $([Math]::Round($cooled, 1)); the console set it to $((Get-Policy).Name) for $(100 - [int]$script:P.Privilege) privilege"
+    if ($start -ne 'Restricted' -or $second.Name -ne 'AllSigned' -or $alarm -ne 'Unrestricted' -or $undone -ne 'AllSigned' -or [Math]::Abs($cooled - 10) -gt 0.1 -or
+        (Get-Policy).Name -ne 'Restricted' -or [int]$script:P.Privilege -ne 85 -or $text -notmatch 'AllSigned' -or $text -notmatch 'is none of') { throw "policy test failed:`n$text" }
+    $script:Difficulty = $keepDifficulty
+    $script:Con.Runspace.Dispose(); $script:Con = $null
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

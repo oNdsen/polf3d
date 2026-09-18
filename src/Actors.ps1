@@ -71,12 +71,13 @@ function Test-Hearing([Actor]$a) {
 # Gunfire this frame: heard in every room connected to the player's - up to a distance that depends on the difficulty.
 function Test-Gunfire([Actor]$a) {
     if (-not $script:MadeNoise) { return $false }
-    $r = $script:Difficulties[$script:Difficulty].Hear
+    $r = $script:Difficulties[$script:Difficulty].Hear * (Get-Policy).Hear      # a nervous house listens harder
     [Math]::Abs($script:P.X - $a.X) -le $r -and [Math]::Abs($script:P.Y - $a.Y) -le $r
 }
 
 function Start-Attack([Actor]$a) {
     if (-not $script:Predicting) { $script:Run.Alerts++ }
+    if (-not $script:BossNames.ContainsKey($a.Kind)) { Add-PolicyHeat 7 }      # being seen makes the whole house more nervous
     $a.AlertTics = 50
     Start-Sfx (Get-AlertSound $a) $a.X $a.Y
     Set-ActorState $a "$($a.Kind).chase1"
@@ -102,7 +103,7 @@ function Test-NoticePlayer([Actor]$a, [double]$Tics) {
     elseif (-not (Test-Gunfire $a) -and -not (Test-Sight $a) -and -not (Test-Hearing $a)) { return $false }
 
     $def = $a.Def
-    $a.React = ($def.ReactBase + $(if ($def.ReactDiv) { (Get-Rnd) / $def.ReactDiv } else { 0 })) * $script:Difficulties[$script:Difficulty].React
+    $a.React = ($def.ReactBase + $(if ($def.ReactDiv) { (Get-Rnd) / $def.ReactDiv } else { 0 })) * $script:Difficulties[$script:Difficulty].React * (Get-Policy).React
     $false
 }
 

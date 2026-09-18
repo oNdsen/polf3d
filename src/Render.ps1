@@ -342,6 +342,8 @@ function Show-Overlays {
         Write-HudBar $(if (-not $lit) { '60101A2C' } elseif ($i -eq 3) { 'FF4030' } elseif ($i -eq 2) { 'FFC040' } else { '60FF80' }) (152 + $i * 4) ($viewH - 8 - $i * 2) 3 (2 + $i * 2)
     }
     if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 19) 40 8 }
+    # the building's execution policy: how nervous the floor is
+    if (-not $script:NetClient) { $policy = Get-Policy; Write-HudText $policy.Name 'Small' $policy.Color 104 ($viewH - 10) 52 8 }
     # a boss on your heels: his name and what is left of him
     $boss = $null
     foreach ($a in $script:Actors) { if ($a.Shootable -and $a.AttackMode -and $script:BossNames.ContainsKey($a.Kind) -and (-not $boss -or $a.Depth -lt $boss.Depth)) { $boss = $a } }

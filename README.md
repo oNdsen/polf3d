@@ -309,6 +309,19 @@ Anyone who has not noticed you yet takes **double damage**. What they notice:
 * **Sight:** enemies only see what is in front of them. Sneaking, you can get right behind them.
 * The knife and throwing knives are silent. Shield bearers are best dealt with exactly this way.
 
+**The building has an execution policy** – how nervous the whole floor is, shown next to the noise meter. Being seen
+and making noise heat it up, keeping quiet lets it cool down again:
+
+| Policy | The house | What it means |
+|---|---|---|
+| `Restricted` | suspects nothing | nobody watches the logs: your privilege comes back 30 % faster |
+| `AllSigned` | has been told to look twice | enemies react 20 % quicker, gunfire carries a quarter further |
+| `RemoteSigned` | is on edge | 40 % quicker, gunfire carries 60 % further |
+| `Unrestricted` | **sounds the alarm** | everybody who can reach you comes running, and every shot is heard everywhere |
+
+In the console `Get-ExecutionPolicy` tells you where you stand and `Set-ExecutionPolicy Restricted` calms the house
+down again, for 15 privilege a step. (Setting it to `Unrestricted` is free. You will pay for it in other ways.)
+
 ## Level machinery
 
 * **Doors** slide into the wall and close again by themselves; gold and silver locks need the matching key.
@@ -449,6 +462,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
+| [src/Policy.ps1](src/Policy.ps1) | the building's execution policy: the alarm level of a floor |
 | [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
 | [src/Story.ps1](src/Story.ps1) | the files on the terminals, and what their codes and tokens do |
 | [src/Console.ps1](src/Console.ps1) | the sandboxed runspace, the game's cmdlets, pricing and carrying out requests, the profile and the hotkeys |

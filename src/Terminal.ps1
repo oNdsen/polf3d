@@ -158,7 +158,7 @@ function Show-TerminalFrame {
         $msg = if ($mode -eq 'paused') { 'PAUSE   Esc/P = resume   1-3 = save to slot   L = load   Q = main menu' } elseif ($mode -eq 'demo') { 'DEMO - press any key' }
                elseif ($script:Message -and $now -lt $script:MessageUntil) { $script:Message } elseif ($bossLine) { $bossLine } else { '' }
         $null = $sb.Append("$pad`e[38;2;255;232;96m$msg`e[0m`e[K`n")
-        $cheats = @(if ($script:GodMode) { 'GOD' }; if ($script:InfiniteAmmo) { 'AMMO' }; if ($script:OneHitKill) { '1-HIT' }; if ($p.Sneaking) { 'SNEAKING' }; if ($p.SudoTics -gt 0) { "SUDO $([Math]::Ceiling($p.SudoTics / 70))s" }) -join '  '
+        $cheats = @(if ($script:GodMode) { 'GOD' }; if ($script:InfiniteAmmo) { 'AMMO' }; if ($script:OneHitKill) { '1-HIT' }; if ($p.Sneaking) { 'SNEAKING' }; if ([int]$script:Stats.Policy -gt 0) { (Get-Policy).Name.ToUpper() }; if ($p.SudoTics -gt 0) { "SUDO $([Math]::Ceiling($p.SudoTics / 70))s" }) -join '  '
         $null = $sb.Append("$pad`e[38;2;255;96;255m$cheats`e[0m`e[K`n`e[J")
     }
     else {

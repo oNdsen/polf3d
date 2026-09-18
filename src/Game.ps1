@@ -222,6 +222,7 @@ function Update-World([double]$Tics, [hashtable]$In) {
             if (Test-NetNoise) { $script:MadeNoise = $true }
             $script:NetScope = 'world'
         }
+        Update-Policy $Tics
         Update-Actors $Tics
         $script:NetScope = 'local'
     }
