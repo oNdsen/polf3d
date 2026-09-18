@@ -428,7 +428,7 @@ function Show-Hud {
 
     # floor, score, lives
     Write-HudPanel '80101A2C' 4 ($y + 4) 70 33
-    Write-HudText $(if ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }) 'Small' $(if ($script:BonusMap) { 'F0D040' } else { '40E0FF' }) 6 ($y + 5) 30 8
+    Write-HudText $(if ($script:DungeonSeed) { 'DUNGEON' } elseif ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }) 'Small' $(if ($script:BonusMap -or $script:DungeonSeed) { 'F0D040' } else { '40E0FF' }) 6 ($y + 5) 30 8
     Write-HudText ('{0:000000}' -f $p.Score) 'Mid' 'FFFFFF' 4 ($y + 13) 70 12
     Write-HudText ([string]::new([char]0x2665, [Math]::Min(9, [Math]::Max(0, $p.Lives)))) 'Small' 'FF4060' 4 ($y + 26) 70 9
 

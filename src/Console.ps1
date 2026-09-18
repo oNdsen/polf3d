@@ -229,7 +229,7 @@ function Get-ConsolePrompt { "PS Shellstein:\$(if ($script:BonusMap) { 'Treasury
 # $TerminalIndex: the tile of the terminal it was opened at (-1: the player's own console).
 function Open-Console([int]$TerminalIndex = -1) {
     if ($script:NetLive) { Show-Message 'No console in a shared world: it would have to stand still'; return }
-    if ($script:Recording -or $script:Playback) { Show-Message 'No console while a demo is running'; return }
+    if ($script:Recording -or $script:Playback) { Show-Message $(if ($script:DungeonSeed) { 'No console in the dungeon: every run must be replayable' } else { 'No console while a demo is running' }); return }
     if (-not $script:Con) { Initialize-Console }
     Stop-WhatIf
     $con = $script:Con

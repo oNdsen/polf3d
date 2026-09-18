@@ -13,9 +13,9 @@ $script:Playback = $null           # while playing:   @{ Frames; Index; ... }
 # ---------------------------------------------------------------------------------------------
 # Recording
 # ---------------------------------------------------------------------------------------------
-function Start-DemoRecording {
+function Start-DemoRecording([int]$Seed = 0) {
     # a demo always starts from a fresh floor with a known seed
-    $script:NextSeed = [int]($script:Clock.ElapsedTicks % 1000000) + 1
+    $script:NextSeed = if ($Seed) { $Seed } else { [int]($script:Clock.ElapsedTicks % 1000000) + 1 }
     $script:BonusMap = $null
     Start-Level $false $false
     Update-View                                                   # prime what the enemies can see, exactly as playback does
@@ -34,6 +34,8 @@ function Stop-DemoRecording([string]$Path) {
     if (-not $Path) { $Path = Join-Path $script:SaveDir ("demo-{0:yyyyMMdd-HHmmss}.json" -f (Get-Date)) }
     $demo = [ordered]@{
         Version = 1; Map = Split-Path $script:MapFile -Leaf; Difficulty = $script:Difficulty; Seed = $rec.Seed
+        Dungeon = $script:DungeonSeed; ColumnStep = $script:ColumnStep           # a dungeon is rebuilt from its number; the ray count decides who is seen
+        Completed = [bool]$script:LevelDone; Seconds = [Math]::Round($script:Stats.Tics / $script:TICRATE, 2)
         # where the recording ended - playback must arrive at exactly the same numbers
         End = [ordered]@{ X = $script:P.X; Y = $script:P.Y; Health = $script:P.Health; Kills = $script:Stats.Kills; Score = $script:P.Score }
         Frames = $rec.Frames
@@ -50,8 +52,13 @@ function Start-DemoPlayback([string]$Path) {
     try {
         $demo = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable
         $index = -1
-        for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { if ((Split-Path $script:MapFiles[$i] -Leaf) -eq $demo.Map) { $index = $i } }
+        if ($demo.Dungeon) { $script:DungeonSeed = [int]$demo.Dungeon; $script:DungeonMap = New-DungeonMap $script:DungeonSeed; $index = 0 }
+        else {
+            Stop-Dungeon
+            for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { if ((Split-Path $script:MapFiles[$i] -Leaf) -eq $demo.Map) { $index = $i } }
+        }
         if ($index -lt 0) { throw "map '$($demo.Map)' not found" }
+        if ($demo.ColumnStep -and [int]$demo.ColumnStep -ne $script:ColumnStep) { $script:KeepColumnStep = $script:ColumnStep; $script:ColumnStep = [int]$demo.ColumnStep }
         $script:Difficulty = [int]$demo.Difficulty
         $script:LevelIndex = $index; $script:BonusMap = $null
         $script:NextSeed = [int]$demo.Seed

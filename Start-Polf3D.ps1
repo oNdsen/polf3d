@@ -30,6 +30,12 @@
     Join the network game hosted on this computer (name or IP address).
 .PARAMETER Port
     TCP port of the network game (default 27500). The host's firewall must let it in.
+.PARAMETER Daily
+    Go straight into today's dungeon: one generated floor, the same for everybody today, one life, recorded as a demo.
+.PARAMETER Dungeon
+    Play the dungeon generated from this number instead of today's.
+.PARAMETER VerifyDemo
+    No window: play this demo file back and report whether it is genuine - for dungeon runs that includes the time.
 .PARAMETER Terminal
     No window: draw the game into the terminal with half-block characters and 24 bit colours. Wants a terminal
     that understands ANSI sequences (Windows Terminal) - and the bigger its window, the finer the picture.
@@ -68,6 +74,9 @@ param(
     [ValidateSet('Coop', 'Duel')][string]$HostGame,
     [string]$JoinGame,
     [ValidateRange(1024, 65535)][int]$Port = 27500,
+    [switch]$Daily,
+    [ValidateRange(1, 99999999)][int]$Dungeon,
+    [string]$VerifyDemo,
     [switch]$Terminal,
     [switch]$TerminalKeys,
     [switch]$Speedrun,
@@ -149,10 +158,10 @@ function Initialize-Scaler {
 }
 
 Write-Step 'POLF 3D starting ...'
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'SaveGame', 'Demo', 'Dungeon', 'Network', 'Abilities', 'Console', 'Terminal', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
-$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest
+$headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo
 $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
 $script:AttractDemo = Join-Path $PSScriptRoot 'demos/attract.json'
@@ -166,6 +175,10 @@ Initialize-Renderer $Scale ([int](320 / $Columns))
 
 if ($RecordAttractDemo) {
     Export-AttractDemo $RecordAttractDemo
+    return
+}
+if ($VerifyDemo) {
+    if (-not (Test-DemoFile (Resolve-Path -LiteralPath $VerifyDemo).Path)) { exit 1 }
     return
 }
 if ($BalanceTest) {
@@ -182,6 +195,7 @@ if ($SelfTest) {
 }
 
 if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.' }
+$script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
 Write-Step 'ready.'
 try {
     if ($HostGame) { Initialize-Network 'host' $HostGame.ToLower() '' $Port; Write-Step "hosting a $HostGame game on port $Port" }

@@ -87,6 +87,7 @@ function Get-TerminalScreen([string]$Mode) {
             for ($i = 0; $i -lt 4; $i++) { $lines.Add($(if ($i -eq $script:Difficulty) { "$w > $($i + 1)  $($script:Difficulties[$i].Name)$r" } else { "$d   $($i + 1)  $($script:Difficulties[$i].Name)$r" })) }
             $lines.Add('')
             if ($script:Net) { $lines.Add("$c   $(Get-NetStatus)$r") }
+            if (-not $script:Net) { $lines.Add("$c   G = today's dungeon #$(Get-DailySeed)$r") }
             $lines.Add("$y   $(if ($script:HasSaves -and -not $script:Net) { 'L = load a saved game     ' })T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit$r"); $lines.Add('')
             $lines.Add("$d   W/S move   A/D strafe   arrows turn   Shift run   C sneak   Ctrl or J fire   Space/E use   1-9 weapon$r")
             $lines.Add("$d   Z -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo   T console   P pause   F4 music   F5/F9 save/load$r"); $lines.Add('')

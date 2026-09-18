@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; C = 67; D = 68; E = 69; F = 70; J = 74; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; V = 86; W = 87; X = 88; Z = 90
+    A = 65; C = 67; D = 68; E = 69; F = 70; G = 71; J = 74; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; V = 86; W = 87; X = 88; Z = 90
     F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
 }
 
@@ -80,7 +80,7 @@ function Reset-ScreenEffects {
 # as well (riding the lift to the next floor). Keys never leave their floor.
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:NetLive = $false; $script:NetClient = $false
-    $script:MapFile = if ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
+    $script:MapFile = if ($script:DungeonMap) { $script:DungeonMap } elseif ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
     $script:LevelSeed = if ($script:NextSeed) { $script:NextSeed } else { [int]($script:Clock.ElapsedTicks % 1000000) + 1 }
     $script:NextSeed = $null
     $script:Rng = [System.Random]::new($script:LevelSeed)
@@ -102,7 +102,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     if ($script:Net -and $script:Net.Connected) { Initialize-NetLevel $KeepPlayer $KeepKit }
     elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
-    $script:MusicWanted = if ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
+    $script:MusicWanted = if ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
 }
 
@@ -112,7 +112,10 @@ function Set-Mode([string]$Mode) {
     $script:KeyHit.Clear()
     if ($Mode -eq 'title' -and $script:NetLive) { Send-NetMessage 'B' }                # takes the other player along
     if ($Mode -in 'title', 'done', 'gameover') { $script:NetLive = $false; $script:NetClient = $false }
-    if ($Mode -ne 'play') { Set-MouseLook $false; if ($script:Recording) { Stop-DemoRecording } }
+    if ($Mode -ne 'play') { Set-MouseLook $false }
+    if ($script:Recording -and $Mode -notin 'play', 'paused') { if ($script:DungeonSeed) { $null = Save-DungeonRun $false } else { Stop-DemoRecording } }
+    if ($Mode -eq 'title' -and $script:KeepColumnStep) { $script:ColumnStep = $script:KeepColumnStep; $script:KeepColumnStep = 0 }
+    if ($Mode -eq 'title') { Stop-Dungeon }
     if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame }
     if ($Mode -eq 'load') { $script:SaveList = @(Get-SaveList) }
 }
@@ -259,6 +262,10 @@ function Show-TitleScreen {
     }
     $load = if ($script:HasSaves) { 'L = load a saved game     ' } else { '' }
     if ($script:Net) { $load = ''; Write-HudText (Get-NetStatus) 'Small' '60FF80' 0 131 320 8 }
+    else {
+        $best = Get-DungeonBest (Get-DailySeed)
+        Write-HudText "G = today's dungeon #$(Get-DailySeed)$(if ($best) { "   (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })" 'Small' '40E0FF' 0 131 320 8
+    }
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
@@ -305,6 +312,12 @@ function Complete-Level {
     $r.ToBonus = $script:SecretExit -and -not $script:BonusMap -and (Test-Path -LiteralPath $bonusPath)
     $r.BonusPath = $bonusPath
     $r.Last = -not $r.ToBonus -and $script:LevelIndex -ge $script:MapFiles.Count - 1
+    if ($script:DungeonSeed) {
+        # a dungeon is one floor; its run is saved as a demo, its time kept per seed and difficulty
+        $r.ToBonus = $false; $r.Last = $true
+        $r.DungeonBest = Get-DungeonBest $script:DungeonSeed
+        $r.DungeonDemo = Save-DungeonRun $true
+    }
     $r.Previous = Add-SpeedrunResult $r.Exact $r.Last
     $r.TimeBonus = [Math]::Max(0, $script:ParSeconds - $seconds) * 500
     $r.Bonus = $r.TimeBonus + 10000 * (@($r.Kills, $r.Secrets, $r.Treasures) -eq 100).Count
@@ -317,7 +330,7 @@ function Complete-Level {
 function Show-DoneScreen {
     $r = $script:Result
     Show-Shade 'FF0A2030'
-    $head = if ($r.Last) { 'SHELLSTEIN HAS FALLEN!' } elseif ($script:BonusMap) { 'SECRET FLOOR COMPLETED!' } else { "FLOOR $($script:LevelIndex + 1) COMPLETED!" }
+    $head = if ($r.DungeonDemo) { 'DUNGEON CLEARED!' } elseif ($r.Last) { 'SHELLSTEIN HAS FALLEN!' } elseif ($script:BonusMap) { 'SECRET FLOOR COMPLETED!' } else { "FLOOR $($script:LevelIndex + 1) COMPLETED!" }
     Write-HudText $head 'Big' $(if ($r.Last) { 'F0D040' } else { 'FFFFFF' }) 0 14 320 24
     $best = if ($r.Previous -gt 0 -and $r.Exact -ge $r.Previous) { "best $(Format-Time $r.Previous -Tenths)" } elseif ($script:P.Cheated -or $script:P.RunInvalid) { 'not rated' } else { 'NEW RECORD!' }
     $rows = @(
@@ -334,6 +347,11 @@ function Show-DoneScreen {
         $y += 14
     }
     if ($script:Net -and $script:Net.Mode -eq 'duel') { Write-HudText "FRAGS     you $($script:Net.Frags) : $($script:Net.PeerFrags) opponent" 'Mid' '60C0FF' 0 180 320 12 }
+    if ($r.DungeonDemo) {
+        $was = if ($r.DungeonBest) { "best so far $(Format-Time ([double]$r.DungeonBest.Seconds) -Tenths)" } else { 'first run of this dungeon' }
+        Write-HudText "Dungeon #$($script:DungeonSeed)   $was" 'Small' '40E0FF' 0 182 320 8
+        Write-HudText "proof: saves/$($r.DungeonDemo)   (check it with -VerifyDemo)" 'Small' '8FB0FF' 0 190 320 8
+    }
     $foot = if ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected -and -not $r.Last) { 'Waiting for the host to call the lift ...' } elseif ($r.Last) { 'All floors completed - thanks for playing!   Enter = main menu' } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
     Write-HudText $foot 'Small' 'FFE860' 0 200 320 10
 }
@@ -349,6 +367,7 @@ function Start-GameLoop {
     $script:HighScores = Get-HighScores
     $vk = $script:VK
     Set-Mode 'title'
+    if ($script:AutoDungeon -and (Start-Dungeon $script:AutoDungeon)) { Set-Mode 'play' }
     $last = $script:Clock.Elapsed.TotalSeconds
     $fpsTime = $last; $fpsFrames = 0
     $autoStart = $last; $autoFrames = 0
@@ -432,6 +451,7 @@ function Start-GameLoop {
                         if ($script:CheatAllWeapons) { Invoke-Cheat 'GiveAll' }
                     }
                     elseif ($h -eq $vk.L -and -not $script:Net -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
+                    elseif ($h -eq $vk.G -and -not $script:Net) { if (Start-Dungeon 0) { Set-Mode 'play' } }
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
@@ -478,6 +498,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }
                     elseif ($h -eq $vk.F11) { Invoke-Cheat 'OneHit' }
                     elseif ($script:Net -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in a network game' }
+                    elseif ($script:DungeonSeed -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in the dungeon: one life, no saving, always recorded' }
                     elseif ($h -eq $vk.F12) { if ($script:Recording) { Stop-DemoRecording } else { Start-DemoRecording } }
                     elseif ($h -eq $vk.F5) { Save-Game }
                     elseif ($h -eq $vk.F9) { $null = Restore-Game }
@@ -504,7 +525,7 @@ function Start-GameLoop {
                 foreach ($h in $hits) {
                     if ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'play'; $script:HudDirty = $true }
                     elseif ($h -eq $vk.Q) { Set-Mode 'title' }
-                    elseif ($script:Net) { }                                   # no saving or loading in a network game
+                    elseif ($script:Net -or $script:DungeonSeed) { }          # no saving or loading in a network game or in the dungeon
                     elseif ($h -ge 49 -and $h -le 51) { Save-Game "$($h - 48)" }
                     elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'paused'; Set-Mode 'load' }
                     elseif ($h -eq $vk.F9) { if (Restore-Game) { Set-Mode 'play' } }

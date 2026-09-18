@@ -620,6 +620,29 @@ function Invoke-SelfTest([string]$OutDir) {
     finally { if ($server) { $server.Dispose() }; Stop-Network; $listener.Stop() }
     $script:GodMode = $keepGod; $script:Difficulty = 1; $script:PlayerDied = $false
 
+    # ---- the dungeon: every seed must give a valid floor, the same one each time, and a recorded run must verify ----
+    $sizes = foreach ($seed in 20260918, 20260919, 1, 4711, 99999999) {
+        $first = Get-Content -LiteralPath (New-DungeonMap $seed) -Raw
+        if ($first -ne (Get-Content -LiteralPath (New-DungeonMap $seed) -Raw)) { throw "dungeon test failed: seed $seed gives two different floors." }
+        Initialize-Level (Get-DungeonPath $seed)                   # throws on a door without walls, a missing start ...
+        "$($script:Stats.KillTotal) enemies/$($script:Doors.Count) doors"
+    }
+    $script:GodMode = $false; $script:Difficulty = 0
+    $null = Start-Dungeon 20260918
+    $script:BotStep = $null
+    for ($f = 0; $f -lt 700 -and -not $script:PlayerDied -and -not $script:LevelDone; $f++) { Update-View; $in = Get-BotInput $f; Add-DemoFrame 2.0 $in; Update-World 2.0 $in }
+    $kills = $script:Stats.Kills
+    $proof = Join-Path $script:SaveDir (Save-DungeonRun $false)
+    $valid = Test-DemoFile $proof
+    $tampered = Get-Content -LiteralPath $proof -Raw | ConvertFrom-Json -AsHashtable
+    $tampered.End.Kills = [int]$tampered.End.Kills + 3            # "I killed three more, honest"
+    $fake = Join-Path $OutDir 'dungeon-fake.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $fake
+    $caught = -not (Test-DemoFile $fake)
+    Remove-Item -LiteralPath $proof, $fake -ErrorAction SilentlyContinue
+    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid; a doctored copy is rejected: $caught"
+    if (-not $valid -or -not $caught) { throw 'dungeon test failed.' }
+    Stop-Dungeon; $script:GodMode = $true; $script:Difficulty = 1; $script:PlayerDied = $false; $script:Playback = $null
+
     # ---- terminal mode: the frame buffer as half-block characters ----
     $termClass = Import-CSharpClass 'src/Terminal.cs' 'PolfTerminal'
     $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; Set-TestCamera 20.5 24.5 45; Update-View
