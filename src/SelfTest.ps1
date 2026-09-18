@@ -104,6 +104,27 @@ function Invoke-SelfTest([string]$OutDir) {
     Write-Step "sprite order test: a guard two tiles behind a column changes $differ pixels of the column's centre line"
     if ($differ) { throw 'sprite order test failed: far sprites are drawn over near ones.' }
 
+    # ---- past a door frame: a guard whose shoulder is all one can see must be hittable ----
+    $w = $script:MapW; $free = { param($x, $y) $script:Tiles[$y * $w + $x] -eq 0 -and -not $script:StaticBlock[$y * $w + $x] }
+    $doorway = $script:Doors | Where-Object { $_.Vertical -and (& $free ($_.X - 2) $_.Y) -and (& $free ($_.X - 1) $_.Y) -and (& $free ($_.X + 1) $_.Y) -and (& $free ($_.X + 2) $_.Y) -and (& $free ($_.X + 2) ($_.Y + 1)) } | Select-Object -First 1
+    $doorway.Action = 'open'; $doorway.Open = 1.0; $doorway.Timer = 0
+    foreach ($other in @($script:Actors)) { if ([Math]::Abs($other.X - $doorway.X) -lt 6 -and [Math]::Abs($other.Y - $doorway.Y) -lt 6) { $null = $script:Actors.Remove($other) } }
+    $lurker = New-Enemy 'guard' ($doorway.X + 2) ($doorway.Y + 1) 4 'stand'
+    $lurker.X = $doorway.X + 2.5; $lurker.Y = $doorway.Y + 1.42; $lurker.HP = 500            # the far corner of the wall beside the door hides all but his shoulder
+    $script:Actors.Add($lurker)
+    Set-TestCamera ($doorway.X - 1.5) ($doorway.Y + 0.5) 0
+    $script:P.Angle = ([Math]::Atan2(- ($lurker.Y - 0.2 - $script:P.Y), $lurker.X - $script:P.X) * 180 / [Math]::PI + 360) % 360      # at his near shoulder
+    Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-door-edge.png')
+    $centreLine = Test-LineToPlayer $lurker.X $lurker.Y; $aimed = @(Get-AimedTargets) -contains $lurker; $exposed = Test-TargetExposed $lurker ($script:ViewW / 10)
+    $script:P.Weapon = 1; $script:P.Ammo = 50
+    for ($shot = 0; $shot -lt 8; $shot++) { Invoke-GunAttack }
+    $script:P.Angle = ($script:P.Angle + 6) % 360; Update-View                               # a little further left: nothing but wall
+    $hidden = -not (Test-TargetExposed $lurker ($script:ViewW / 10)) -or @(Get-AimedTargets) -notcontains $lurker
+    Write-Step "door frame test: line to his centre free: $centreLine; in the sights: $aimed; shoulder in view: $exposed; eight shots took $(500 - $lurker.HP) health; aiming at the wall beside him finds nobody: $hidden"
+    if ($centreLine -or -not $aimed -or -not $exposed -or $lurker.HP -ge 500 -or -not $hidden) { throw 'door frame test failed.' }
+    $null = $script:Actors.Remove($lurker)
+    Start-Level $false $false
+
     # ---- frame time ----
     Set-TestCamera 20.5 24.5 45
     $sw = [System.Diagnostics.Stopwatch]::StartNew()

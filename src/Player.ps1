@@ -192,12 +192,28 @@ function Invoke-UseAt([int]$tx, [int]$ty, [int]$dx, [int]$dy) {
 # Weapons
 # ---------------------------------------------------------------------------------------------
 function Get-AimedTargets {
-    # Whoever the renderer saw close to the screen centre last frame, nearest first.
+    # Whoever the renderer saw at the screen centre last frame, nearest first: the crosshair is on his body,
+    # or at least close to him (a little help with aiming at distant targets).
     $cx = $script:ViewW / 2; $tol = $script:ViewW / 10
     $list = foreach ($a in $script:Actors) {
-        if ($a.Shootable -and $a.Visible -and [Math]::Abs($a.ScreenX - $cx) -lt $tol) { $a }
+        if ($a.Shootable -and $a.Visible -and [Math]::Abs($a.ScreenX - $cx) -lt [Math]::Max($tol, $script:BODY_HALF * $script:ProjH / [Math]::Max(0.2, $a.Depth))) { $a }
     }
     @($list | Sort-Object Depth)
+}
+
+# Is any part of the target's body really in view within $Tolerance pixels of the crosshair? This is the test the
+# renderer uses to clip sprites - the wall distance of every screen column - so whatever can be seen can be hit.
+# (A line from the player to the CENTRE of the target is not good enough: past the frame of an open door one often
+# sees, and aims at, no more than a shoulder.)
+$script:BODY_HALF = 0.22                                          # half the width of a body, in tiles
+function Test-TargetExposed([Actor]$a, [double]$Tolerance) {
+    if ($a.Depth -le 0.2) { return $true }
+    $zbuf = $script:ZBuf; $cx = $script:ViewW / 2
+    $half = $script:BODY_HALF * $script:ProjH / $a.Depth
+    $from = [int][Math]::Max(0, [Math]::Max($a.ScreenX - $half, $cx - $Tolerance))
+    $to = [int][Math]::Min($script:ViewW - 1, [Math]::Min($a.ScreenX + $half, $cx + $Tolerance))
+    for ($x = $from; $x -le $to; $x++) { if ($zbuf[$x] -ge $a.Depth) { return $true } }
+    $false
 }
 
 function Invoke-GunAttack {
@@ -205,7 +221,7 @@ function Invoke-GunAttack {
     $script:MuzzleFlash = 4.0                                    # lights up the room for a moment
     Start-Sfx $script:Weapons[$script:P.Weapon].Snd
     foreach ($a in (Get-AimedTargets)) {
-        if (-not (Test-LineToPlayer $a.X $a.Y)) { continue }
+        if (-not (Test-TargetExposed $a ($script:ViewW / 10))) { continue }
         $dist = [Math]::Max([Math]::Abs([Math]::Floor($a.X) - [Math]::Floor($script:P.X)), [Math]::Abs([Math]::Floor($a.Y) - [Math]::Floor($script:P.Y)))
         $r = Get-Rnd
         if ($dist -lt 2) { $damage = $r / 4 }
@@ -234,7 +250,7 @@ function Invoke-BeamAttack {
     Start-Sfx 'shot_pipe'
     $script:BeamFlash = 10.0
     foreach ($a in (Get-AimedTargets)) {
-        if (Test-LineToPlayer $a.X $a.Y) { Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) 'beam' }
+        if (Test-TargetExposed $a ($script:ViewW / 10)) { Invoke-ActorDamage $a (60 + ((Get-Rnd) -shr 2)) 'beam' }
     }
 }
 
@@ -244,7 +260,7 @@ function Invoke-BlastAttack {
     Start-Sfx 'shot_force'
     $script:ForceFlash = 24.0
     foreach ($a in @($script:Actors)) {
-        if ($a.Shootable -and $a.Visible -and (Test-LineToPlayer $a.X $a.Y)) { Invoke-ActorDamage $a (150 + (Get-Rnd)) 'blast' }
+        if ($a.Shootable -and $a.Visible -and (Test-TargetExposed $a $script:ViewW)) { Invoke-ActorDamage $a (150 + (Get-Rnd)) 'blast' }
     }
 }
 
@@ -282,7 +298,7 @@ function Invoke-FlameAttack {
     }
     $cx = $script:ViewW / 2; $tol = $script:ViewW / 4
     foreach ($a in @($script:Actors)) {
-        if ($a.Shootable -and $a.Visible -and $a.Depth -lt 3.6 -and [Math]::Abs($a.ScreenX - $cx) -lt $tol -and (Test-LineToPlayer $a.X $a.Y)) {
+        if ($a.Shootable -and $a.Visible -and $a.Depth -lt 3.6 -and [Math]::Abs($a.ScreenX - $cx) -lt $tol -and (Test-TargetExposed $a $tol)) {
             Invoke-ActorDamage $a (6 + ((Get-Rnd) -shr 4)) 'flame'
         }
     }
