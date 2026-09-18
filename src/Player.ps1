@@ -25,6 +25,7 @@ function New-Player {
         Charges = 0; Rockets = 0; Knives = 0; SudoTics = 0.0
         AttackFrame = -1; AttackTics = 0.0; WeaponFrame = 0
         Running = $false; Sneaking = $false; UseHeld = $false; FireHeld = $false
+        Privilege = 50.0                                          # pays for the abilities (Abilities.ps1)
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0; PainTics = 0.0; RageTics = 0.0; LookHold = 0.0; FaceKey = ''
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
@@ -89,6 +90,7 @@ function Reset-PlayerKit {
 }
 
 function Show-Message([string]$Text) {
+    if ($script:Predicting) { return }
     if ($script:NetLive -and $script:NetScope -in 'world', 'peer') {
         Send-NetMessage "X|$Text"                                 # network game: meant for the other player (as well)
         if ($script:NetScope -eq 'peer') { return }
@@ -412,6 +414,7 @@ function Update-Pickups {
 # Damage taken
 # ---------------------------------------------------------------------------------------------
 function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
+    if ($script:Predicting) { return }                           # -WhatIf: nobody gets hurt in a forecast
     if ($script:NetAsPeer) { Send-NetMessage "H|$Points|$(if ($Attacker) { $Attacker.NetId } else { 0 })"; return }      # it hit the remote player
     $p = $script:P
     if ($p.Health -le 0) { return }                              # already dead

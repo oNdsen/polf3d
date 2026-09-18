@@ -25,7 +25,7 @@ function Start-DemoRecording {
 
 function Add-DemoFrame([double]$Tics, [hashtable]$In) {
     $flags = [int][bool]$In.Run + 2 * [int][bool]$In.Sneak + 4 * [int][bool]$In.Fire + 8 * [int][bool]$In.Use
-    $script:Recording.Frames.Add(@($Tics, [double]$In.Forward, [double]$In.Strafe, [double]$In.Turn, [double]$In.MouseTurn, $flags, [int]$In.Weapon))
+    $script:Recording.Frames.Add(@($Tics, [double]$In.Forward, [double]$In.Strafe, [double]$In.Turn, [double]$In.MouseTurn, $flags, [int]$In.Weapon, [int]$In.Ability))
 }
 
 function Stop-DemoRecording([string]$Path) {
@@ -71,7 +71,7 @@ function Get-DemoFrame {
     $flags = [int]$f[5]
     @{
         Tics = [double]$f[0]
-        In = @{ Forward = [double]$f[1]; Strafe = [double]$f[2]; Turn = [double]$f[3]; MouseTurn = [double]$f[4]; Weapon = [int]$f[6]
+        In = @{ Forward = [double]$f[1]; Strafe = [double]$f[2]; Turn = [double]$f[3]; MouseTurn = [double]$f[4]; Weapon = [int]$f[6]; Ability = $(if ($f.Count -gt 7) { [int]$f[7] } else { 0 })
             Run = [bool]($flags -band 1); Sneak = [bool]($flags -band 2); Fire = [bool]($flags -band 4); Use = [bool]($flags -band 8) }
     }
 }

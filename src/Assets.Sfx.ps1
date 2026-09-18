@@ -115,6 +115,7 @@ function Initialize-Sounds {
 }
 
 function Start-Sfx([string]$Name) {
+    if ($script:Predicting) { return }                           # -WhatIf is only looking ahead: silence
     if ($script:NetLive -and $Name) {
         # network game: the other player hears the world as well - and the louder things this one does
         if ($script:NetScope -eq 'peer') { Send-NetMessage "Q|$Name"; return }

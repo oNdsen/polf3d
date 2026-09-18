@@ -609,6 +609,7 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
         'mgun_or_clip' { if (-not $script:P.Owned[2]) { Add-Item 'mgun' $tx $ty } else { Add-Item 'clip_small' $tx $ty } }
     }
     $script:Stats.Kills++
+    if (-not $script:NetAsPeer) { Add-Privilege 6 }
     $a.Shootable = $false
     $a.Corpse = $true
     $a.Active = $true

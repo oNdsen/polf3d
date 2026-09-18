@@ -8,7 +8,7 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; C = 67; D = 68; E = 69; L = 76; M = 77; N = 78; P = 80; Q = 81; S = 83; T = 84; W = 87
+    A = 65; C = 67; D = 68; E = 69; F = 70; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; V = 86; W = 87; X = 88; Z = 90
     F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
 }
 
@@ -89,6 +89,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     Reset-PlayerForLevel
     Set-Background
     Reset-ScreenEffects
+    Reset-Abilities
     $script:PlayerDied = $false; $script:LevelDone = $false; $script:Killer = $null
     $script:MadeNoise = $false
     $script:MapBmp = $null
@@ -118,7 +119,7 @@ function Set-Mode([string]$Mode) {
 # ---------------------------------------------------------------------------------------------
 function Get-PlayerInput {
     $k = $script:KeyDown; $vk = $script:VK
-    $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$vk.Shift]; Sneak = $k[$vk.C]; Weapon = $script:WeaponKey
+    $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $k[$vk.Shift]; Sneak = $k[$vk.C]; Weapon = $script:WeaponKey; Ability = [int]$script:AbilityKey
         Fire = ($k[$vk.Ctrl] -or $k[$vk.LButton]); Use = ($k[$vk.Space] -or $k[$vk.E] -or $k[$vk.RButton])
     }
     if ($k[$vk.W] -or $k[$vk.Up]) { $in.Forward += 1 }
@@ -132,7 +133,7 @@ function Get-PlayerInput {
         $in.MouseTurn = ($pos.X - $script:MouseCenter.X) * 0.12
         if ($pos -ne $script:MouseCenter) { [System.Windows.Forms.Cursor]::Position = $script:MouseCenter }
     }
-    $script:WeaponKey = -1
+    $script:WeaponKey = -1; $script:AbilityKey = 0
     Add-GamepadInput $in
     $in
 }
@@ -177,11 +178,20 @@ function Add-GamepadInput([hashtable]$In) {
     if ($b -band $pad.B) { $In.Sneak = $true }
     if ($script:PadHit -band $pad.RB) { $In.Weapon = Get-NextWeapon 1 }
     if ($script:PadHit -band $pad.LB) { $In.Weapon = Get-NextWeapon -1 }
+    if ($script:PadHit -band $pad.X) { $In.Ability = 2 }          # -Confirm: the one you need in a hurry
     $In.Forward = [Math]::Max(-1.0, [Math]::Min(1.0, $In.Forward)); $In.Strafe = [Math]::Max(-1.0, [Math]::Min(1.0, $In.Strafe))
 }
 
 function Update-World([double]$Tics, [hashtable]$In) {
     $script:MadeNoise = $false
+    $playerTics = $Tics
+    $Tics = Update-Abilities $Tics $In                           # -Confirm slows the world down, -WhatIf stops it
+    if ($Tics -le 0) {
+        # time stands still: all one can do is look around
+        $script:P.Angle = ($script:P.Angle - $In.Turn * $script:WALK_TURN * $playerTics - $In.MouseTurn + 720.0) % 360.0
+        $script:Stats.Tics += $playerTics
+        return
+    }
     if ($script:NetClient) {
         # guest of a network game: doors and enemies come from the host's snapshots
         Update-PushWall $Tics
@@ -197,7 +207,7 @@ function Update-World([double]$Tics, [hashtable]$In) {
         $script:NetScope = 'local'
         Update-Traps $Tics
         Update-Teleporters $Tics
-        Update-Player $Tics $In          # the player acts first: enemies hear this frame's shots
+        Update-Player $playerTics $In    # the player acts first: enemies hear this frame's shots
         if ($script:NetLive) {
             if ($script:Net.PeerNoise) { $script:MadeNoise = $true; $script:Net.PeerNoise = $false }
             $script:NetScope = 'world'
@@ -212,7 +222,8 @@ function Update-World([double]$Tics, [hashtable]$In) {
     if ($script:ForceFlash -gt 0) { $script:ForceFlash = [Math]::Max(0.0, $script:ForceFlash - $Tics) }
     if ($script:MuzzleFlash -gt 0) { $script:MuzzleFlash = [Math]::Max(0.0, $script:MuzzleFlash - $Tics) }
     if ($script:Shake -gt 0) { $script:Shake = [Math]::Max(0.0, $script:Shake - $Tics) }
-    $script:Stats.Tics += $Tics
+    $script:Stats.Tics += $playerTics
+    if (-not $script:NetLive -and -not $script:Predicting) { Update-Checkpoints $playerTics }
 }
 
 function Show-PlayFrame {
@@ -247,8 +258,8 @@ function Show-TitleScreen {
     Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     Esc = quit" 'Small' 'FFE860' 0 123 320 8
 
     Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
-    Write-HudText $help 'Small' 'C0C8D8' 4 146 156 74
+    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nZ -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
+    Write-HudText $help 'Small' 'C0C8D8' 4 146 156 80
 
     if ($script:Speedrun) {
         Write-HudText 'FASTEST RUNS' 'Small' '8FB0FF' 160 138 160 8
@@ -446,6 +457,11 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'paused' }
                     elseif ($h -eq $vk.F2) { Set-MouseLook (-not $script:MouseLook) }
                     elseif ($h -eq $vk.N) { $script:ShowMiniMap = -not $script:ShowMiniMap }
+                    elseif ($h -eq $vk.Z) { $script:AbilityKey = 1 }
+                    elseif ($h -eq $vk.X) { $script:AbilityKey = 2 }
+                    elseif ($h -eq $vk.V) { $script:AbilityKey = 3 }
+                    elseif ($h -eq $vk.F) { $script:AbilityKey = 4 }
+                    elseif ($h -eq $vk.R) { $script:AbilityKey = 5 }
                     elseif ($h -eq $vk.F6) { Invoke-Cheat 'GiveAll' }
                     elseif ($h -eq $vk.F7) { Invoke-Cheat 'Ammo' }
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }

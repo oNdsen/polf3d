@@ -30,6 +30,7 @@ function Get-SaveList {
 }
 
 function Save-Game([string]$Slot = 'quick') {
+    Stop-WhatIf                                                   # its ghosts are no part of the world
     $seen = for ($i = 0; $i -lt $script:Vis.Length; $i++) { if ($script:Vis[$i] -gt 0) { $i } }
     $floor = if ($script:BonusMap) { "Bonus: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" }
     $state = [ordered]@{
@@ -126,6 +127,7 @@ function Restore-Game([string]$Slot = 'quick') {
         Set-Background
         $script:MapBmp = $null
         Reset-ScreenEffects
+        Reset-Abilities
         $script:PlayerDied = $false; $script:LevelDone = $false; $script:Killer = $null
         $script:ShowWeapon = $true
         $script:HudDirty = $true

@@ -339,7 +339,8 @@ function Show-Overlays {
         $lit = $i -le $script:NoiseShown
         Write-HudBar $(if (-not $lit) { '60101A2C' } elseif ($i -eq 3) { 'FF4030' } elseif ($i -eq 2) { 'FFC040' } else { '60FF80' }) (152 + $i * 4) ($viewH - 8 - $i * 2) 3 (2 + $i * 2)
     }
-    if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 10) 40 8 }
+    if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 19) 40 8 }
+    Show-AbilityOverlays
 
     # progress on this floor, and the clock when speedrunning
     $st = $script:Stats

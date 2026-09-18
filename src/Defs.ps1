@@ -359,6 +359,9 @@ function Initialize-States {
         Add-State "fx.${fx}3" "fx.${fx}3" $false 5 $null 'Remove' "fx.${fx}3"
     }
 
+    # -WhatIf: the ghosts that show where everybody will be (see Abilities.ps1)
+    foreach ($mark in 'dot', 'ghost', 'threat') { Add-State "whatif.$mark" "whatif.$mark" $false 0 $null $null "whatif.$mark" }
+
     # the other player in a network game: never thinks, Network.ps1 picks the frame
     Add-State 'peer.stand' 'peer.s' $true 0 $null $null 'peer.stand'
     foreach ($i in 1..4) { Add-State "peer.w$i" "peer.w$i" $true 0 $null $null "peer.w$i" }

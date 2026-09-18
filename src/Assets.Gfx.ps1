@@ -825,6 +825,17 @@ function Add-WeaponSprites {
     }
 }
 
+# -WhatIf: a see-through figure (every other pixel of the guard, in one colour) and a way mark.
+function Add-WhatIfSprites {
+    $guard = $script:Spr['guard.s'][0]
+    foreach ($mark in @('ghost', 0xFF40E0FF), @('threat', 0xFFFF5040)) {
+        $px = [int[]]::new(4096)
+        for ($i = 0; $i -lt 4096; $i++) { if ($guard[$i] -ne 0 -and (($i % 64) + [int][Math]::Floor($i / 64)) % 2 -eq 0) { $px[$i] = [int]$mark[1] } }
+        $script:Spr["whatif.$($mark[0])"] = $px
+    }
+    $script:Spr['whatif.dot'] = New-Sprite { Add-Poly '40E0FF' @(32, 50, 36, 54, 32, 58, 28, 54); Add-Poly 'D8FFFF' @(32, 52, 34, 54, 32, 56, 30, 54) }
+}
+
 function Initialize-Sprites {
     $script:Spr = @{}
     foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield', 'peer') { Add-SoldierSprites $k }
@@ -834,6 +845,7 @@ function Initialize-Sprites {
     Add-DogSprites
     Add-ThingSprites
     Add-BotSprites              # after the things: the bot dies in the rocket's explosion frames
+    Add-WhatIfSprites
     Add-WeaponSprites
 }
 

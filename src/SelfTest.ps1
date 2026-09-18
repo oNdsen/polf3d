@@ -153,6 +153,60 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($hit -notlike '*|pain|0' -or $after -notlike '*|idle|-1' -or $after -like '0|*') { throw 'face test failed: no wince, no damage or no look to the left.' }
     $script:GodMode = $keepGod; $script:P.Health = 100; $script:PlayerDied = $false; $script:P.LookHold = 0.0
 
+    # ---- abilities: snapshots must restore the world exactly; -WhatIf, -Confirm, -Force and Undo must do what they say ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; $script:Difficulty = 1
+    Start-Level $false $false
+    $keepGod = $script:GodMode; $script:GodMode = $false
+    $walker = $script:Actors | Where-Object { $_.State -like '*.path*' } | Select-Object -First 1
+    Set-TestCamera ($walker.X + 0.2) ($walker.Y + 2.4) 90; $script:P.Privilege = 100.0
+    for ($f = 0; $f -lt 20; $f++) { Update-View; Update-World 2.0 $idle }
+    $print = { "$([Math]::Round($script:P.X, 4)),$([Math]::Round($script:P.Y, 4)),$($script:P.Health),$($script:Stats.Kills)," + (($script:Actors | ForEach-Object { "$($_.State):$([Math]::Round($_.X, 4)):$([Math]::Round($_.Y, 4)):$($_.HP)" }) -join ';') + ',' + (($script:Doors | ForEach-Object { "$($_.Action)$([Math]::Round($_.Open, 3))" }) -join ';') }
+    $before = & $print
+    $snapshot = New-WorldSnapshot
+    $fire = $idle.Clone(); $fire.Fire = $true; $fire.Forward = 1
+    for ($f = 0; $f -lt 90; $f++) { Update-View; Update-World 2.0 $fire }
+    $changed = (& $print) -ne $before
+    Restore-WorldSnapshot $snapshot
+    $same = (& $print) -eq $before
+    # -WhatIf: ghosts appear, the world does not move, and afterwards it is exactly as before
+    $whatIf = $idle.Clone(); $whatIf.Ability = 1
+    Update-World 2.0 $whatIf
+    $marks = @($script:Actors | Where-Object Kind -eq 'whatif').Count
+    Update-View; Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-whatif.png')
+    for ($f = 0; $f -lt 10; $f++) { Update-World 2.0 $idle }
+    $frozen = $script:WhatIfTics -gt 0
+    Stop-WhatIf
+    $untouched = (& $print) -eq $before
+    # -Confirm: the patrol covers a third of the ground
+    $walker = $script:Actors | Where-Object { $_.State -like '*.path*' } | Select-Object -First 1
+    $from = "$($walker.X),$($walker.Y)"; $start = @($walker.X, $walker.Y)
+    for ($f = 0; $f -lt 30; $f++) { Update-World 2.0 $idle }
+    $normal = [Math]::Abs($walker.X - $start[0]) + [Math]::Abs($walker.Y - $start[1]); $start = @($walker.X, $walker.Y)
+    $confirm = $idle.Clone(); $confirm.Ability = 2
+    Update-World 0.01 $confirm
+    for ($f = 0; $f -lt 30; $f++) { Update-World 2.0 $idle }
+    $slow = [Math]::Abs($walker.X - $start[0]) + [Math]::Abs($walker.Y - $start[1])
+    $script:ConfirmTics = 0.0
+    # -Force: the gold door has no chance
+    $gold = $script:Doors | Where-Object { $_.Lock -eq 1 } | Select-Object -First 1
+    $script:P.Privilege = 100.0
+    if ($gold.Vertical) { Set-TestCamera ($gold.X - 0.5) ($gold.Y + 0.5) 0 } else { Set-TestCamera ($gold.X + 0.5) ($gold.Y + 1.5) 90 }
+    $force = $idle.Clone(); $force.Ability = 4
+    Update-World 1.0 $force
+    $forced = $gold.Action                                        # (the undo below goes back to before this)
+    # Undo: take a beating, then take it back
+    $script:P.Privilege = 100.0; $script:P.Health = 100
+    for ($f = 0; $f -lt 60; $f++) { Update-World 2.0 $idle }
+    Invoke-PlayerDamage 200 $null; $hurt = $script:P.Health
+    $undo = $idle.Clone(); $undo.Ability = 5
+    Update-World 1.0 $undo
+    Write-Step ("ability test: snapshot restores exactly={0} (world had changed={1}); -WhatIf: {2} ghosts, time frozen={3}, world untouched={4}; -Confirm: patrol moved {5:0.00} instead of {6:0.00} tiles; -Force: gold door '{7}'; Undo: health {8} -> {9}, privilege left {10:0}" -f
+        $same, $changed, $marks, $frozen, $untouched, $slow, $normal, $forced, $hurt, $script:P.Health, $script:P.Privilege)
+    if (-not $same -or -not $changed -or $marks -lt 1 -or -not $frozen -or -not $untouched -or $normal -lt 0.2 -or $slow -gt $normal * 0.6 -or $forced -eq 'closed' -or
+        $script:P.Health -le $hurt -or $script:P.Privilege -gt 45) { throw 'ability test failed.' }
+    $script:GodMode = $keepGod; $script:PlayerDied = $false
+    Start-Level $false $false
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
