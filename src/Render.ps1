@@ -324,14 +324,14 @@ function Show-Overlays {
     # what the enemies make of you: "?" = has noticed something and is reacting, "!" = is coming for you
     $zbuf = $script:ZBuf
     foreach ($a in $script:Actors) {
-        if (-not $a.Visible -or -not $a.Shootable -or ($a.React -le 0 -and $a.AlertTics -le 0 -and $a.Stun -le 0)) { continue }
+        if (-not $a.Visible -or -not $a.Shootable -or ($a.React -le 0 -and $a.AlertTics -le 0 -and $a.Stun -le 0 -and -not $a.Hacked)) { continue }
         $sx = $a.ScreenX
         if ($sx -lt 0 -or $sx -ge $script:ViewW -or $zbuf[$sx] -lt $a.Depth) { continue }
         $top = 100 - ($script:ProjH / $a.Depth) / 2 - 11
         if ($top -lt 1) { $top = 1 }
-        $mark = if ($a.Stun -gt 0) { 'II' } elseif ($a.AlertTics -gt 0) { '!' } else { '?' }
+        $mark = if ($a.Stun -gt 0) { 'II' } elseif ($a.Hacked) { '>_' } elseif ($a.AlertTics -gt 0) { '!' } else { '?' }
         Write-HudText $mark 'Mid' '000000' ($sx - 9.5) ($top + 0.5) 20 10
-        Write-HudText $mark 'Mid' $(if ($mark -eq '!') { 'FF4030' } elseif ($mark -eq 'II') { '40E0FF' } else { 'FFE040' }) ($sx - 10) $top 20 10
+        Write-HudText $mark 'Mid' $(if ($mark -eq '!') { 'FF4030' } elseif ($mark -in 'II', '>_') { '40E0FF' } else { 'FFE040' }) ($sx - 10) $top 20 10
     }
     # the noise you are making right now: none / footsteps / running or doors / gunfire
     $level = if ($script:MadeNoise) { 3 } elseif ($script:StepNoise -ge $script:NOISE_DOOR) { 2 } elseif ($script:StepNoise -gt 0) { 1 } else { 0 }

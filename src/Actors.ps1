@@ -8,8 +8,9 @@
 # Line of sight between a point and the player. Walls block; a door blocks unless the line
 # passes through the part that has already slid open.
 # ---------------------------------------------------------------------------------------------
-function Test-LineToPlayer([double]$X1, [double]$Y1) {
-    $x2 = $script:P.X; $y2 = $script:P.Y
+# ... or, given a second point, to that (a hacked turret looking for a target).
+function Test-LineToPlayer([double]$X1, [double]$Y1, [double]$X2 = [double]::NaN, [double]$Y2 = [double]::NaN) {
+    if ([double]::IsNaN($X2)) { $x2 = $script:P.X; $y2 = $script:P.Y } else { $x2 = $X2; $y2 = $Y2 }
     $dx = $x2 - $X1; $dy = $y2 - $Y1
     [int]$mx = [Math]::Floor($X1); [int]$my = [Math]::Floor($Y1)
     [int]$ex = [Math]::Floor($x2); [int]$ey = [Math]::Floor($y2)
@@ -312,10 +313,51 @@ function Invoke-ThinkBotChase([Actor]$a, [double]$Tics) {
     Invoke-Walk $a $Tics 'Chase'
 }
 
+# A camera sweeps: ahead, a quarter turn to one side, ahead, a quarter turn to the other ($a.VX counts the steps).
+function Invoke-ThinkCameraStand([Actor]$a, [double]$Tics) {
+    $a.Cool -= $Tics
+    if ($a.Cool -le 0) {
+        $a.Cool = 170.0; $a.VX = ($a.VX + 1) % 4
+        $a.Dir = ($a.PathDir + (0, 2, 0, 6)[[int]$a.VX]) % 8
+    }
+    $null = Test-NoticePlayer $a $Tics
+}
+
+# It has seen the player: as long as it can still see them the building heats up. Three seconds without, and it goes back to sweeping.
+function Invoke-ThinkCameraChase([Actor]$a, [double]$Tics) {
+    if ($script:AreaByPlayer[$a.Area] -and (Test-LineToPlayer $a.X $a.Y)) { $a.Cool = 210.0; $a.AlertTics = 20; Add-PolicyHeat (0.12 * $Tics); return }
+    $a.Cool -= $Tics
+    if ($a.Cool -le 0) { $a.AttackMode = $false; $a.Cool = 100.0; Set-ActorState $a 'camera.stand' }
+}
+
+# A sentry gun does not walk. Its own: fires at the player when it has a line. Hacked: fires at the nearest of the others.
+function Invoke-ThinkTurretChase([Actor]$a, [double]$Tics) {
+    if (-not $a.Hacked) {
+        if (-not $script:AreaByPlayer[$a.Area] -or -not (Test-LineToPlayer $a.X $a.Y)) { return }
+        $dist = [Math]::Max(1, [Math]::Max([Math]::Abs([Math]::Floor($script:P.X) - $a.TX), [Math]::Abs([Math]::Floor($script:P.Y) - $a.TY)))
+        if ($dist -le 12 -and (Get-Rnd) -lt $Tics * 16 / $dist) { Set-ActorState $a 'turret.shoot1' }
+        return
+    }
+    $a.Cool -= $Tics
+    if ($a.Cool -gt 0) { return }
+    $a.Cool = 14.0                                               # looks around five times a second
+    $best = $null; $bestD = 100.0                                # ten tiles
+    foreach ($o in $script:Actors) {
+        if (-not $o.Shootable -or $o.Hacked -or $o.Def.Inert -or $o.Kind -in 'peer', 'whatif') { continue }
+        $d = ($o.X - $a.X) * ($o.X - $a.X) + ($o.Y - $a.Y) * ($o.Y - $a.Y)
+        if ($d -lt $bestD -and (Test-LineToPlayer $a.X $a.Y $o.X $o.Y)) { $best = $o; $bestD = $d }
+    }
+    if (-not $best) { return }
+    Start-Sfx 'shot_elite' $a.X $a.Y
+    $a.AlertTics = 0; $a.Cool = 24.0
+    Invoke-ActorDamage $best (9 + ((Get-Rnd) -band 7)) 'turret'
+}
+
 # ---------------------------------------------------------------------------------------------
 # Actions (called once when their state runs out)
 # ---------------------------------------------------------------------------------------------
 function Invoke-ActionShoot([Actor]$a) {
+    if ($a.Hacked) { return }                                   # it changed sides in the middle of a burst
     if (-not $script:AreaByPlayer[$a.Area]) { return }
     if (-not (Test-LineToPlayer $a.X $a.Y)) { return }
     Start-Sfx $a.Def.ShotSnd $a.X $a.Y
@@ -354,7 +396,7 @@ function Add-Effect([string]$Name, [double]$X, [double]$Y) {
 
 # Blood appears a little in front of the victim so it is drawn over them.
 function Add-HitEffect([Actor]$a) {
-    if ($a.Def.Inert) { Add-Effect 'puff' $a.X $a.Y; return }
+    if ($a.Def.Inert -or $a.Def.Machine) { Add-Effect 'puff' $a.X $a.Y; return }
     $dx = $script:P.X - $a.X; $dy = $script:P.Y - $a.Y
     $len = [Math]::Max(0.01, [Math]::Sqrt($dx * $dx + $dy * $dy))
     Add-Effect 'blood' ($a.X + $dx / $len * 0.2) ($a.Y + $dy / $len * 0.2)
@@ -515,6 +557,9 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
         'Chase'    { Invoke-ThinkChase $a $Tics }
         'DogChase' { Invoke-ThinkDogChase $a $Tics }
         'BotChase' { Invoke-ThinkBotChase $a $Tics }
+        'CameraStand' { Invoke-ThinkCameraStand $a $Tics }
+        'CameraChase' { Invoke-ThinkCameraChase $a $Tics }
+        'TurretChase' { Invoke-ThinkTurretChase $a $Tics }
         'Projectile' { Invoke-ThinkProjectile $a $Tics }
         'PlayerProjectile' { Invoke-ThinkPlayerProjectile $a $Tics }
     }
@@ -605,7 +650,7 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
     }
     if (-not $NoScore) { Add-Score $a.Def.Points }
     if (-not $script:NetAsPeer) {
-        $cause = switch ($script:KillCause) { 'explosion' { 'an explosion' } 'console' { 'the console' } 'trap' { 'a crusher' } default { "the $($script:Weapons[$script:P.Weapon].Name.ToLower())" } }
+        $cause = switch ($script:KillCause) { 'explosion' { 'an explosion' } 'console' { 'the console' } 'trap' { 'a crusher' } 'turret' { 'a turret that had changed sides' } default { "the $($script:Weapons[$script:P.Weapon].Name.ToLower())" } }
         Add-TranscriptLine "Stop-Enemy -Kind $($a.Kind)$(if (-not $a.AttackMode) { ' -Unaware' })   # with $cause"
     }
     Set-ActorState $a "$($a.Kind).die1"
@@ -615,7 +660,7 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
         'crown'        { Add-Item 'crown' $tx $ty; $script:Stats.TreasureTotal++ }
         'mgun_or_clip' { if (-not $script:P.Owned[2]) { Add-Item 'mgun' $tx $ty } else { Add-Item 'clip_small' $tx $ty } }
     }
-    $script:Stats.Kills++
+    if (-not $a.Def.NoCount) { $script:Stats.Kills++ }
     if (-not $script:NetAsPeer) { Add-Privilege 6 }
     $a.Shootable = $false
     $a.Corpse = $true

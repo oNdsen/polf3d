@@ -16,6 +16,7 @@
 #   D1..D9  X1..X9                           remote door and the wall lever (same number) that opens it for good
 #   ..                                       floor
 #   P^ P> Pv P<                              player start + view direction
+#   c t  +  nesw                                 security camera, sentry gun (they only see, so: always the "deaf" letters)
 #   g d e o m s h k b u  +  ^>v< | nesw | NESW   enemy: standing | standing & deaf (ambush) | patrolling
 #                                            (guard dog elite officer mutant sniper shield-bearer kamikaze-bot boss super-boss)
 #   :^ :> :v :<                              patrol turning point
@@ -292,6 +293,6 @@ function Add-Enemy([string]$Kind, [int]$X, [int]$Y, [int]$Dir, [string]$Mode) {
     $a.NetId = ++$script:NextNetId
     $script:ActorAt[$a.TY * $script:MapW + $a.TX] = $a
     $script:Actors.Add($a)
-    $script:Stats.KillTotal++
+    if (-not $a.Def.NoCount) { $script:Stats.KillTotal++ }     # cameras and sentry guns are equipment, not staff
     if ($Kind -eq 'uber') { $script:Stats.KillTotal++ }          # its pilot counts as well
 }

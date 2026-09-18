@@ -24,7 +24,8 @@ READ          At a terminal or server rack:  Get-ChildItem (ls, dir)   Get-Conte
               What the files give away:      Unlock-Door -Code <number>      Use-Token <word>
 ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight seconds)
               Open-Door (8, locked ones 25)   Close-Door (5)   Lock-Door (15, jams it for twenty seconds)
-              Disable-Trap (10)     Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
+              Disable-Trap (10)     Set-Turret -Owner Me (25: a sentry gun changes sides)     Get-Enemy -Kind camera | Stop-Enemy
+              Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
 PROFILE       function kn { Get-Enemy | select -First 1 | Stop-Enemy }      Set-Alias ge Get-Enemy
               Set-Hotkey 1 'kn'   runs it from the game with a key (Get-Hotkey shows the four keys)
@@ -77,7 +78,7 @@ function Initialize-Console {
         'Get-Process' = '$PolfEnemies | Select-Object Id, @{ n = "ProcessName"; e = { $_.Kind } }, @{ n = "WS(HP)"; e = { $_.Health } }, State'
     }
     # the acting cmdlets all look the same: ids in, requests out
-    foreach ($act in @('Stop-Enemy', 'Enemy'), @('Suspend-Enemy', 'Enemy'), @('Open-Door', 'Door'), @('Close-Door', 'Door'), @('Lock-Door', 'Door'), @('Disable-Trap', 'Trap')) {
+    foreach ($act in @('Stop-Enemy', 'Enemy'), @('Suspend-Enemy', 'Enemy'), @('Open-Door', 'Door'), @('Close-Door', 'Door'), @('Lock-Door', 'Door'), @('Disable-Trap', 'Trap'), @('Set-Turret', 'Enemy')) {
         $functions[$act[0]] = @"
 [CmdletBinding()] param([Parameter(ValueFromPipeline)]`$InputObject, [int[]]`$Id, [switch]`$WhatIf)
 process {
@@ -86,6 +87,7 @@ process {
 }
 "@
     }
+    $functions['Set-Turret'] = $functions['Set-Turret'].Replace('[switch]$WhatIf)', '[switch]$WhatIf, [string]$Owner = "Me")')
     foreach ($f in $functions.GetEnumerator()) { $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateFunctionEntry]::new($f.Key, $f.Value)) }
     foreach ($a in @('?', 'Where-Object'), @('where', 'Where-Object'), @('%', 'ForEach-Object'), @('foreach', 'ForEach-Object'), @('select', 'Select-Object'), @('sort', 'Sort-Object'),
         @('measure', 'Measure-Object'), @('group', 'Group-Object'), @('ft', 'Format-Table'), @('fl', 'Format-List'), @('gm', 'Get-Member'), @('echo', 'Write-Output'),
@@ -193,7 +195,7 @@ function Update-ConsoleData {
     $proxy = $script:Con.Runspace.SessionStateProxy; $p = $script:P
     $enemies = foreach ($a in $script:Actors) {
         if (-not $a.Shootable -or $a.Def.Inert -or $a.Kind -in 'peer', 'whatif') { continue }
-        $state = if ($a.Stun -gt 0) { 'suspended' } elseif ($a.AttackMode) { 'attacking' } elseif ($a.React -gt 0) { 'alerted' } elseif ($a.State -like '*.path*') { 'patrolling' } else { 'unaware' }
+        $state = if ($a.Hacked) { 'yours' } elseif ($a.Stun -gt 0) { 'suspended' } elseif ($a.AttackMode) { 'attacking' } elseif ($a.React -gt 0) { 'alerted' } elseif ($a.State -like '*.path*') { 'patrolling' } else { 'unaware' }
         [pscustomobject]@{ Type = 'Enemy'; Id = $a.NetId; Kind = $a.Kind; Health = $a.HP; State = $state; Distance = (Get-Range $a.X $a.Y); Bearing = (Get-Bearing $a.X $a.Y) }
     }
     $doors = for ($i = 0; $i -lt $script:Doors.Count; $i++) {
@@ -248,6 +250,7 @@ function Get-ConsoleActionCost([string]$Name, $Target) {
     switch ($Name) {
         'Stop-Enemy'    { if ($Target.Kind -in 'boss', 'uber', 'pilot') { "Access is denied: the $($Target.Kind) runs as SYSTEM" } else { 10 + [int][Math]::Ceiling($Target.HP / 2.0) } }
         'Suspend-Enemy' { if ($Target.Kind -in 'boss', 'uber', 'pilot') { 30 } else { 12 } }
+        'Set-Turret'    { if ($Target.Kind -ne 'turret') { "that is a $($Target.Kind), not a sentry gun" } elseif ($Target.Hacked) { 'it answers to you already' } else { 25 } }
         'Open-Door'     { if ($Target.Lock -in 1, 2, 4 -and -not $Target.Unlocked) { 25 } else { 8 } }
         'Close-Door'    { 5 }
         'Lock-Door'     { 15 }
@@ -286,13 +289,13 @@ function Invoke-ConsoleAction($Action) {
         return $true
     }
     $target = switch -Wildcard ($name) {
-        '*-Enemy' { $script:Actors | Where-Object { $_.NetId -eq $id -and $_.Shootable -and -not $_.Def.Inert } | Select-Object -First 1 }
+        { $_ -like '*-Enemy' -or $_ -eq 'Set-Turret' } { $script:Actors | Where-Object { $_.NetId -eq $id -and $_.Shootable -and -not $_.Def.Inert } | Select-Object -First 1 }
         '*-Door'  { if ($id -ge 0 -and $id -lt $script:Doors.Count) { $script:Doors[$id] } }
         '*-Trap'  { if ($id -ge 0 -and $id -lt $script:Traps.Count) { $script:Traps[$id] } }
         default   { $true }
     }
     if (-not $target) { Write-ConsoleLine "${name}: cannot find anything with Id $id." 'F14C4C'; return $true }
-    $label = if ($name -like '*-Enemy') { "$($target.Kind) #$id" } elseif ($name -like '*-Door') { "door #$id" } elseif ($name -like '*-Trap') { "$($target.Kind) #$id" } else { 'this floor' }
+    $label = if ($name -like '*-Enemy' -or $name -eq 'Set-Turret') { "$($target.Kind) #$id" } elseif ($name -like '*-Door') { "door #$id" } elseif ($name -like '*-Trap') { "$($target.Kind) #$id" } else { 'this floor' }
     $cost = Get-ConsoleActionCost $name $target
     if ($cost -is [string]) { Write-ConsoleLine "${name}: $cost." 'F14C4C'; return $true }
     if ($Action.WhatIf) { Write-ConsoleLine "What if: Performing the operation `"$name`" on target `"$label`". It would cost $cost privilege." ; return $true }
@@ -300,6 +303,7 @@ function Invoke-ConsoleAction($Action) {
     switch ($name) {
         'Stop-Enemy'    { $script:KillCause = 'console'; Stop-Actor $target; $script:KillCause = $null; $done = 'terminated' }
         'Suspend-Enemy' { $target.Stun = 560.0; $done = 'suspended for eight seconds' }
+        'Set-Turret'    { $target.Hacked = $true; $target.AttackMode = $false; $target.React = 0; $target.AlertTics = 0; $target.Cool = 0; Set-ActorState $target 'turret.chase1'; $done = 'it answers to you now' }
         'Open-Door'     { if ($target.Lock -in 1, 2, 4) { $target.Unlocked = $true; if ($target.Lock -ne 4) { $target.Lock = 0; $target.TexId = $script:TEX_DOOR } }; $target.Jam = 0.0; Open-Door $id; $done = 'opening' }
         'Close-Door'    { Close-Door $id; $done = if ($target.Action -in 'closing', 'closed') { 'closing' } else { 'somebody is standing in it' } }
         'Lock-Door'     { Close-Door $id; $target.Jam = 1400.0; $done = 'jammed for twenty seconds (your own "use" frees it)' }

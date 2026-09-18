@@ -69,6 +69,8 @@ class Actor {
     [double]$NY
     [int]$PeerSlot            # ... a player's ghost: whose; a projectile: which guest fired it (0 = none)
     [double]$Stun             # Suspend-Enemy (the console): frozen for this many tics
+    [bool]$Hacked             # a turret that answers to the player (Set-Turret -Owner Me)
+    [double]$Cool             # cameras and turrets: countdown to the next sweep, shot or loss of interest
 }
 
 class Door {
@@ -180,6 +182,7 @@ $script:EnemyCodes = @{
     [char]'g' = 'guard'; [char]'d' = 'dog'; [char]'e' = 'elite'
     [char]'o' = 'officer'; [char]'m' = 'mutant'; [char]'b' = 'boss'; [char]'u' = 'uber'
     [char]'s' = 'sniper'; [char]'h' = 'shield'; [char]'k' = 'bot'
+    [char]'c' = 'camera'; [char]'t' = 'turret'
 }
 
 $script:EnemyDefs = @{
@@ -254,6 +257,25 @@ $script:EnemyDefs = @{
         Shoot = @(); ChaseThink = 'BotChase'; DieScream = 'Explode'; BlastRadius = 1.9; BlastDamage = 75
         DieTics = 4
     }
+    # Security camera: harmless by itself, but what it sees heats up the building's execution policy - fast.
+    # It sweeps a quarter turn to either side. Does not count as a kill; the console switches it off quietly.
+    camera = @{
+        HP = @(8, 10, 12, 12); Points = 200; Patrol = 0.0; Chase = 0.0; NoCount = $true; Machine = $true
+        ReactBase = 1; ReactDiv = 8; Doors = $false; Pain = $false; Rotates = $false
+        Accuracy = 1.0; Drop = $null; AlertSnd = 'bot_beep'; ShotSnd = $null; DieSnd = 'clang'
+        Shoot = @(); StandThink = 'CameraStand'; ChaseThink = 'CameraChase'
+        DieTics = 5
+    }
+    # Sentry gun: never moves, fires bursts at whatever it has been told to. Set-Turret -Owner Me changes who that is.
+    turret = @{
+        HP = @(35, 50, 65, 65); Points = 400; Patrol = 0.0; Chase = 0.0; NoCount = $true; Machine = $true
+        ReactBase = 1; ReactDiv = 8; Doors = $false; Pain = $false; Rotates = $false
+        Accuracy = 1.0; Drop = 'clip_small'; AlertSnd = 'bot_beep'; ShotSnd = 'shot_elite'; DieSnd = $null
+        Shoot = @(, @('aim', 16, $false)) + @(, @('fire', 6, $true)) + @(, @('aim', 6, $false)) + @(, @('fire', 6, $true)) +
+                @(, @('aim', 6, $false)) + @(, @('fire', 6, $true)) + @(, @('aim', 24, $false))
+        ChaseThink = 'TurretChase'; DieScream = 'Explode'; BlastRadius = 1.3; BlastDamage = 25
+        DieTics = 5
+    }
     # The super boss, phase 1: a walking war machine - bursts of gunfire, then a salvo of rockets.
     uber = @{
         HP = @(550, 950, 1400, 1800); Points = 10000; Patrol = 0.0078; Chase = 0.0195
@@ -315,7 +337,7 @@ function Initialize-States {
         $rot = [bool]$def.Rotates
         $chaseThink = if ($def.ChaseThink) { $def.ChaseThink } elseif ($kind -eq 'dog') { 'DogChase' } else { 'Chase' }
 
-        Add-State "$kind.stand" "$kind.s" $rot 0 'Stand' $null "$kind.stand"
+        Add-State "$kind.stand" "$kind.s" $rot 0 $(if ($def.StandThink) { $def.StandThink } else { 'Stand' }) $null "$kind.stand"
 
         # walking: four frames, the 1st and 3rd followed by a short think-less hold
         $frames = @(

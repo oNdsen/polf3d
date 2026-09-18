@@ -7,7 +7,7 @@
 # from its map file and then lays the saved state over it.
 
 $script:ActorSaveProps = 'Kind', 'State', 'Tics', 'X', 'Y', 'TX', 'TY', 'Dir', 'PathDir', 'Dist', 'WaitDoor', 'Speed', 'HP', 'Area',
-                         'Active', 'Shootable', 'AttackMode', 'FirstAttack', 'Ambush', 'Corpse', 'React', 'VX', 'VY'
+                         'Active', 'Shootable', 'AttackMode', 'FirstAttack', 'Ambush', 'Corpse', 'React', 'VX', 'VY', 'Hacked', 'Cool'
 
 # Slots: 'quick' (F5/F9), 'auto' (written whenever the lift arrives on a new floor), '1'..'3' (pause menu).
 function Get-SavePath([string]$Slot = 'quick') { Join-Path $script:SaveDir $(if ($Slot -eq 'quick') { 'quicksave.json' } else { "save-$Slot.json" }) }

@@ -845,6 +845,7 @@ function Initialize-Sprites {
     Add-DogSprites
     Add-ThingSprites
     Add-BotSprites              # after the things: the bot dies in the rocket's explosion frames
+    Add-SecuritySprites
     Add-WhatIfSprites
     Add-WeaponSprites
 }
@@ -943,6 +944,36 @@ function Add-BotArt([string]$Pose) {
     Add-Oval '101418' 27 40 10 8; Add-Oval $(if ($blink) { 'FF2020' } else { '801010' }) 29 41 6 6
     if ($blink) { Add-Oval 'FFA0A0' 31 42 2 2 }
     Add-Box '8A929A' 31 30 2 7; Add-Oval $(if ($blink) { 'FFD040' } else { 'C03030' }) 30 27 4 4
+}
+
+# Cameras hang from the ceiling, sentry guns stand on a tripod. Both blink while they are awake.
+function Add-CameraArt([bool]$Blink, [bool]$Broken) {
+    Add-Box '50585F' 30 0 4 8
+    if ($Broken) { Add-Poly '2A3038' @(24, 8, 40, 12, 38, 22, 22, 18); Add-Oval '101418' 25 11 7 7; Add-Box 'FFD040' 36 20 1 3; Add-Box 'FFD040' 33 22 1 2; return }
+    Add-Box '2A3038' 21 8 22 11; Add-Box '3A424C' 21 8 22 2
+    Add-Oval '101418' 27 9 10 10; Add-Oval '3060A0' 30 12 4 4; Add-Box 'A0C8FF' 31 12 1 1
+    Add-Box $(if ($Blink) { 'FF2020' } else { '601010' }) 39 11 2 2
+}
+
+function Add-TurretArt([string]$Pose) {
+    Add-Oval '101010' 20 57 24 6
+    Add-Poly '20262C' @(23, 60, 30, 44, 34, 44, 41, 60, 38, 60, 32, 48, 26, 60)
+    Add-Box '20262C' 31 44 2 16
+    Add-Box '3A4450' 21 31 22 15; Add-Box '56626F' 23 33 18 3; Add-Box '242B33' 21 44 22 2
+    Add-Oval '101418' 26 35 12 12; Add-Oval '000000' 29 38 6 6
+    Add-Box $(if ($Pose -in 'aim', 'fire', 'w2', 'w4') { 'FF2020' } else { '601010' }) 39 32 3 3
+    if ($Pose -eq 'fire') { Add-Oval 'FFB030' 23 32 18 18; Add-Oval 'FFE880' 26 35 12 12; Add-Oval 'FFFFFF' 29 38 6 6 }
+}
+
+function Add-SecuritySprites {
+    foreach ($pose in 's', 'w1', 'w2', 'w3', 'w4') {
+        $script:Spr["camera.$pose"] = New-Sprite { Add-CameraArt ($pose -in 'w2', 'w4') $false }
+        $script:Spr["turret.$pose"] = New-Sprite { Add-TurretArt $pose }
+    }
+    foreach ($pose in 'aim', 'fire') { $script:Spr["turret.$pose"] = New-Sprite { Add-TurretArt $pose } }
+    foreach ($i in 1, 2, 3) { $script:Spr["turret.die$i"] = $script:Spr["rocket.boom$i"]; $script:Spr["camera.die$i"] = $script:Spr["fx.puff$i"] }
+    $script:Spr['camera.dead'] = New-Sprite { Add-CameraArt $false $true }
+    $script:Spr['turret.dead'] = New-Sprite { Add-Oval '101010' 18 56 28 6; Add-Poly '20262C' @(20, 60, 27, 52, 40, 50, 45, 60); Add-Box '3A4450' 26 48 12 5; Add-Box '101418' 36 46 9 3 }
 }
 
 function Add-BotSprites {

@@ -437,6 +437,8 @@ Add-Things @(
     3, 8, '?M',    22, 33, '?T',  49, 26, '?M',  21, 8, '!T'
     13, 13, 'sv',  21, 13, 'sv',  29, 13, 'sv',  17, 20, 'ev',  25, 18, 'e^',  33, 22, 'ev',  13, 22, 'hv',  29, 24, 'hv',  21, 25, 'kv',  33, 14, 'kv'
     17, 14, '+a',  25, 27, '+a',  33, 28, '+h',  13, 28, '+o'
+    # security: cameras at the east ends of both corridors, sentry guns in the lift lobby and in the cage
+    47, 11, 'cw',  36, 30, 'cw',  44, 5, 'ts',   47, 31, 'tw'
 )
 Add-Spawns 3 @(14, 20, 'ev',  25, 30, 'h<',  43, 18, 'e^')
 Add-Spawns 4 @(45, 29, 'h<',  5, 15, 'm>',  30, 9, 's<')
@@ -486,6 +488,7 @@ Add-Things @(
     26, 37, 'DD',  18, 32, 'DD',  34, 32, 'DD',  26, 28, 'DD',  26, 20, 'DG',  8, 20, 'DD',  43, 20, 'DS',  26, 7, 'DL',  26, 3, 'MX'
     6, 7, '?w',    45, 7, '?B',   20, 37, '?w',  50, 31, '?W',  34, 13, '!W'
     18, 25, 'Wp',  34, 25, 'Wp',  2, 14, 'Wp',   15, 14, 'Wp',  23, 24, 'Wp',  29, 24, 'Wp'
+    24, 27, 'cn',  3, 13, 'ce',   26, 17, 'ts'           # a camera in the passage and in the catalogue room, a sentry gun behind the gold door
 )
 Add-Spawns 3 @(26, 33, 'ov',  9, 14, 'o>',  43, 15, 'ev')
 Add-Spawns 4 @(24, 15, 'h^',  10, 30, 'k>',  42, 30, 's<')
@@ -528,6 +531,7 @@ Add-Things @(
     26, 28, '~c',  26, 29, '~c',  26, 30, '~c',  36, 28, '~c',  36, 29, '~c',  36, 30, '~c',  44, 28, '~c',  44, 29, '~c',  44, 30, '~c'
     30, 29, 'e<',  33, 28, 'h<',  38, 30, 'e<',  39, 28, 's<',  47, 29, 'h<',  46, 28, 'k<',  46, 30, 'k<',  24, 28, '+a',  48, 30, '+a'
     7, 30, 'Rb',   22, 26, 'Rb',  22, 33, 'Rb',  25, 21, 'Rb',  25, 35, 'Rb'
+    21, 30, 'cw',  48, 28, 'tw'                          # a camera over the smelter, a sentry gun at the end of the conveyor
 )
 Add-Spawns 3 @(16, 31, 'e<',  34, 22, 'ev',  52, 30, 'h^')
 Add-Spawns 4 @(55, 22, 'hv',  24, 29, 's>',  35, 34, 'e^')
@@ -573,6 +577,7 @@ Add-Things @(
     27, 21, 'DS',  27, 8, 'DG',   36, 5, 'DL',   40, 5, 'MX'
     7, 11, '?w',   32, 35, '?w',  51, 16, '?T',  19, 5, '!W'
     12, 21, 'Wp',  20, 21, 'Ws',  34, 21, 'Ws',  42, 21, 'Wp',  10, 25, 'Wp',  23, 25, 'Ws',  31, 25, 'Ws',  44, 25, 'Wp'
+    48, 22, 'cw',  27, 6, 'ts',   45, 18, 'ts'           # a camera in the gallery, sentry guns behind the CEO's and security's doors
 )
 Add-Spawns 3 @(27, 30, 'ov',  30, 24, 'e<',  27, 15, 'hv')
 Add-Spawns 4 @(24, 5, 'hv',  8, 28, 's>',  45, 16, 'kv')
@@ -618,6 +623,7 @@ Add-Things @(
     # the core
     19, 19, '*c',  31, 19, '*c',  19, 31, '*c',  31, 31, '*c',  19, 25, '*c',  31, 25, '*c'
     25, 19, 'b^',  19, 28, 'u^',  31, 28, 'u^',  17, 17, 'e>',  33, 17, 'e<',  17, 33, 'k^',  33, 33, 'k^',  22, 30, 'h^',  28, 30, 'h^'
+    23, 17, 'tn',  27, 17, 'tn',  20, 4, 'ce',   30, 46, 'cw'          # two sentry guns cover the door of the core, cameras watch the outer ring
     16, 16, '+h',  34, 16, '+h',  16, 34, '+h',  34, 34, '+h',  17, 16, '+a',  33, 16, '+a',  17, 34, '+o',  33, 34, '+o',  16, 25, '+z',  34, 25, '+z',  25, 33, '+q'
 )
 Add-Spawns 3 @(30, 44, 'e<',  14, 25, 'h<',  24, 31, 'e^')

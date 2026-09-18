@@ -187,6 +187,8 @@ all: there you need cover, the special weapons and a plan.
 | Sniper | 15–30 | slow and fragile, takes his time – and then hits hard at **any** distance. Only running helps |
 | Shield bearer | 45–80 | bullets and blades glance off the shield: get behind him, wait until he lowers it to shoot – or use something that does not care |
 | Kamikaze bot | 10–20 | rolls at you at speed and blows itself up; shooting it has the same effect (mind who stands next to it) |
+| Security camera | 8–12 | hangs from the ceiling and sweeps a quarter turn to either side. Harmless – but every second it sees you heats the [execution policy](#stealth) by eight points. Not a kill; `Get-Enemy -Kind camera \| Stop-Enemy` switches it off quietly |
+| Sentry gun | 35–65 | never moves, fires bursts, explodes when destroyed. `Get-Enemy -Kind turret \| Set-Turret -Owner Me` (25 privilege) makes it change sides: from then on it shoots whoever else comes within ten tiles |
 | Commander – *LEGACY.BAT* | 350–1200 | "runs as SYSTEM, nobody dares to touch it". Twin machine guns: three rounds per salvo, then a pause – that is your moment. Drops the gold key |
 | War machine – *THE PRINTER* | 550–1800 | "PC LOAD LETTER". Super boss: gun bursts and salvos of three rockets (real projectiles with splash damage – pillars give cover) |
 | Pilot – *THE PRINTER DRIVER* | 140–500 | "unsigned". Phase 2: climbs out of the war machine's wreck – few hit points, but very fast |
@@ -239,6 +241,7 @@ Get-Enemy | Sort-Object Distance | Select-Object -First 1 | Stop-Enemy -WhatIf  
 Get-Enemy | Where-Object State -eq 'attacking' | Suspend-Enemy                   # freeze them for eight seconds
 Get-Door  | Where-Object Lock -ne '-' | Open-Door                                # who needs keys
 Get-Door  | Sort-Object Distance | Select-Object -First 1 | Lock-Door            # jam the door behind you
+Get-Enemy -Kind turret | Set-Turret -Owner Me                                    # the sentry gun changes sides
 Get-Trap | Disable-Trap ;  Get-Loot -Name key* ;  Get-Secret ;  Get-Player ;  Get-Help
 ```
 
@@ -539,6 +542,7 @@ and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements
 | `..` | floor |
 | `P^ P> Pv P<` | player start and view direction |
 | `g d e o m s h k b u` + direction | guard, dog, elite, officer, mutant, sniper, shield bearer, kamikaze bot, commander, war machine |
+| `c t` + `n e s w` | security camera, sentry gun (floors 6–10 have them) |
 | direction `^ > v <` / `n e s w` / `N E S W` | standing / standing and "deaf" (ambush, reacts to sight only) / patrolling |
 | `:^ :> :v :<` | waypoint: patrols turn here |
 | `~s ~c` | trap: spikes, crusher |

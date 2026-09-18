@@ -326,6 +326,32 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:Difficulty = $keepDifficulty
     $script:Con.Runspace.Dispose(); $script:Con = $null
 
+    # ---- security: a camera heats the policy up, a sentry gun shoots - and changes sides when the console tells it to ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2; $script:MadeNoise = $false
+    Set-TestCamera 24.5 20.5 0
+    $total = $script:Stats.KillTotal
+    Add-Enemy 'camera' 27 20 4 'ambush'; $camera = $script:Actors[$script:Actors.Count - 1]
+    Add-Enemy 'turret' 24 23 2 'ambush'; $turret = $script:Actors[$script:Actors.Count - 1]
+    $camera.AttackMode = $true; Set-ActorState $camera 'camera.chase1'
+    $heat = $script:Stats.Heat; Invoke-ThinkCameraChase $camera 70; $heated = $script:Stats.Heat - $heat
+    $victim = $script:Actors | Where-Object { $_.Kind -eq 'guard' -and $_.Shootable } | Sort-Object { [Math]::Abs($_.X - 24.5) + [Math]::Abs($_.Y - 23.5) } | Select-Object -First 1
+    $script:ActorAt[$victim.TY * $script:MapW + $victim.TX] = $null
+    $victim.X = 26.5; $victim.Y = 23.5; $victim.TX = 26; $victim.TY = 23; $victim.Area = $turret.Area; $script:ActorAt[23 * $script:MapW + 26] = $victim
+    $script:P.Privilege = 100; if ($script:Con) { $script:Con.Runspace.Dispose() }; $script:Con = $null
+    Open-Console
+    foreach ($line in 'Get-Enemy -Kind camera | Set-Turret -Owner Me', 'Get-Enemy -Kind turret | Set-Turret -Owner Me -WhatIf', 'Get-Enemy -Kind turret | Set-Turret -Owner Me', 'Get-Enemy -Kind turret') { Invoke-ConsoleLine $line }
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"; Close-Console
+    $hp = $victim.HP; $kills = $script:Stats.Kills
+    for ($f = 0; $f -lt 40 -and $victim.Shootable; $f++) { Invoke-ThinkTurretChase $turret 20 }
+    Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-security.png')
+    Stop-Actor $camera
+    Write-Step "security test: a second on camera heats the house by $([Math]::Round($heated, 1)); the hacked sentry gun took the guard from $hp to $($victim.HP) health; kill total $total -> $($script:Stats.KillTotal), kills $kills -> $($script:Stats.Kills)"
+    if ([Math]::Abs($heated - 8.4) -gt 0.3 -or -not $turret.Hacked -or $victim.Shootable -or $script:Stats.KillTotal -ne $total -or $script:Stats.Kills -ne $kills + 1 -or
+        $text -notmatch 'not a sentry gun' -or $text -notmatch 'What if' -or $text -notmatch 'answers to you now' -or $text -notmatch 'yours') { throw "security test failed:`n$text" }
+    $script:Difficulty = $keepDifficulty
+    $script:Con.Runspace.Dispose(); $script:Con = $null
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
