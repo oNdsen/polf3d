@@ -16,6 +16,38 @@ $script:BindLabels = @{
     WhatIf = '-WhatIf'; Confirm = '-Confirm'; Verbose = '-Verbose'; Force = '-Force'; Undo = 'Undo'
     Macro1 = 'console hotkey 1'; Macro2 = 'console hotkey 2'; Macro3 = 'console hotkey 3'; Macro4 = 'console hotkey 4'
 }
+# what every row of the menu is for - shown to the right of its value
+$script:OptionHelp = @{
+    Mouse = 'how far the view turns when the mouse moves (mouse look: F2)'
+    Sfx = 'shots, doors, explosions and what the enemies shout'
+    Music = 'the title anthem and the floors'' music (on and off: F4)'
+    MiniMap = 'the radar in the corner: walls you have seen, alerted enemies (N)'
+    Fps = 'frames per second in the corner (F3)'
+    FlatFloors = 'plain floors and ceilings are faster on a slow machine'
+    Forward = 'walk forward (arrow up always works too)'
+    Back = 'walk backwards (arrow down always works too)'
+    StrafeLeft = 'step to the left without turning'
+    StrafeRight = 'step to the right without turning'
+    TurnLeft = 'turn left (the mouse turns too)'
+    TurnRight = 'turn right (the mouse turns too)'
+    Run = 'hold: faster and harder to hit, but heard from further away'
+    Sneak = 'hold: slow and silent, enemies notice you much later'
+    Fire = 'fire the weapon in hand (also J and the left mouse button)'
+    Use = 'doors, levers, lift switch, secret walls, terminals (also E, right button)'
+    Map = 'hold: the plan of what you have explored so far'
+    Console = 'the PowerShell console - the world stands still while you type (also Tab)'
+    WhatIf = '25 privilege: time stops and everybody''s next two seconds show as ghosts'
+    Confirm = '30 privilege: the world runs at a third of its speed for five seconds'
+    Verbose = '15 privilege: ten seconds of seeing everybody nearby through walls'
+    Force = '35 privilege: kicks in the door or the cracked wall in front of you'
+    Undo = '60 privilege: the last five seconds never happened'
+    Macro1 = 'runs the command line you put on it in the console: Set-Hotkey 1 ''...'''
+    Macro2 = 'the second console hotkey: Set-Hotkey 2 ''...'''
+    Macro3 = 'the third console hotkey: Set-Hotkey 3 ''...'''
+    Macro4 = 'the fourth console hotkey: Set-Hotkey 4 ''...'''
+    Reset = 'all settings and all keys as they were on the first day'
+}
+
 # keys that mean something in every mode and must not be given away
 $script:BindReserved = 13, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 123, 49, 50, 51, 52, 53, 54, 55, 56, 57
 
@@ -119,7 +151,7 @@ function Update-Options([int[]]$Keys) {
     }
 }
 
-# The menu as lines of text: @(text, colour, selected) - for the window and for the terminal alike.
+# The menu as lines of text: @(text, colour, selected, what it is for) - for the window and for the terminal alike.
 function Get-OptionLines {
     $o = $script:Options
     $lines = [System.Collections.Generic.List[object]]::new()
@@ -128,7 +160,8 @@ function Get-OptionLines {
     for ($i = 0; $i -lt $rows.Count; $i++) {
         $text = $rows[$i].Text
         if ($i -eq $o.Row -and $o.Waiting) { $text = ('{0,-22} press the new key ...  (Esc = leave it)' -f "Key: $($script:BindLabels[$rows[$i].Key])") }
-        $lines.Add(@("  $text", $(if ($rows[$i].Kind -eq 'key') { 'C0C8D8' } else { 'FFFFFF' }), ($i -eq $o.Row)))
+        $help = if ($i -eq $o.Row -and $o.Waiting) { '' } else { "$($script:OptionHelp[$rows[$i].Key])" }
+        $lines.Add(@("  $text", $(if ($rows[$i].Kind -eq 'key') { 'C0C8D8' } else { 'FFFFFF' }), ($i -eq $o.Row), $help))
         if ($i -eq 6 -or $i -eq $rows.Count - 2) { $lines.Add(@('', 'FFFFFF', $false)) }
     }
     $lines.Add(@('', 'FFFFFF', $false))
@@ -146,6 +179,7 @@ function Show-Options {
     foreach ($line in (Get-OptionLines)) {
         if ($line[2]) { Write-HudBar 'FF2C54C4' 4 ($y - 0.5) 312 6.4 }
         $g.DrawString($line[0], $script:Fonts.Term, (Get-Brush $line[1]), [single](8 * $sc), [single]($y * $sc))
+        if ($line.Count -gt 3 -and $line[3]) { $g.DrawString($line[3], $script:Fonts.Term, (Get-Brush $(if ($line[2]) { 'FFFFFF' } else { '7080A0' })), [single](126 * $sc), [single]($y * $sc)) }
         $y += 5.9
     }
 }
