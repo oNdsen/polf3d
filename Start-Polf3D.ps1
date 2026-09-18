@@ -24,8 +24,13 @@
 .PARAMETER FlatFloors
     Plain coloured floor and ceiling instead of textures (the 1992 look, a little faster).
 .PARAMETER HostGame
-    Host a network game for a second player: Coop (the campaign, together) or Duel (one against one,
-    no monsters). The game starts as soon as the other player has joined and the host presses Enter.
+    Host a network game for up to four players: Coop (the campaign, together) or Deathmatch (everybody against
+    everybody, no monsters; Duel is the same thing). Guests join on the title screen, the host presses Enter to
+    start - and F1 to see who is there, kick (K) or ban (B) somebody. Bans are kept in saves/banned.json.
+.PARAMETER MaxPlayers
+    Hosting: how many players may take part, the host included (2..4, default 4).
+.PARAMETER PlayerName
+    The name the other players see (letters, digits, blank, - and _; twelve characters at most).
 .PARAMETER JoinGame
     Join the network game hosted on this computer (name or IP address).
 .PARAMETER Port
@@ -75,7 +80,9 @@ param(
                                                                                # $script:Difficulty (0..3) would inherit the validation
     [string]$Map,
     [ValidateRange(1, 99)][int]$Level = 1,
-    [ValidateSet('Coop', 'Duel')][string]$HostGame,
+    [ValidateSet('Coop', 'Duel', 'Deathmatch')][string]$HostGame,
+    [ValidateRange(2, 4)][int]$MaxPlayers = 4,
+    [string]$PlayerName,
     [string]$JoinGame,
     [ValidateRange(1024, 65535)][int]$Port = 27500,
     [switch]$Daily,
@@ -209,8 +216,8 @@ if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.'
 $script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
 Write-Step 'ready.'
 try {
-    if ($HostGame) { Initialize-Network 'host' $HostGame.ToLower() '' $Port; Write-Step "hosting a $HostGame game on port $Port" }
-    elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port; Write-Step "joining the game on ${JoinGame}:$Port" }
+    if ($HostGame) { Initialize-Network 'host' $(if ($HostGame -eq 'Coop') { 'coop' } else { 'duel' }) '' $Port $MaxPlayers $PlayerName; Write-Step "hosting a $HostGame game for up to $MaxPlayers players on port $Port" }
+    elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port 4 $PlayerName; Write-Step "joining the game on ${JoinGame}:$Port" }
     if ($Terminal -or $TerminalKeys) { Initialize-Terminal ([bool]$TerminalKeys) } else { New-GameWindow }
     Start-GameLoop
 }

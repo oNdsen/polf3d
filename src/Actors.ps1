@@ -629,7 +629,8 @@ function Update-Actors([double]$Tics) {
         # hosting a network game: some actors deal with the remote player instead (see Network.ps1)
         $script:NetFrame++
         foreach ($a in $script:Actors) {
-            if (Test-PeerTarget $a) { Enter-PeerContext; try { Update-Actor $a $Tics } finally { Exit-PeerContext } }
+            $slot = Get-NetTargetSlot $a
+            if ($slot -gt 0) { Enter-PeerContext $slot; try { Update-Actor $a $Tics } finally { Exit-PeerContext } }
             else { Update-Actor $a $Tics }
         }
     }

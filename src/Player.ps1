@@ -92,15 +92,16 @@ function Reset-PlayerKit {
 function Show-Message([string]$Text) {
     if ($script:Predicting) { return }
     if ($script:NetLive -and $script:NetScope -in 'world', 'peer') {
-        Send-NetMessage "X|$Text"                                 # network game: meant for the other player (as well)
-        if ($script:NetScope -eq 'peer') { return }
+        # network game: meant for one guest only, or for everybody
+        if ($script:NetScope -eq 'peer') { Send-NetPeer "X|$Text"; return }
+        Send-NetMessage "X|$Text"
     }
     $script:Message = $Text
     $script:MessageUntil = $script:Clock.Elapsed.TotalSeconds + 2.5
 }
 
 function Add-Score([int]$Points) {
-    if ($script:NetAsPeer) { Send-NetMessage "S|$Points"; return }      # earned by the remote player
+    if ($script:NetAsPeer) { Send-NetPeer "S|$Points"; return }         # earned by a guest
     $p = $script:P
     $p.Score += $Points
     while ($p.Score -ge $p.NextExtra) {
@@ -417,7 +418,7 @@ function Update-Pickups {
 # ---------------------------------------------------------------------------------------------
 function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     if ($script:Predicting) { return }                           # -WhatIf: nobody gets hurt in a forecast
-    if ($script:NetAsPeer) { Send-NetMessage "H|$Points|$(if ($Attacker) { $Attacker.NetId } else { 0 })"; return }      # it hit the remote player
+    if ($script:NetAsPeer) { Send-NetPeer "H|$Points|$(if ($Attacker) { $Attacker.NetId } else { 0 })"; return }         # it hit a guest
     $p = $script:P
     if ($p.Health -le 0) { return }                              # already dead
     $Points = [int][Math]::Floor($Points * $script:Difficulties[$script:Difficulty].DamageScale)
@@ -443,7 +444,7 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
         $script:Killer = $Attacker
         $script:PlayerDied = $true
         Add-TranscriptLine "killed by $(if ($Attacker) { "a $($Attacker.Kind)" } else { 'the building itself' })" 'ERROR'
-        if ($script:NetLive -and $Attacker -and $Attacker.Kind -eq 'peer') { $script:Net.PeerFrags++; Send-NetMessage 'F' }
+        if ($script:NetLive -and $Attacker -and $Attacker.Kind -eq 'peer') { Register-NetFrag $Attacker.PeerSlot }
         Start-Sfx 'player_die'
     }
     else { Start-Sfx 'pain' }

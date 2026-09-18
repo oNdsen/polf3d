@@ -9,7 +9,10 @@ function Update-AreaByPlayer {
     $n = $script:AreaCount
     $reach = [bool[]]::new($n)
     $starts = @($script:P.Area)
-    if ($script:NetLive -and -not $script:NetClient) { $starts += $script:Net.Home.Area, $script:Net.Proxy.Area }      # the host thinks for both players
+    if ($script:NetLive -and -not $script:NetClient) {             # the host thinks for every player
+        $starts += $script:Net.Home.Area
+        foreach ($pl in $script:Net.Players.Values) { $starts += $pl.Proxy.Area }
+    }
     $queue = [System.Collections.Generic.Queue[int]]::new()
     foreach ($start in $starts) { if ($start -ge 0 -and -not $reach[$start]) { $reach[$start] = $true; $queue.Enqueue($start) } }
     if ($queue.Count) {

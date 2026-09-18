@@ -362,8 +362,7 @@ function Show-Overlays {
     }
     if ($script:NetLive) {
         $net = $script:Net
-        $text = if ($net.Mode -eq 'duel') { "FRAGS   you $($net.Frags) : $($net.PeerFrags) opponent" } elseif ($net.PeerHealth -le 0) { 'PARTNER DOWN' } else { "PARTNER $($net.PeerHealth)%" }
-        Write-HudText $text 'Small' $(if ($net.PeerHealth -le 0 -and $net.Mode -ne 'duel') { 'FF6050' } else { '60C0FF' }) 2 12 100 8
+        Write-HudText (Get-NetHudText) 'Small' '60C0FF' 2 12 150 8
     }
     if ($script:ShowFps) { Write-HudText ("{0:0} fps" -f $script:Fps) 'Small' '80FF80' 2 2 40 8 }
     if ($script:Message -and $script:Clock.Elapsed.TotalSeconds -lt $script:MessageUntil) {
@@ -561,9 +560,11 @@ function Show-MiniMap {
         if ([Math]::Abs($dx) -ge $radius -or [Math]::Abs($dy) -ge $radius) { continue }
         $g.FillEllipse((Get-Brush 'FF3030'), [single]($cx + $dx * $unit - $dot / 2), [single]($cy + $dy * $unit - $dot / 2), $dot, $dot)
     }
-    if ($script:NetLive -and $script:Net.Mode -eq 'coop') {          # the partner: a blue dot
-        $dx = $script:Net.Ghost.X - $p.X; $dy = $script:Net.Ghost.Y - $p.Y
-        if ([Math]::Abs($dx) -lt $radius -and [Math]::Abs($dy) -lt $radius) { $g.FillEllipse((Get-Brush '40A0FF'), [single]($cx + $dx * $unit - $dot / 2), [single]($cy + $dy * $unit - $dot / 2), $dot, $dot) }
+    if ($script:NetLive -and $script:Net.Mode -eq 'coop') {          # the partners: blue dots
+        foreach ($pl in $script:Net.Players.Values) {
+            $dx = $pl.Ghost.X - $p.X; $dy = $pl.Ghost.Y - $p.Y
+            if ([Math]::Abs($dx) -lt $radius -and [Math]::Abs($dy) -lt $radius) { $g.FillEllipse((Get-Brush '40A0FF'), [single]($cx + $dx * $unit - $dot / 2), [single]($cy + $dy * $unit - $dot / 2), $dot, $dot) }
+        }
     }
     $rad = $p.Angle * [Math]::PI / 180.0
     $g.FillEllipse((Get-Brush '40FF40'), [single]($cx - $dot / 2), [single]($cy - $dot / 2), $dot, $dot)

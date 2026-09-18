@@ -2,7 +2,7 @@
 
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
 <i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
-verifiable runs,<br>five floors and a secret one, eleven kinds of enemies, nine weapons, co-op and duels over the network, a terminal
+verifiable runs,<br>five floors and a secret one, eleven kinds of enemies, nine weapons, co-op and deathmatch for up to four over the network, a terminal
 mode –<br>procedurally generated graphics, sound, speech and music, and about 200 lines of C#.</i></p>
 
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
@@ -32,7 +32,7 @@ composed, spoken and cached there the first time they are needed.
 - [Terminal mode](#terminal-mode)
 - [Stealth](#stealth)
 - [Level machinery](#level-machinery)
-- [Two players: co-op and duel](#two-players-co-op-and-duel)
+- [Up to four players: co-op and deathmatch](#up-to-four-players-co-op-and-deathmatch)
 - [Saved games, demos, speedruns](#saved-games-demos-speedruns)
 - [Music](#music)
 - [Mods](#mods)
@@ -70,7 +70,7 @@ map format, HUD, menus, music, network protocol.
 | ![Title screen](media/title.png) | ![The hub hall on floor 1](media/hub.png) |
 | Title screen with difficulty levels and high scores | Floor 1: the hub hall – patrols, banners with the `>_` coat of arms |
 | ![Fire fight](media/firefight.png) | ![Co-op](media/coop.png) |
-| A guard takes aim (seen through the door frame) | Co-op over the network: your partner runs ahead |
+| A guard takes aim (seen through the door frame) | Co-op over the network: two partners run ahead, each in the colour of his slot |
 | ![Catacombs](media/catacombs.png) | ![Lab Zero](media/lab.png) |
 | Floor 3: mutants between the pillars of the catacombs | Floor 4: an elite patrol in the ring corridor of Lab Zero |
 | ![Citadel](media/citadel.png) | ![Automap](media/automap.png) |
@@ -81,6 +81,8 @@ map format, HUD, menus, music, network protocol.
 | `-WhatIf`: time stands still, ghosts show where everybody will be in two seconds – the red ones will open fire | The console: real pipelines, real `-WhatIf`, no way out of the sandbox |
 | ![Terminal mode](media/terminal.png) | ![The daily dungeon](media/dungeon.png) |
 | `-Terminal`: the same game as half-block characters | The plan of a generated dungeon: the lift behind the gold door, the key with the boss |
+| ![The player list](media/players.png) | |
+| `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban | |
 
 <p align="center"><img src="media/faces.png" alt="The face in the status bar" width="880"></p>
 
@@ -106,6 +108,7 @@ map format, HUD, menus, music, network protocol.
 | `F12` | record a demo (press again to stop and save) |
 | `P`, `Esc` | pause: `1`–`3` save to a slot, `L` load, `Q` main menu |
 | `G` (title screen) | today's dungeon |
+| `F1` (network games) | the player list – on the host with kick and ban |
 
 **Game pad (XInput):** left stick move and strafe, right stick turn, `RT` fire, `LT` run, `A` use, `B` sneak,
 `LB`/`RB` previous/next weapon, `X` `-Confirm`, `Y` minimap, `Back` automap, `Start` pause. D-pad and `A` work in the menus.
@@ -284,24 +287,34 @@ Anyone who has not noticed you yet takes **double damage**. What they notice:
 * **Teleporter pads** come in numbered pairs.
 * A second, hidden **lift switch** on floor 2 leads to the secret floor.
 
-## Two players: co-op and duel
+## Up to four players: co-op and deathmatch
 
 ```powershell
-./Start-Polf3D.ps1 -HostGame Coop          # or: -HostGame Duel
-./Start-Polf3D.ps1 -JoinGame 192.168.1.20  # on the other computer: name or address of the host
+./Start-Polf3D.ps1 -HostGame Coop -PlayerName Boss           # or: -HostGame Deathmatch   (-MaxPlayers 2..4)
+./Start-Polf3D.ps1 -JoinGame 192.168.1.20 -PlayerName Anna   # on the other computers: name or address of the host
 ```
 
-The title screen shows the state of the connection; once the guest has joined, the host picks the difficulty and
-presses Enter. The port is 27500/TCP (`-Port` changes it) – the host's firewall has to let it in.
+Guests gather on the host's title screen, which lists who has joined; the host picks the difficulty and presses
+Enter. The port is 27500/TCP (`-Port` changes it) – the host's firewall has to let it in. Whoever connects while a
+floor is being played waits in the lobby and is in from the next floor. Every player wears the colour of his slot:
+orange (the host), green, purple, yellow.
 
-* **Co-op:** the whole campaign together. Enemies go for whoever is nearer, keys are shared, either player can call
-  the lift, and the partner shows up as a blue dot on the radar. No lives: whoever dies is back at the start of the
-  floor a moment later with the basic kit, and the floor goes on. Friendly bullets do nothing – friendly rockets do.
-* **Duel:** the same floors without monsters. Everybody starts with a machine gun, weapons and items come back
-  after 25 seconds, the dead respawn far away from their opponent, frags are counted; the lift switch ends the round.
+* **Co-op:** the whole campaign together. Enemies go for whoever is nearest, keys are shared, anybody can call the
+  lift, partners are blue dots on the radar and their health is shown in the view. No lives: whoever dies is back at
+  the start of the floor a moment later with the basic kit, and the floor goes on. Friendly bullets do nothing –
+  friendly rockets do.
+* **Deathmatch** (`Duel` is the same thing for two): the same floors without monsters. Everybody starts with a machine
+  gun, weapons and items come back after 25 seconds, the dead respawn as far from everybody else as possible, the
+  host keeps the frag count and everybody sees it; the lift switch ends the round.
 
-Both computers need the same maps (the game warns if they differ). Saving, loading and demos are switched off in a
-network game, and the pause menu does not stop the world.
+**The host is the admin.** `F1` opens the player list – slot, name, address, state, frags. `K` kicks the selected
+player, `B` bans him: he is thrown out and his address is turned away from then on (the list is kept in
+`saves/banned.json`), `U` lifts a ban. A guest who was kicked, banned or found the game full is told why and does not
+keep knocking. Guests see the same list without the buttons. If a guest leaves or loses the connection the floor
+simply goes on without him; if the host leaves, everybody is back at the title screen.
+
+All computers need the same maps (the game warns if they differ). Saving, loading, demos, the console and the
+time-bending powers are switched off in a network game (`-Verbose` works), and menus do not stop the world.
 
 ## Saved games, demos, speedruns
 
@@ -363,7 +376,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -Map ./maps/mine.map   # play just this one map
 ./Start-Polf3D.ps1 -Speedrun       # show the speedrun clock
 ./Start-Polf3D.ps1 -NoSound -NoMusic -NoVoices -NoGamepad -NoMods
-./Start-Polf3D.ps1 -HostGame Coop  # network game, see above (-JoinGame <host>, -Port <n>)
+./Start-Polf3D.ps1 -HostGame Coop  # network game, see above (-JoinGame <host>, -Port, -MaxPlayers, -PlayerName)
 ./Start-Polf3D.ps1 -Daily          # today's dungeon (-Dungeon <number> for any other)
 ./Start-Polf3D.ps1 -VerifyDemo <file>   # is this demo genuine, and how long did the run take?
 ./Start-Polf3D.ps1 -Terminal       # no window: play in the terminal (-TerminalKeys over SSH)
@@ -393,7 +406,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Transcript.ps1](src/Transcript.ps1) | the transcript of a floor and its verdict |
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
-| [src/Network.ps1](src/Network.ps1) | the two-player mode: connection, protocol, snapshots, the "peer context" |
+| [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
 | [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
 | [src/Console.ps1](src/Console.ps1) | the sandboxed runspace, the game's cmdlets, pricing and carrying out requests |
 | [src/Terminal.ps1](src/Terminal.ps1) | terminal mode: keys, text screens, presenting a frame |
@@ -428,10 +441,11 @@ A few details for the curious:
 * **Sprite order:** `[Array]::Sort(keys, items)` called from PowerShell sorts the keys and leaves an `object[]` of items
   alone – for a long time every enemy was drawn over every column. The sprites are now sorted through an index array,
   and a self-test puts a guard behind a column to make sure.
-* **Network:** the host owns the world and sends the guest what has changed, twenty times a second, as lines of text
-  over TCP; the guest simulates only its own player and *asks* the host for everything else ("I hit actor 17 for 23",
-  "use the tile in front of me"). For the enemies to fight two players, the host swaps the remote player in as
-  "the player" for the duration of one actor's update – all the existing AI code then simply means the other one.
+* **Network:** a star. The host owns the world and sends every guest what has changed, twenty times a second, as
+  lines of text over TCP; a guest simulates only its own player and *asks* the host for everything else ("I hit actor
+  17 for 23", "use the tile in front of me", "I hit player 2"), and the host passes on what the others need to know.
+  For the enemies to fight several players, the host swaps one remote player in as "the player" for the duration of
+  one actor's update – all the existing AI code then simply means that guest.
 * **Music:** a note is one short wave pattern copied over and over with `Buffer.BlockCopy`; the six channels are added
   up with `System.Numerics.Vector`, sixteen samples at a time. Half a minute of music renders in under a second.
 * **Presentation:** `int[]` frame buffer → bitmap → `BufferedGraphics`. Its GDI blit is about six times faster than
@@ -489,8 +503,8 @@ files, though, so you can just as well edit them by hand or in the editor. Valid
 
 ```powershell
 ./Start-Polf3D.ps1 -SelfTest   # headless: renders PNGs into ./selftest and tests combat, stealth, weapons, machinery,
-                               # bosses, saved games, demo determinism, the network protocol (both sides, over
-                               # loopback), sprite order, the face, snapshots and every power, the console (which
+                               # bosses, saved games, demo determinism, the network protocol (a host with two
+                               # guests, relay, kick and ban; a guest among three players - over loopback), sprite order, the face, snapshots and every power, the console (which
                                # tries three ways to delete a canary file), dungeons (valid, reproducible, a run
                                # verifies, a doctored one does not), terminal frames, transcripts, the example mod
                                # and the music - plus a soak test of every floor that fights every boss

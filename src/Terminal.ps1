@@ -100,6 +100,7 @@ function Get-TerminalScreen([string]$Mode) {
             for ($i = 0; $i -lt $script:SaveList.Count; $i++) { $lines.Add("   $($i + 1)   $($script:SaveList[$i].Text)") }
             $lines.Add(''); $lines.Add("$y   press the number of a saved game     Esc = back$r")
         }
+        'players' { foreach ($row in (Get-NetPanelLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $($row[0])$r") } }
         'gameover' { $lines.Add(''); $lines.Add("`e[38;2;255;64;48m   G A M E   O V E R$r"); $lines.Add(''); $lines.Add("   Score: $($script:P.Score)"); $lines.Add(''); $lines.Add("$y   Enter = main menu$r") }
         'done' {
             $res = $script:Result

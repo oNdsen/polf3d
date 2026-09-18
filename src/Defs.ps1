@@ -67,7 +67,7 @@ class Actor {
     [int]$NetId               # network games: the same actor carries the same id on both machines (0 = local only)
     [double]$NX               # ... where the host says it is (the client glides there)
     [double]$NY
-    [bool]$FromPeer           # ... a projectile fired by the remote player
+    [int]$PeerSlot            # ... a player's ghost: whose; a projectile: which guest fired it (0 = none)
     [double]$Stun             # Suspend-Enemy (the console): frozen for this many tics
 }
 
@@ -371,10 +371,12 @@ function Initialize-States {
     # -WhatIf: the ghosts that show where everybody will be (see Abilities.ps1)
     foreach ($mark in 'dot', 'ghost', 'threat') { Add-State "whatif.$mark" "whatif.$mark" $false 0 $null $null "whatif.$mark" }
 
-    # the other player in a network game: never thinks, Network.ps1 picks the frame
-    Add-State 'peer.stand' 'peer.s' $true 0 $null $null 'peer.stand'
-    foreach ($i in 1..4) { Add-State "peer.w$i" "peer.w$i" $true 0 $null $null "peer.w$i" }
-    foreach ($pose in 'fire', 'pain', 'die1', 'die2', 'die3', 'dead') { Add-State "peer.$pose" "peer.$pose" $false 0 $null $null "peer.$pose" }
+    # the other players of a network game (one coat per slot): they never think, Network.ps1 picks the frame
+    foreach ($peer in 'peer0', 'peer1', 'peer2', 'peer3') {
+        Add-State "$peer.stand" "$peer.s" $true 0 $null $null "$peer.stand"
+        foreach ($i in 1..4) { Add-State "$peer.w$i" "$peer.w$i" $true 0 $null $null "$peer.w$i" }
+        foreach ($pose in 'fire', 'pain', 'die1', 'die2', 'die3', 'dead') { Add-State "$peer.$pose" "$peer.$pose" $false 0 $null $null "$peer.$pose" }
+    }
 
     # explosive barrels: a short fuse (so chain reactions ripple through a room), then the blast
     Add-State 'barrel.idle' 'barrel_red' $false 0 $null $null 'barrel.idle'

@@ -567,55 +567,91 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     else { Write-Step 'game pad test: bridge not available (skipped)' }
 
-    # ---- network: the host against a scripted guest, then the guest against a scripted host ----
+    # ---- network: the host against two scripted guests (relay, requests, kick, ban), then a guest against a scripted host ----
     $port = 27631; $keepGod = $script:GodMode; $script:GodMode = $false
     if (-not $script:KeyHit) { $script:KeyHit = [System.Collections.Generic.Queue[int]]::new() }
-    Initialize-Network 'host' 'coop' '' $port
-    $guest = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port)
+    Remove-Item -LiteralPath (Join-Path $script:SaveDir 'banned.json') -ErrorAction SilentlyContinue
+    Initialize-Network 'host' 'coop' '' $port 3 'Boss'
+    $anna = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port); $bob = $null; $carl = $null
     try {
         Start-Sleep -Milliseconds 100; Update-Network 1.0
-        $hello = Read-NetTestLines $guest
+        $hello = Read-NetTestLines $anna
+        $bob = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port)
+        Start-Sleep -Milliseconds 100; Update-Network 1.0; $null = Read-NetTestLines $bob
+        Send-NetTestLines $anna 'V|2|Anna'; Send-NetTestLines $bob 'V|2|Anna'                 # two of the same name: the second gets a number
+        Update-Network 1.0
+        $carl = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port)                      # a fourth player in a game for three
+        Start-Sleep -Milliseconds 100; Update-Network 1.0
+        $full = Read-NetTestLines $carl
+        $names = ($script:Net.Guests | ForEach-Object Name) -join ','
         $script:LevelIndex = 0; $script:BonusMap = $null; $script:Difficulty = 1
         Start-Level $false $false
         Update-Network 1.0
-        $go = @(Read-NetTestLines $guest | Where-Object { $_ -like 'G|*' })[0]
-        if ($hello -notcontains 'V|1|coop' -or $go -notlike 'G|1|0||1|*') { throw "network test failed: handshake was '$hello' / '$go'." }
+        $go = @(Read-NetTestLines $anna | Where-Object { $_ -like 'G|*' })[0]
+        if ($hello -notcontains 'V|2|coop|1' -or $go -notlike 'G|1|0||1|*|1|0:Boss:*,1:Anna:*,2:Anna3:*' -or $full -notlike 'N|The game is full*') { throw "network test failed: handshake '$hello' / '$go' / '$full'." }
         $victim = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and $_.Kind -ne 'peer' } | Select-Object -First 1
         $door = $script:Doors | Where-Object { $_.Lock -eq 0 } | Select-Object -First 1
         $health = $script:P.Health
-        Send-NetTestLines $guest "R|1", "M|$($victim.X + 1)|$($victim.Y)|180|4|100|0|$($victim.Area)", "D|$($victim.NetId)|500|bullet", "U|$($door.X)|$($door.Y)|1|0"
+        Send-NetTestLines $bob 'R|1'
+        Send-NetTestLines $anna 'R|1', "M|9|$($victim.X + 1)|$($victim.Y)|180|4|100|0|$($victim.Area)", "D|$($victim.NetId)|500|bullet", "U|$($door.X)|$($door.Y)|1|0"
         Update-Network 1.0
-        # a look at the partner: two tiles away, walking past
-        Set-TestCamera ($victim.X + 3) $victim.Y 180; $script:Net.Ghost.X = $victim.X + 1; $script:Net.Ghost.Y = $victim.Y; $script:Net.Ghost.State = 'peer.w2'; $script:Net.Ghost.Dir = 2
+        # a look at the partners: two tiles away, walking past
+        Set-TestCamera ($victim.X + 3) $victim.Y 180
+        foreach ($pl in $script:Net.Players.Values) { $pl.Ghost.X = $victim.X + 1; $pl.Ghost.Y = $victim.Y - 1.2 + 0.8 * $pl.Slot; $pl.Ghost.State = "peer$($pl.Slot).w2"; $pl.Ghost.Dir = 2 }
         Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-network-partner.png')
-        Enter-PeerContext; Invoke-PlayerDamage 10 $null; Exit-PeerContext              # an enemy hits the guest, not the host
+        Enter-PeerContext 1; Invoke-PlayerDamage 10 $null; Exit-PeerContext                  # an enemy hits Anna, not the host
         for ($i = 0; $i -lt 6; $i++) { Update-World 2.0 $idle; Update-Network 2.0 }
-        $lines = Read-NetTestLines $guest
+        $lines = Read-NetTestLines $anna; $heard = Read-NetTestLines $bob
         $snap = @($lines | Where-Object { $_ -like "Z|*" -and $_ -like "*$($victim.NetId),$($victim.Kind).die*" }).Count
-        Write-Step "network test (host): guest at $($script:Net.Proxy.X),$($script:Net.Proxy.Y); his shot killed the $($victim.Kind): $(-not $victim.Shootable); door $($door.Action); $($lines.Count) lines sent, $snap snapshots show the death"
-        if ($victim.Shootable -or $door.Action -eq 'closed' -or -not $snap -or $lines -notcontains "S|$($victim.Def.Points)" -or $lines -notcontains 'H|10|0' -or
-            $script:P.Health -ne $health -or @($lines | Where-Object { $_ -like 'M|*' }).Count -eq 0) { throw 'network test failed on the host side.' }
+        $relayed = @($heard | Where-Object { $_ -like "M|1|$($victim.X + 1)|*" }).Count
+        Write-Step "network test (host): guests '$names', a fourth was told '$full'; Anna at $($script:Net.Players[1].Proxy.X),$($script:Net.Players[1].Proxy.Y) killed the $($victim.Kind): $(-not $victim.Shootable); door $($door.Action); Bob heard of her $relayed time(s); $snap snapshots show the death"
+        if ($victim.Shootable -or $door.Action -eq 'closed' -or -not $snap -or -not $relayed -or $lines -notcontains "S|$($victim.Def.Points)" -or $lines -notcontains 'H|10|0' -or
+            $heard -contains 'H|10|0' -or $script:P.Health -ne $health -or @($lines | Where-Object { $_ -like 'M|0|*' }).Count -eq 0) { throw 'network test failed on the host side.' }
+
+        # the admin panel: kick Bob, ban Anna - and Anna's address is turned away when it comes back
+        Open-NetPanel
+        $script:Net.Panel.Row = 1; $script:Net.Bans.Add('203.0.113.7')
+        Show-PlayFrame; Show-NetPanel; Save-BackBuffer (Join-Path $OutDir 'view-network-panel.png')
+        $null = $script:Net.Bans.Remove('203.0.113.7')
+        Update-NetPanel @($script:VK.K)
+        Update-Network 1.0                                                                    # the others are told on the next frame
+        $kicked = Read-NetTestLines $bob; $told = Read-NetTestLines $anna
+        $script:Net.Panel.Row = 0; Update-NetPanel @($script:VK.B)
+        $banned = Read-NetTestLines $anna
+        $back = [System.Net.Sockets.TcpClient]::new('127.0.0.1', $port); Start-Sleep -Milliseconds 100; Update-Network 1.0
+        $refused = Read-NetTestLines $back; $back.Dispose()
+        $panel = (Get-NetPanelLines | ForEach-Object { $_[0] }) -join "`n"
+        Update-NetPanel @($script:VK.U)                                                       # ... and lifted again
+        Write-Step "network test (admin): Bob got '$kicked', Anna heard '$(@($told | Where-Object { $_ -like 'O|*' }) -join ' ')', then got '$banned'; her address came back to '$refused'; bans now: $($script:Net.Bans.Count)"
+        if ($kicked -notcontains 'N|kicked by the host' -or -not ($told -like 'O|2|*') -or $banned -notcontains 'N|banned by the host' -or $refused -notlike 'N|You are banned*' -or
+            $panel -notmatch '127\.0\.0\.1' -or $script:Net.Bans.Count -ne 0 -or $script:Net.Guests.Count -ne 0) { throw 'network test failed in the admin panel.' }
+        Set-Mode 'play'
     }
-    finally { $guest.Dispose(); Stop-Network }
+    finally { foreach ($c in $anna, $bob, $carl) { if ($c) { $c.Dispose() } }; Stop-Network }
 
     $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $port + 1); $listener.Start()
-    Initialize-Network 'client' 'coop' '127.0.0.1' ($port + 1)
+    Initialize-Network 'client' 'coop' '127.0.0.1' ($port + 1) 4 'Dora'
     $server = $null
     try {
         for ($i = 0; $i -lt 40 -and -not $script:Net.Connected; $i++) { Update-Network 1.0; Start-Sleep -Milliseconds 50 }
         $server = $listener.AcceptTcpClient()
-        Send-NetTestLines $server 'V|1|duel', "G|7|0||2|4711|0|0|$(Get-MapHash $script:MapFiles[0])"
+        Send-NetTestLines $server 'V|2|duel|2', "G|7|0||2|4711|0|0|$(Get-MapHash $script:MapFiles[0])|2|0:Boss:3.5:35.5,1:Anna:5.5:33.5,2:Dora:7.5:27.5"
         Update-Network 1.0
         $enemies = @($script:Actors | Where-Object { -not $_.Def.Inert -and $_.Kind -ne 'peer' }).Count
-        $health = $script:P.Health
-        Send-NetTestLines $server 'Z|0|0|0||900,rocket.fly,5.5,5.5,0,4|', 'H|10|P', "M|$($script:P.X + 1)|$($script:P.Y)|90|8|0|0|0"
+        $health = $script:P.Health; $spot = "$($script:P.X),$($script:P.Y)"
+        Send-NetTestLines $server 'Z|0|0|0||900,rocket.fly,5.5,5.5,0,4|', 'H|10|P1', "M|0|$($script:P.X + 1)|$($script:P.Y)|90|8|0|0|0", 'M|1|6.5|33.5|0|0|77|0|0', 'C|0:2,1:0,2:1'
         Update-Network 1.0
         for ($i = 0; $i -lt 4; $i++) { Update-View; Update-World 2.0 $idle; Update-Network 2.0 }
+        $hud = Get-NetHudText
+        $states = "$($script:Net.Players[0].Ghost.State) / Anna at $([Math]::Round($script:Net.Players[1].Ghost.NX, 1)) with $($script:Net.Players[1].Health)"
+        Send-NetTestLines $server 'O|1|kicked by the host'; Update-Network 1.0
         $lines = Read-NetTestLines $server
-        Write-Step "network test (guest): mode $($script:Net.Mode), difficulty $($script:Difficulty + 1), seed $($script:LevelSeed), $enemies monsters left in the duel, health $health -> $($script:P.Health), ghost $($script:Net.Ghost.State), $($lines.Count) lines sent"
-        if (-not $script:NetClient -or $script:Net.Mode -ne 'duel' -or $script:Difficulty -ne 2 -or $script:LevelSeed -ne 4711 -or $enemies -ne 0 -or
-            -not $script:Net.ById[900] -or $script:P.Health -ge $health -or $script:Net.Ghost.State -notlike 'peer.d*' -or
-            $lines -notcontains 'V|1' -or $lines -notcontains 'R|7') { throw 'network test failed on the guest side.' }
+        Write-Step "network test (guest): slot $($script:Net.Slot) at $spot, mode $($script:Net.Mode), seed $($script:LevelSeed), $enemies monsters left, health $health -> $($script:P.Health), ghosts: $states; '$hud'; after Anna left: $($script:Net.Players.Count) other player"
+        if (-not $script:NetClient -or $script:Net.Mode -ne 'duel' -or $script:Net.Slot -ne 2 -or $spot -ne '7.5,27.5' -or $script:LevelSeed -ne 4711 -or $enemies -ne 0 -or
+            -not $script:Net.ById[900] -or $script:P.Health -ge $health -or $script:Net.Players[0].Ghost.State -notlike 'peer0.d*' -or $states -notlike '*6.5 with 77' -or
+            $hud -notlike 'FRAGS*Boss 2*you 1*' -or $script:Net.Players.Count -ne 1 -or $lines -notcontains 'V|2|Dora' -or $lines -notcontains 'R|7') { throw 'network test failed on the guest side.' }
+        Send-NetTestLines $server 'N|kicked by the host'; Update-Network 1.0
+        if (-not $script:Net.Refused -or $script:Net.Connected) { throw 'network test failed: a kicked guest must stay away.' }
     }
     finally { if ($server) { $server.Dispose() }; Stop-Network; $listener.Stop() }
     $script:GodMode = $keepGod; $script:Difficulty = 1; $script:PlayerDied = $false
@@ -788,8 +824,9 @@ function Export-Screenshots([string]$OutDir) {
     Save-Shot $OutDir 'citadel'
 
     # floor 2, co-op: the partner runs ahead (a network game without a network: nothing is ever sent)
-    Initialize-Network 'client' 'coop' 'localhost' 1
-    $script:Net.Connected = $true
+    Initialize-Network 'client' 'coop' 'localhost' 1 4 'You'
+    $script:Net.Connected = $true; $script:Net.Slot = 1
+    $script:Net.Roster = @(@{ Slot = 0; Name = 'Anna'; X = $null; Y = $null }, @{ Slot = 1; Name = 'You'; X = $null; Y = $null }, @{ Slot = 2; Name = 'Bob'; X = $null; Y = $null })
     $script:LevelIndex = 1; Start-Level $false $false; $script:Message = $null
     $p = $script:P; $p.Owned[2] = $true; $p.Ammo = 48; $p.Weapon = 2; $p.ChosenWeapon = 2
     $foe = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and $_.Kind -notin 'peer', 'dog' } | Select-Object -First 1
@@ -797,10 +834,13 @@ function Export-Screenshots([string]$OutDir) {
     $cx = $foe.X + $step[0] * 4; $cy = $foe.Y + $step[1] * 4
     if ($script:Tiles[[int][Math]::Floor($cy) * $script:MapW + [int][Math]::Floor($cx)] -ne 0) { $cx = $foe.X + $step[0] * 2; $cy = $foe.Y + $step[1] * 2 }
     Set-TestCamera $cx $cy 0; Set-TestAim $foe
-    $g = $script:Net.Ghost
-    $g.X = $cx + ($foe.X - $cx) * 0.45 - $step[1] * 0.45; $g.Y = $cy + ($foe.Y - $cy) * 0.45 + $step[0] * 0.45
-    $g.NX = $g.X; $g.NY = $g.Y; $g.TX = [int][Math]::Floor($g.X); $g.TY = [int][Math]::Floor($g.Y)
-    $g.Dir = ([int]$foe.Dir + 4) % 8; $g.State = 'peer.w2'; $script:Net.PeerHealth = 82
+    foreach ($pl in $script:Net.Players.Values) {
+        $side = if ($pl.Slot -eq 0) { 0.5 } else { -0.55 }; $ahead = if ($pl.Slot -eq 0) { 0.45 } else { 0.62 }
+        $g = $pl.Ghost
+        $g.X = $cx + ($foe.X - $cx) * $ahead - $step[1] * $side; $g.Y = $cy + ($foe.Y - $cy) * $ahead + $step[0] * $side
+        $g.NX = $g.X; $g.NY = $g.Y; $g.TX = [int][Math]::Floor($g.X); $g.TY = [int][Math]::Floor($g.Y)
+        $g.Dir = ([int]$foe.Dir + 4) % 8; $g.State = "peer$($pl.Slot).w$(2 + $pl.Slot)"; $pl.Health = 82 - 20 * $pl.Slot
+    }
     Save-Shot $OutDir 'coop'
     Stop-Network
 
@@ -825,6 +865,18 @@ function Export-Screenshots([string]$OutDir) {
         $g.DrawString($names[$i], $font, [System.Drawing.Brushes]::White, [System.Drawing.RectangleF]::new($i * $cell, 212, $cell, 22), $fmt)
     }
     $bmp.Save((Join-Path $OutDir 'cast.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
+
+    # the host's player list (no sockets behind these guests: it is only a picture)
+    Initialize-Network 'host' 'duel' '' 27997 4 'Boss'
+    foreach ($fake in @(1, 'Anna', '192.168.1.20'), @(2, 'Bob', '192.168.1.23'), @(3, 'Mallory', '203.0.113.7')) {
+        $script:Net.Guests.Add(@{ Slot = $fake[0]; Name = $fake[1]; Address = $fake[2]; InLevel = $true; Ready = $true; Out = [System.Text.StringBuilder]::new() })
+    }
+    $script:Net.Connected = $true; $script:Net.Bans.Clear(); $script:Net.Bans.Add('198.51.100.66')
+    $script:LevelIndex = 2; Start-Level $false $false; $script:Message = $null
+    $script:Net.Frags = @{ 0 = 4; 1 = 6; 2 = 1; 3 = 0 }; $script:Net.Players[2].Health = 35; $script:Net.Panel.Row = 2
+    Set-TestCamera 26.5 30.5 135
+    Show-PlayFrame; Show-NetPanel; Save-BackBuffer (Join-Path $OutDir 'players.png')
+    $script:Net.Guests.Clear(); Stop-Network
 
     # floor 1: -WhatIf in the hub - where will they be in two seconds, and who will shoot?
     $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
@@ -965,7 +1017,7 @@ function Export-Banner([string]$Path) {
     $g.FillRectangle((Get-Brush 'FF40E0FF'), ($px + 386), ($py + 12), 16, 29)
 
     $g.DrawString('A 90s-style ray casting shooter - written in PowerShell.', $small, (Get-Brush 'FFE8ECF4'), ($px - 3), ($py + 78))
-    $g.DrawString('a real PowerShell console   -WhatIf / -Confirm / -Force as powers   a daily dungeon   co-op & duel', $small, (Get-Brush 'FF8FB0FF'), ($px - 3), ($py + 108))
+    $g.DrawString('a real PowerShell console   -WhatIf / -Confirm / -Force as powers   a daily dungeon   4-player co-op', $small, (Get-Brush 'FF8FB0FF'), ($px - 3), ($py + 108))
     $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, 0, $W, 8); $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, ($H - 8), $W, 8)
 
     $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)

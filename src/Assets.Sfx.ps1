@@ -118,8 +118,10 @@ function Start-Sfx([string]$Name) {
     if ($script:Predicting) { return }                           # -WhatIf is only looking ahead: silence
     if ($script:NetLive -and $Name) {
         # network game: the other player hears the world as well - and the louder things this one does
-        if ($script:NetScope -eq 'peer') { Send-NetMessage "Q|$Name"; return }
-        if ($script:NetScope -eq 'world' -or ($script:NetScope -eq 'local' -and $script:NetLoud.Contains($Name))) { Send-NetMessage "Q|$Name" }
+        # Q|<whose>|<sound> - "whose" makes that player's ghost raise his gun; -1 = nobody's, the world's
+        if ($script:NetScope -eq 'peer') { Send-NetPeer "Q|-1|$Name"; return }
+        if ($script:NetScope -eq 'world') { Send-NetMessage "Q|-1|$Name" }
+        elseif ($script:NetScope -eq 'local' -and $script:NetLoud.Contains($Name)) { Send-NetMessage "Q|$($script:Net.Slot)|$Name" }
     }
     if (-not $script:SfxEnabled -or -not $Name) { return }
     $s = $script:Sfx[$Name]

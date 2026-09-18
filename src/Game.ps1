@@ -8,8 +8,8 @@
 $script:VK = @{
     LButton = 1; RButton = 2; Enter = 13; Shift = 16; Ctrl = 17; Esc = 27; Space = 32
     Left = 37; Up = 38; Right = 39; Down = 40
-    A = 65; C = 67; D = 68; E = 69; F = 70; G = 71; J = 74; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; V = 86; W = 87; X = 88; Z = 90
-    F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
+    A = 65; B = 66; C = 67; D = 68; E = 69; F = 70; G = 71; J = 74; K = 75; L = 76; M = 77; N = 78; P = 80; Q = 81; R = 82; S = 83; T = 84; U = 85; V = 86; W = 87; X = 88; Z = 90
+    F1 = 112; F2 = 113; F3 = 114; F4 = 115; F5 = 116; F6 = 117; F7 = 118; F8 = 119; F9 = 120; F11 = 122; F12 = 123
 }
 
 function New-GameWindow {
@@ -111,7 +111,7 @@ function Set-Mode([string]$Mode) {
     $script:Mode = $Mode
     $script:ModeTics = 0.0
     $script:KeyHit.Clear()
-    if ($Mode -eq 'title' -and $script:NetLive) { Send-NetMessage 'B' }                # takes the other player along
+    if ($Mode -eq 'title' -and $script:NetLive) { Send-NetMessage 'B' }                # the host takes everybody along; a guest just leaves the floor
     if ($Mode -in 'title', 'done', 'gameover') { $script:NetLive = $false; $script:NetClient = $false }
     if ($Mode -ne 'play') { Set-MouseLook $false }
     if ($Mode -eq 'dying') { $null = Stop-RunTranscript $false } elseif ($Mode -eq 'title') { $script:Transcript = $null }
@@ -217,13 +217,13 @@ function Update-World([double]$Tics, [hashtable]$In) {
         Update-Teleporters $Tics
         Update-Player $playerTics $In    # the player acts first: enemies hear this frame's shots
         if ($script:NetLive) {
-            if ($script:Net.PeerNoise) { $script:MadeNoise = $true; $script:Net.PeerNoise = $false }
+            if (Test-NetNoise) { $script:MadeNoise = $true }
             $script:NetScope = 'world'
         }
         Update-Actors $Tics
         $script:NetScope = 'local'
     }
-    if ($script:NetLive) { Update-NetGhost $Tics }
+    if ($script:NetLive) { Update-NetGhosts $Tics }
     if ($script:DamageFlash -gt 0) { $script:DamageFlash = [Math]::Max(0.0, $script:DamageFlash - $Tics) }
     if ($script:BonusFlash -gt 0) { $script:BonusFlash = [Math]::Max(0.0, $script:BonusFlash - $Tics) }
     if ($script:BeamFlash -gt 0) { $script:BeamFlash = [Math]::Max(0.0, $script:BeamFlash - $Tics) }
@@ -349,7 +349,7 @@ function Show-DoneScreen {
         }
         $y += 14
     }
-    if ($script:Net -and $script:Net.Mode -eq 'duel') { Write-HudText "FRAGS     you $($script:Net.Frags) : $($script:Net.PeerFrags) opponent" 'Mid' '60C0FF' 0 180 320 12 }
+    if ($script:Net -and $script:Net.Mode -eq 'duel') { Write-HudText (Get-NetHudText) 'Mid' '60C0FF' 0 180 320 12 }
     if ($r.Transcript) { Write-HudText "`"$($r.Transcript.Verdict)`"" 'Small' 'C0C8D8' 0 173 320 8 }
     if ($r.DungeonDemo) {
         $was = if ($r.DungeonBest) { "best so far $(Format-Time ([double]$r.DungeonBest.Seconds) -Tenths)" } else { 'first run of this dungeon' }
@@ -404,6 +404,7 @@ function Start-GameLoop {
         }
         if ($script:PadState) { $script:KeyDown[$vk.M] = [bool]($script:PadButtons -band $script:PAD.Back) }
         if ($hits -contains $vk.F3) { $script:ShowFps = -not $script:ShowFps }
+        if ($script:Net -and $hits -contains $vk.F1 -and $script:Mode -in 'title', 'play') { Open-NetPanel; $hits = @() }      # who is here? (the host: and who should not be)
         if ($hits -contains $vk.F4) { Switch-Music }
         Update-Music
         Update-Network $tics
@@ -419,7 +420,7 @@ function Start-GameLoop {
         }
         if ($script:AutoQuit -gt 0) {
             # test aid: no human at the keyboard - start at once, wander about firing, then leave
-            if ($script:Mode -eq 'title') { $hits = @($vk.Enter) }
+            if ($script:Mode -eq 'title' -and (-not $script:Net -or $script:Net.Guests.Count -ge [int]$env:POLF_WAIT_GUESTS)) { $hits = @($vk.Enter) }      # (a test host can wait for several guests)
             $script:KeyDown[$vk.W] = $true; $script:KeyDown[$vk.Ctrl] = ([int]($now * 2) % 2 -eq 0); $script:KeyDown[$vk.Right] = ([int]$now % 3 -eq 0)
             $autoFrames++
             if ($now - $autoStart -gt $script:AutoQuit -and $script:TerminalMode) {
@@ -437,7 +438,7 @@ function Start-GameLoop {
                 if ($script:Net) {
                     $net = $script:Net
                     Write-Step ("Network test ({0}, {1}): connected {2}, live {3}, {4} messages received, other player at {5:0.0},{6:0.0} with health {7}, {8} actors, {9} kills, status '{10}'" -f
-                        $net.Role, $net.Mode, $net.Connected, $script:NetLive, $net.Received, $net.Ghost.X, $net.Ghost.Y, $net.PeerHealth, $script:Actors.Count, $script:Stats.Kills, $net.Status)
+                        $net.Role, $net.Mode, $net.Connected, $script:NetLive, $net.Received, 0, 0, 0, $script:Actors.Count, $script:Stats.Kills, "$($net.Status) slot $($net.Slot); others: $(($net.Players.Values | Sort-Object Slot | ForEach-Object { "$($_.Name)@$([Math]::Round($_.Ghost.X, 1)),$([Math]::Round($_.Ghost.Y, 1)) $($_.Health)hp" }) -join ' / ')")
                 }
                 $script:Running = $false
             }
@@ -515,6 +516,15 @@ function Start-GameLoop {
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
                 elseif ($script:LevelDone) { Complete-Level }
+            }
+
+            'players' {
+                Update-NetPanel $hits
+                if ($script:Mode -eq 'players' -and $script:NetLive) {
+                    Update-World $tics (New-IdleInput)                       # a shared world does not wait
+                    if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
+                }
+                if ($script:Mode -eq 'players') { if ($script:NetLive) { Show-PlayFrame } else { Show-Shade 'FF0A1020' }; Show-NetPanel }
             }
 
             'console' {
