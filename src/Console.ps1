@@ -10,8 +10,13 @@
 # The game's cmdlets live in that sandbox and cannot touch the game at all: Get-Enemy & co. return
 # copies made when the line is run, and Stop-Enemy & co. merely OUTPUT a request. The game picks those
 # requests out of the pipeline's output, checks the price in privilege and carries them out.
+#
+# Like every PowerShell it has a profile: saves/profile.ps1 is run - inside the sandbox, like everything
+# else - whenever the console starts. Functions, aliases and the four hotkeys (Set-Hotkey) live there;
+# a hotkey runs its command line in the middle of the game without opening the console.
 
 $script:Con = $null
+$script:Hotkeys = @{}                          # slot 1-4 -> command line
 
 $script:ConsoleHelp = @'
 LOOK          Get-Enemy [-Kind guard]   Get-Door   Get-Loot [-Name clip*]   Get-Trap   Get-Player   Get-Secret (20)
@@ -21,6 +26,9 @@ ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight sec
               Open-Door (8, locked ones 25)   Close-Door (5)   Lock-Door (15, jams it for twenty seconds)
               Disable-Trap (10)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
+PROFILE       function kn { Get-Enemy | select -First 1 | Stop-Enemy }      Set-Alias ge Get-Enemy
+              Set-Hotkey 1 'kn'   runs it from the game with a key (Get-Hotkey shows the four keys)
+              Save-Profile keeps what you defined:   Get-Content $PROFILE   Clear-Content $PROFILE
 PIPE          Where-Object (?)  Sort-Object (sort)  Select-Object (select)  ForEach-Object (%)  Measure-Object
               Group-Object  Format-Table (ft)  Format-List (fl)  Get-Member (gm)  Get-Random
 TRY           Get-Enemy | Sort-Object Distance | Select-Object -First 1 | Stop-Enemy -WhatIf
@@ -39,6 +47,7 @@ function Initialize-Console {
         'Format-Table' = [Microsoft.PowerShell.Commands.FormatTableCommand]; 'Format-List' = [Microsoft.PowerShell.Commands.FormatListCommand]
         'Out-String' = [Microsoft.PowerShell.Commands.OutStringCommand]; 'Get-Member' = [Microsoft.PowerShell.Commands.GetMemberCommand]
         'Write-Output' = [Microsoft.PowerShell.Commands.WriteOutputCommand]; 'Get-Random' = [Microsoft.PowerShell.Commands.GetRandomCommand]
+        'Set-Alias' = [Microsoft.PowerShell.Commands.SetAliasCommand]
     }
     foreach ($c in $cmdlets.GetEnumerator()) { $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateCmdletEntry]::new($c.Key, $c.Value, $null)) }
 
@@ -56,7 +65,11 @@ function Initialize-Console {
         'Remove-Item' = '"Remove-Item: nice try. This console is a sandbox - the only thing you can delete from here is the opposition."'
         'Invoke-WebRequest' = '"Invoke-WebRequest: no route to host. The only network down here wants you dead."'
         'Get-ChildItem' = 'if ($PolfFiles) { $PolfFiles } else { "No file system here. Log on at a terminal or a server rack in the building: walk up to it and press use." }'
-        'Get-Content' = 'param([Parameter(Position = 0)][string]$Path = "*") $hit = $PolfFiles | Where-Object Name -like $Path | Select-Object -First 1; if ($hit) { $PolfFileText[$hit.Name] } elseif ($PolfFiles) { throw "Cannot find path ''$Path'' because it does not exist." } else { throw "No file system here. Log on at a terminal first." }'
+        'Set-Hotkey' = 'param([Parameter(Position = 0)][int]$Key, [Parameter(Position = 1)][string]$Command) [pscustomobject]@{ PolfAction = "Set-Hotkey"; Id = $Key; WhatIf = $false; Value = $Command }'
+        'Get-Hotkey' = '$PolfHotkeys'
+        'Save-Profile' = '[pscustomobject]@{ PolfAction = "Save-Profile"; Id = 0; WhatIf = $false }'
+        'Clear-Content' = 'param([Parameter(Position = 0)][string]$Path) if ($Path -eq $PROFILE) { [pscustomobject]@{ PolfAction = "Clear-Profile"; Id = 0; WhatIf = $false } } else { throw "Clear-Content: the only thing that can be cleared from here is `$PROFILE." }'
+        'Get-Content' = 'param([Parameter(Position = 0)][string]$Path = "*") if ($Path -eq $PROFILE) { if ($PolfProfile) { return $PolfProfile } else { return "`$PROFILE is empty. Define a function, then Save-Profile." } }; $hit = $PolfFiles | Where-Object Name -like $Path | Select-Object -First 1; if ($hit) { $PolfFileText[$hit.Name] } elseif ($PolfFiles) { throw "Cannot find path ''$Path'' because it does not exist." } else { throw "No file system here. Log on at a terminal first." }'
         'Unlock-Door' = 'param([Parameter(Position = 0)][string]$Code) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Code }'
         'Use-Token' = 'param([Parameter(Position = 0)][string]$Token) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Token }'
         'Get-Process' = '$PolfEnemies | Select-Object Id, @{ n = "ProcessName"; e = { $_.Kind } }, @{ n = "WS(HP)"; e = { $_.Health } }, State'
@@ -75,7 +88,7 @@ process {
     foreach ($a in @('?', 'Where-Object'), @('where', 'Where-Object'), @('%', 'ForEach-Object'), @('foreach', 'ForEach-Object'), @('select', 'Select-Object'), @('sort', 'Sort-Object'),
         @('measure', 'Measure-Object'), @('group', 'Group-Object'), @('ft', 'Format-Table'), @('fl', 'Format-List'), @('gm', 'Get-Member'), @('echo', 'Write-Output'),
         @('help', 'Get-Help'), @('man', 'Get-Help'), @('gcm', 'Get-Command'), @('kill', 'Stop-Enemy'), @('spps', 'Stop-Enemy'), @('ps', 'Get-Process'), @('gps', 'Get-Process'),
-        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
+        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
         $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateAliasEntry]::new($a[0], $a[1]))
     }
     $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
@@ -83,9 +96,80 @@ process {
     $rs.SessionStateProxy.SetVariable('PolfCommands', @(@($functions.Keys) + @($cmdlets.Keys) | Sort-Object))
     $script:Con = @{
         Runspace = $rs; Lines = [System.Collections.Generic.List[object]]::new(); Input = ''; History = [System.Collections.Generic.List[string]]::new(); HistoryAt = 0
-        Scroll = 0; Opened = 0.0
+        Scroll = 0; Opened = 0.0; Session = [ordered]@{}
     }
     $script:CharQueue = [System.Collections.Generic.Queue[char]]::new()
+    $rs.SessionStateProxy.SetVariable('PROFILE', 'saves\profile.ps1')
+    Import-ConsoleProfile
+}
+
+# ---- the profile -------------------------------------------------------------------------------
+function Get-ProfilePath { Join-Path $script:SaveDir 'profile.ps1' }
+
+# Runs saves/profile.ps1 in the sandbox. It may have been written by hand, so it gets no more trust than a typed line.
+function Import-ConsoleProfile {
+    $script:Hotkeys = @{}
+    $path = Get-ProfilePath
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    try { $text = [System.IO.File]::ReadAllText($path) } catch { return }
+    if ($text.Length -gt 16384) { Write-ConsoleLine 'The profile is larger than 16 KB and has not been loaded.' 'F14C4C'; return }
+    $result = Invoke-SandboxScript $text
+    foreach ($o in $result.Output) { if ($null -ne $o -and $o.PSObject.Properties['PolfAction'] -and $o.PolfAction -eq 'Set-Hotkey') { $null = Set-ConsoleHotkey ([int]$o.Id) ([string]$o.Value) } }
+    foreach ($e in $result.Errors) { Write-ConsoleLine "profile: $e" 'F14C4C' }
+}
+
+function Set-ConsoleHotkey([int]$Slot, [string]$Command) {
+    if ($Slot -lt 1 -or $Slot -gt 4) { return 'Set-Hotkey: there are four hotkeys, 1 to 4.' }
+    $Command = $Command.Trim()
+    if ($Command.Length -gt 200) { return 'Set-Hotkey: two hundred characters is all a hotkey holds.' }
+    if ($Command) { $script:Hotkeys[$Slot] = $Command } else { $script:Hotkeys.Remove($Slot) }
+    $null
+}
+
+# The line of a profile that defines the same thing as the session key "function:name" | "alias:name" | "hotkey:n".
+function Get-ProfilePattern([string]$Key) {
+    $kind, $name = $Key.Split(':', 2); $name = [regex]::Escape($name)
+    switch ($kind) {
+        'function' { "^\s*(function|filter)\s+$name(\s|\{|$)" }
+        'alias'    { "^\s*(Set-Alias|sal)\s+(-Name\s+)?$name\s" }
+        'hotkey'   { "^\s*Set-Hotkey\s+(-Key\s+)?$name\s" }
+    }
+}
+
+# Save-Profile: what has been defined in this session replaces the lines of the same name and is added at the end.
+function Export-ConsoleProfile {
+    $con = $script:Con; $path = Get-ProfilePath
+    $lines = [System.Collections.Generic.List[string]]::new()
+    if (Test-Path -LiteralPath $path) { foreach ($l in [System.IO.File]::ReadAllLines($path)) { $lines.Add($l) } }
+    else {
+        $lines.Add('# POLF 3D console profile. It is run inside the sandboxed console whenever that starts - nowhere else.')
+        $lines.Add("# Functions, Set-Alias and Set-Hotkey <1-4> '<command line>'. Edit it by hand if you like.")
+    }
+    foreach ($key in @($con.Session.Keys)) {
+        $pattern = Get-ProfilePattern $key
+        for ($i = $lines.Count - 1; $i -ge 0; $i--) { if ($lines[$i] -match $pattern) { $lines.RemoveAt($i) } }
+        $lines.Add($con.Session[$key])
+    }
+    $null = New-Item -ItemType Directory -Path $script:SaveDir -Force
+    [System.IO.File]::WriteAllLines($path, $lines)
+    $con.Session.Count
+}
+
+# A hotkey pressed in the game: the command line runs as if it had been typed, the last line of the answer is the message.
+function Invoke-ConsoleHotkey([int]$Slot) {
+    if ($script:NetLive) { Show-Message 'No console hotkeys in a shared world'; return }
+    if ($script:Recording -or $script:Playback) { Show-Message 'No console hotkeys while a demo is recorded or played'; return }
+    if (-not $script:Con) { Initialize-Console }
+    $command = $script:Hotkeys[$Slot]
+    if (-not $command) { Show-Message "Hotkey $Slot ($(Get-KeyName $script:Bind["Macro$Slot"])) is empty. In the console: Set-Hotkey $Slot 'Get-Enemy | select -First 1 | Suspend-Enemy'"; return }
+    Stop-WhatIf
+    $con = $script:Con; $con.AtTerminal = $false
+    $before = $con.Lines.Count
+    Invoke-ConsoleLine $command
+    $answer = ''
+    for ($i = $con.Lines.Count - 1; $i -gt $before; $i--) { if ("$($con.Lines[$i][0])".Trim()) { $answer = "$($con.Lines[$i][0])".Trim(); break } }
+    if ($answer.Length -gt 96) { $answer = $answer.Substring(0, 93) + '...' }
+    Show-Message $(if ($answer) { $answer } else { "PS> $command" })
 }
 
 function Write-ConsoleLine([string]$Text, [string]$Color = 'EEEDF0') {
@@ -134,6 +218,9 @@ function Update-ConsoleData {
         $files = foreach ($name in $floor.Files.Keys) { $texts[$name] = "$($floor.Files[$name])".TrimEnd(); [pscustomobject]@{ Type = 'File'; Mode = '-a---'; Length = $texts[$name].Length; Name = $name } }
     }
     $proxy.SetVariable('PolfFiles', @($files)); $proxy.SetVariable('PolfFileText', $texts)
+    $profilePath = Get-ProfilePath
+    $proxy.SetVariable('PolfProfile', $(if (Test-Path -LiteralPath $profilePath) { try { [System.IO.File]::ReadAllText($profilePath).TrimEnd() } catch { '' } } else { '' }))
+    $proxy.SetVariable('PolfHotkeys', @(foreach ($slot in 1..4) { [pscustomobject]@{ Type = 'Hotkey'; Id = $slot; Key = (Get-KeyName $script:Bind["Macro$slot"]); Command = "$($script:Hotkeys[$slot])" } }))
     $proxy.SetVariable('PolfEnemies', @($enemies | Sort-Object Distance)); $proxy.SetVariable('PolfDoors', @($doors | Sort-Object Distance))
     $proxy.SetVariable('PolfLoot', @($loot | Sort-Object Distance)); $proxy.SetVariable('PolfTraps', @($traps | Sort-Object Distance)); $proxy.SetVariable('PolfPlayer', $player)
 }
@@ -171,6 +258,23 @@ function Invoke-ConsoleAction($Action) {
     if ($name -eq 'Use-Code') {
         $answer = Invoke-StoryCode ([string]$Action.Value)
         if ($answer) { Write-ConsoleLine $answer '60FF80'; Start-Sfx 'key' } else { Write-ConsoleLine "'$($Action.Value)' means nothing on this floor." 'F14C4C'; Start-Sfx 'noway' }
+        return $true
+    }
+    if ($name -eq 'Set-Hotkey') {
+        $problem = Set-ConsoleHotkey $id ([string]$Action.Value)
+        if ($problem) { Write-ConsoleLine $problem 'F14C4C'; return $true }
+        $script:Con.Session["hotkey:$id"] = "Set-Hotkey $id '$("$($Action.Value)".Trim().Replace("'", "''"))'"
+        Write-ConsoleLine "Hotkey $id - the $(Get-KeyName $script:Bind["Macro$id"]) key - $(if ("$($Action.Value)".Trim()) { "runs: $("$($Action.Value)".Trim())" } else { 'is empty again' }).  Save-Profile keeps it." '60FF80'
+        return $true
+    }
+    if ($name -eq 'Save-Profile') {
+        try { $count = Export-ConsoleProfile; Write-ConsoleLine "Saved $count definition(s) of this session to `$PROFILE (saves/profile.ps1)." '60FF80' } catch { Write-ConsoleLine "Save-Profile: $($_.Exception.Message)" 'F14C4C' }
+        return $true
+    }
+    if ($name -eq 'Clear-Profile') {
+        Remove-Item -LiteralPath (Get-ProfilePath) -ErrorAction SilentlyContinue
+        $script:Hotkeys = @{}; $script:Con.Session.Clear()
+        Write-ConsoleLine '$PROFILE is empty and so are the hotkeys. What this session has defined lives until the game ends.' '60FF80'
         return $true
     }
     $target = switch -Wildcard ($name) {
@@ -221,6 +325,11 @@ function Invoke-ConsoleLine([string]$Text) {
     Add-TranscriptLine "PS> $Text"
     Update-ConsoleData
     $result = Invoke-SandboxScript $Text
+    if (-not $result.Errors.Count) {
+        # a definition: remember the line, Save-Profile writes it to the profile
+        $key = if ($Text -match '^(?:function|filter)\s+([A-Za-z_][\w-]*)') { "function:$($Matches[1])" } elseif ($Text -match '^(?:Set-Alias|sal)\s+(?:-Name\s+)?([^\s-]\S*)\s') { "alias:$($Matches[1])" }
+        if ($key) { $con.Session[$key] = $Text; Write-ConsoleLine 'Defined for this session. Save-Profile keeps it for good.' 'A0A8B8' }
+    }
     $show = [System.Collections.Generic.List[object]]::new()
     $go = $true
     foreach ($o in $result.Output) {

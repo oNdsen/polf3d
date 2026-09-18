@@ -273,6 +273,32 @@ function Invoke-SelfTest([string]$OutDir) {
         $text -notmatch 'used on this floor already' -or $text -notmatch 'means nothing' -or $silver.Lock -ne 0 -or $script:TerminalAt.Count -lt 3) { throw "story test failed:`n$text" }
     foreach ($floor in $script:StoryFiles.Keys) { foreach ($code in $script:StoryFiles[$floor].Codes.Keys) { if (-not (($script:StoryFiles[$floor].Files.Values -join ' ') -match [regex]::Escape($code))) { throw "story test failed: nothing on floor '$floor' mentions the code '$code'." } } }
 
+    # ---- the console's profile: a function, an alias and a hotkey survive a restart; the profile itself is as sandboxed as a typed line ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    if ($script:Con) { $script:Con.Runspace.Dispose() }; $script:Con = $null
+    Remove-Item -LiteralPath (Get-ProfilePath) -ErrorAction SilentlyContinue
+    Open-Console
+    foreach ($line in 'function kn { Get-Enemy | Select-Object -First 1 | Suspend-Enemy }', 'Set-Alias ge Get-Enemy', "Set-Hotkey 1 'kn'", 'Get-Hotkey', 'Save-Profile', 'Get-Content $PROFILE') { Invoke-ConsoleLine $line }
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"
+    Show-PlayFrame; Show-Console; Save-BackBuffer (Join-Path $OutDir 'view-console-profile.png')
+    Close-Console
+    $saved = Get-Content -LiteralPath (Get-ProfilePath) -Raw
+    $canary = Join-Path $OutDir 'profile-canary.txt'; Set-Content -LiteralPath $canary -Value 'still here'
+    Add-Content -LiteralPath (Get-ProfilePath) -Value "[System.IO.File]::Delete('$canary')", "Remove-Item '$canary'"
+    $script:Con.Runspace.Dispose(); $script:Con = $null; $script:Hotkeys = @{}                     # "the game is started again"
+    $script:P.Privilege = 100; $consoleBefore = $script:Run.Console
+    Invoke-ConsoleHotkey 1
+    $stunned = @($script:Actors | Where-Object { $_.Stun -gt 0 }).Count
+    Invoke-ConsoleHotkey 2; $empty = $script:Message
+    Invoke-ConsoleLine 'ge | Measure-Object | Select-Object -ExpandProperty Count'
+    $aliasWorks = "$($script:Con.Lines[$script:Con.Lines.Count - 1][0])".Trim() -match '^\d+$'
+    Invoke-ConsoleLine 'Clear-Content $PROFILE'
+    Write-Step "profile test: saved $(@($saved -split "`n" | Where-Object { $_ -match '^(function|Set-)' }).Count) definitions; after a restart hotkey 1 suspended $stunned enemy, the alias works: $aliasWorks, the canary is $(if (Test-Path $canary) { 'alive' } else { 'DEAD' })"
+    if ($saved -notmatch 'function kn' -or $saved -notmatch 'Set-Alias ge' -or $saved -notmatch "Set-Hotkey 1 'kn'" -or $text -notmatch 'saves\\profile.ps1|function kn' -or $stunned -ne 1 -or
+        $script:Run.Console -ne $consoleBefore + 1 -or $empty -notmatch 'is empty' -or -not $aliasWorks -or -not (Test-Path $canary) -or (Test-Path -LiteralPath (Get-ProfilePath)) -or $script:Hotkeys.Count) { throw "profile test failed:`n$text" }
+    Remove-Item -LiteralPath $canary -ErrorAction SilentlyContinue
+    $script:Con.Runspace.Dispose(); $script:Con = $null
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

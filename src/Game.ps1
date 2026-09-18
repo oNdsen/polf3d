@@ -507,6 +507,10 @@ function Start-GameLoop {
                     elseif ($h -eq $script:Bind.Verbose) { $script:AbilityKey = 3 }
                     elseif ($h -eq $script:Bind.Force) { $script:AbilityKey = 4 }
                     elseif ($h -eq $script:Bind.Undo) { $script:AbilityKey = 5 }
+                    elseif ($h -eq $script:Bind.Macro1) { Invoke-ConsoleHotkey 1 }
+                    elseif ($h -eq $script:Bind.Macro2) { Invoke-ConsoleHotkey 2 }
+                    elseif ($h -eq $script:Bind.Macro3) { Invoke-ConsoleHotkey 3 }
+                    elseif ($h -eq $script:Bind.Macro4) { Invoke-ConsoleHotkey 4 }
                     elseif ($h -eq $vk.F6) { Invoke-Cheat 'GiveAll' }
                     elseif ($h -eq $vk.F7) { Invoke-Cheat 'Ammo' }
                     elseif ($h -eq $vk.F8) { Invoke-Cheat 'God' }

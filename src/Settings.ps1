@@ -8,11 +8,13 @@ $script:BindDefaults = [ordered]@{
     Forward = 87; Back = 83; StrafeLeft = 65; StrafeRight = 68; TurnLeft = 37; TurnRight = 39
     Run = 16; Sneak = 67; Fire = 17; Use = 32; Map = 77; Console = 84
     WhatIf = 90; Confirm = 88; Verbose = 86; Force = 70; Undo = 82
+    Macro1 = 71; Macro2 = 72; Macro3 = 66; Macro4 = 89
 }
 $script:BindLabels = @{
     Forward = 'forward'; Back = 'back'; StrafeLeft = 'strafe left'; StrafeRight = 'strafe right'; TurnLeft = 'turn left'; TurnRight = 'turn right'
     Run = 'run'; Sneak = 'sneak'; Fire = 'fire'; Use = 'use'; Map = 'automap (hold)'; Console = 'console'
     WhatIf = '-WhatIf'; Confirm = '-Confirm'; Verbose = '-Verbose'; Force = '-Force'; Undo = 'Undo'
+    Macro1 = 'console hotkey 1'; Macro2 = 'console hotkey 2'; Macro3 = 'console hotkey 3'; Macro4 = 'console hotkey 4'
 }
 # keys that mean something in every mode and must not be given away
 $script:BindReserved = 13, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 123, 49, 50, 51, 52, 53, 54, 55, 56, 57
@@ -144,6 +146,6 @@ function Show-Options {
     foreach ($line in (Get-OptionLines)) {
         if ($line[2]) { Write-HudBar 'FF2C54C4' 4 ($y - 0.5) 312 6.4 }
         $g.DrawString($line[0], $script:Fonts.Term, (Get-Brush $line[1]), [single](8 * $sc), [single]($y * $sc))
-        $y += 6.3
+        $y += 5.9
     }
 }
