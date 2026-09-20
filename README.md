@@ -148,9 +148,9 @@ ends with a tally (kills, secrets, treasures, a bonus for beating the par time).
 | 4 | Lab Zero | 37 / ~5800 | A ring corridor with elite patrols around the reactor hall, windows to shoot (and be shot) through, snipers, **the first war machine** |
 | 5 | The Citadel | 40 / ~6500 | The end of the first half: a great hall with three patrols, two commanders, and a throne hall with a war machine and its escort |
 | 6 | The Data Centre | 44 / ~4200 | Six cold aisles between two cross corridors: snipers at the far ends, windows in the rack rows, a commander in the silver cage |
-| 7 | The Archive | 46 / ~3800 | Two halls of shelves to get lost in, with things waiting between them. Four secrets – the microfiche knows them all |
+| 7 | The Archive | 45 / ~3700 | Two halls of shelves to get lost in, with things waiting between them. Four secrets – the microfiche knows them all |
 | 8 | The Foundry | 35 / ~5600 | A production line: a conveyor with three crushers and a gate, three levers – and THE PRINTER in the assembly hall |
-| 9 | The Executive Floor | 46 / ~7100 | Carpet and plants. A gallery of offices, the board (two commanders) behind the silver door, and a CEO who keeps a printer |
+| 9 | The Executive Floor | 46 / ~5500 | Carpet and plants. A gallery of offices, the board (a commander chairing his officers) behind the silver door, and a CEO who keeps a printer |
 | 10 | Ring 0 | 47 / ~10000 | Two rings around the core. Patrols outside, levers for the gates, and in the dark of the core two printers, **BLUE SCREEN** – and the lift in the middle of it |
 
 **Every floor is a test suite.** When you throw the lift switch the run is put through ten tests and the result is

@@ -475,10 +475,10 @@ Add-Room 19 29 15 8 'WW' @(                                  # foyer
 Add-Room 24 38 5 4 'MM' @(2, 2, 'P^',  2, 1, '*l',  0, 0, '+a',  4, 0, '+f')                                        # arrival
 Add-Room 3 21 15 18 'WW' @(                                  # west stacks
     2, 3, 'ge',  12, 4, 'g<',  7, 6, 'ov',  3, 10, 'e>',  11, 10, 'h<',  6, 13, 'gn',  13, 16, 'k<',  2, 16, 'd>'
-    0, 0, '+a',  14, 0, '+3',  0, 17, '+h',  14, 17, '+a',  7, 3, '+f',  5, 9, '+2')
+    0, 0, '+a',  14, 0, '+3',  0, 17, '+h',  14, 17, '+a',  7, 3, '+f',  5, 9, '+2',  7, 10, '+h')
 Add-Room 35 21 15 18 'WW' @(                                 # east stacks
     12, 3, 'mw',  2, 4, 'g>',  7, 7, 's<',  10, 10, 'e<',  3, 13, 'hn',  13, 14, 'k<',  1, 16, 'o>',  4, 0, 'sv'
-    0, 0, '+2',  14, 0, '+a',  0, 17, '+a',  14, 17, '+h',  7, 4, '+o',  9, 13, '+z')
+    0, 0, '+2',  14, 0, '+a',  0, 17, '+a',  14, 17, '+h',  7, 4, '+o',  9, 13, '+z',  7, 10, '+h')
 foreach ($ox in 3, 35) {                                     # the shelves, the same in both halls
     Add-Wall ($ox + 1) 23 5 1 'Ws';  Add-Wall ($ox + 8) 23 6 1 'Ws'
     Add-Wall $ox 26 4 1 'Ws';        Add-Wall ($ox + 6) 26 4 1 'Ws';   Add-Wall ($ox + 12) 26 3 1 'Ws'
@@ -486,12 +486,12 @@ foreach ($ox in 3, 35) {                                     # the shelves, the 
     Add-Wall $ox 33 5 1 'Ws';        Add-Wall ($ox + 7) 33 4 1 'Ws';   Add-Wall ($ox + 13) 33 2 1 'Ws'
     Add-Wall ($ox + 1) 36 5 1 'Ws';  Add-Wall ($ox + 8) 36 6 1 'Ws'
 }
-Add-Room 24 21 5 7 'WW' @(1, 1, 'sv',  3, 1, 'ev',  0, 0, '*a',  4, 0, '*a')                                         # passage to the reading room
+Add-Room 24 21 5 7 'WW' @(1, 1, 'sv',  3, 1, 'ev',  0, 0, '*a',  4, 0, '*a',  2, 4, '+h')                                         # passage to the reading room
 Add-Room 3 8 12 12 'WW' @(                                   # catalogue room: silver key
     3, 3, '*t',  8, 3, '*t',  3, 8, '*t',  8, 8, '*t',  11, 0, '+s'
     5, 5, 'ov',  2, 2, 'o>',  9, 9, 'o<',  6, 1, 'ev',  10, 6, 'e<',  5, 10, 'hv',  0, 0, '+1',  0, 11, '+a',  11, 11, '+f')
 Add-Room 38 8 12 12 'BB' @(                                  # tape vault: the commander
-    6, 4, 'bv',  10, 1, 'mw',  1, 10, 'me',  4, 7, 'ev',  8, 7, 'ev'
+    6, 4, 'bv',  10, 1, 'mw',  4, 7, 'ev',  8, 7, 'ev'
     3, 3, '*c',  8, 3, '*c',  3, 8, '*c',  8, 8, '*c',  0, 0, '+h',  11, 0, '+h',  0, 11, '+a',  11, 11, '+a',  6, 0, '+3')
 Add-Room 19 8 15 12 'WW' @(                                  # reading room
     3, 3, '*t',  7, 3, '*t',  11, 3, '*t',  3, 8, '*t',  7, 8, '*t',  11, 8, '*t',  5, 5, '*h',  9, 5, '*h'
@@ -562,30 +562,30 @@ Save-Level 8 'The Foundry' 660 '2E1C14' '5A463A' 'RR' -Look '@floortex flat_ston
 
 # =====================================================================================================
 # FLOOR 9 - The Executive Floor.  Carpet, plants and a long gallery with offices on both sides. The
-# silver key is in the CFO's office, the board - two commanders - meets behind the silver door, and
+# silver key is in the CFO's office, the board - a commander and his officers - meets behind the silver door, and
 # the CEO's office behind the gold door has a lift of its own. And a printer.
 # =====================================================================================================
 New-Grid 56 42
 Add-Room 4 22 47 3 'WW' @(                                   # the gallery, one patrol
     2, 1, 'oE',  0, 1, ':>',  46, 1, ':<',  7, 0, '*a',  17, 0, '*a',  29, 0, '*a',  39, 0, '*a',  7, 2, '*a',  17, 2, '*a',  29, 2, '*a',  39, 2, '*a'
-    0, 2, 'o>',  46, 2, 's<',  12, 0, 'ev',  34, 0, 'hv')
-Add-Room 25 36 5 4 'MM' @(2, 2, 'P^',  2, 1, '*l',  0, 0, '+a',  4, 0, '+h')                                        # arrival
+    0, 2, 'o>',  46, 2, 's<',  12, 0, 'ev',  34, 0, 'gv',  20, 0, '+a',  30, 2, '+a',  9, 0, '+a',  37, 2, '+a')
+Add-Room 25 36 5 4 'MM' @(2, 2, 'P^',  2, 1, '*l',  0, 0, '+a',  4, 0, '+h',  0, 3, '+a',  4, 3, '+a')                # arrival
 Add-Room 20 26 15 9 'WW' @(                                  # reception
     0, 0, '*p',  14, 0, '*p',  0, 8, '*p',  14, 8, '*p',  5, 3, '*t',  6, 3, '*t',  8, 3, '*t',  9, 3, '*t',  7, 5, '*h'
-    7, 2, 'ov',  4, 2, 'gv',  10, 2, 'gv',  12, 6, 'h<',  1, 8, '+a',  13, 8, '+f')
-Add-Room 4 26 6 7 'WW' @(2, 3, '*t',  0, 6, '*p',  3, 2, 'ov',  4, 5, 'e^',  5, 6, '+a',  0, 0, '+1')                  # offices
-Add-Room 11 26 7 7 'WW' @(3, 3, '*t',  6, 6, '*p',  2, 5, 'h^',  5, 2, 'ov',  0, 6, '+f',  6, 0, '+2')
-Add-Room 37 26 7 7 'WW' @(3, 3, '*t',  0, 6, '*p',  1, 2, 'ov',  5, 5, 'e^',  3, 5, 'k^',  6, 6, '+a',  0, 0, '+3')
-Add-Room 45 26 6 7 'WW' @(2, 3, '*t',  5, 6, '*p',  3, 4, 's^',  1, 5, 'h^',  0, 6, '+h',  5, 0, '+1')
+    7, 2, 'ov',  4, 2, 'gv',  10, 2, 'gv',  12, 6, 'g<',  1, 8, '+a',  13, 8, '+f',  7, 7, '+h',  2, 7, '+a',  12, 7, '+a',  7, 6, '+c')
+Add-Room 4 26 6 7 'WW' @(2, 3, '*t',  0, 6, '*p',  3, 2, 'ov',  4, 5, 'g^',  5, 6, '+a',  0, 0, '+1',  5, 1, '+a')                  # offices
+Add-Room 11 26 7 7 'WW' @(3, 3, '*t',  6, 6, '*p',  2, 5, 'g^',  5, 2, 'ov',  0, 6, '+f',  6, 0, '+2',  3, 1, '+h')
+Add-Room 37 26 7 7 'WW' @(3, 3, '*t',  0, 6, '*p',  1, 2, 'ov',  5, 5, 'g^',  3, 5, 'k^',  6, 6, '+a',  0, 0, '+3',  6, 1, '+a')
+Add-Room 45 26 6 7 'WW' @(2, 3, '*t',  5, 6, '*p',  3, 4, 's^',  1, 5, 'o^',  0, 6, '+h',  5, 0, '+1',  4, 1, '+a')
 Add-Room 4 12 12 9 'WW' @(                                   # the CFO's office: silver key
     4, 3, '*t',  5, 3, '*t',  6, 3, '*t',  0, 0, '*p',  11, 0, '*p',  5, 2, '+s'
-    3, 5, 'ov',  8, 5, 'ov',  1, 7, 'e>',  10, 7, 'e<',  6, 6, 'hv',  11, 8, '+a',  0, 8, '+2',  10, 0, '+3')
+    3, 5, 'ov',  8, 5, 'ov',  1, 7, 'g>',  10, 7, 'e<',  6, 6, 'hv',  11, 8, '+a',  0, 8, '+2',  10, 0, '+3',  0, 4, '+a')
 Add-Room 39 12 12 9 'TT' @(                                  # security
     1, 0, '*m',  3, 0, '*m',  8, 0, '*m',  10, 0, '*m',  2, 3, 'kv',  9, 3, 'kv',  5, 4, 'sv',  2, 7, 'e>',  9, 7, 'e<',  6, 2, 'ov'
-    0, 8, '+a',  11, 8, '+h',  5, 0, '+o',  6, 0, '+o')
-Add-Room 18 9 19 12 'WW' @(                                  # the boardroom: two commanders
+    0, 8, '+a',  11, 8, '+h',  5, 0, '+o',  6, 0, '+o',  0, 4, '+a')
+Add-Room 18 9 19 12 'WW' @(                                  # the boardroom: the commander chairs the meeting
     5, 5, '*t',  6, 5, '*t',  7, 5, '*t',  8, 5, '*t',  9, 5, '*t',  10, 5, '*t',  11, 5, '*t',  12, 5, '*t',  13, 5, '*t',  6, 3, '*h',  12, 3, '*h'
-    5, 2, 'bv',  13, 2, 'bv',  9, 2, 'ov',  2, 8, 'ev',  16, 8, 'ev',  9, 8, 'hv',  7, 9, 'hv',  11, 9, 'hv'
+    9, 2, 'bv',  5, 2, 'ov',  13, 2, 'ov',  2, 8, 'ev',  16, 8, 'ev',  9, 8, 'hv',  7, 9, 'gv',  11, 9, 'gv',  0, 5, '+a',  18, 5, '+a'
     0, 0, '+h',  18, 0, '+h',  0, 11, '+a',  18, 11, '+a',  8, 0, '+z',  10, 0, '+o')
 Add-Room 20 3 16 5 'WW' @(                                   # the CEO's office
     7, 1, '*t',  8, 1, '*t',  0, 0, '*p',  15, 0, '*p',  0, 4, '*f',  15, 4, '*f'
