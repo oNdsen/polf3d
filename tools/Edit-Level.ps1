@@ -44,14 +44,15 @@ $script:Palette = @(
     @('Rg', 'Wall: brick, graffiti', 'tile'), @('Sg', 'Wall: stone, graffiti', 'tile'),
     @('MX', 'Lift switch (exit)', 'tile'), @('MY', 'Secret lift switch (bonus floor)', 'tile'),
     @('DD', 'Door', 'tile'), @('DG', 'Door: gold lock', 'tile'), @('DS', 'Door: silver lock', 'tile'), @('DL', 'Door: lift', 'tile'),
-    @('D1', 'Remote door 1', 'tile'), @('X1', 'Lever 1', 'tile'), @('D2', 'Remote door 2', 'tile'), @('X2', 'Lever 2', 'tile'),
+    @('D1', 'Remote door 1', 'tile'), @('X1', 'Lever 1', 'tile'), @('D2', 'Remote door 2', 'tile'), @('X2', 'Lever 2', 'tile'), @('D3', 'Remote door 3', 'tile'), @('X3', 'Lever 3', 'tile'),
     @('?S', 'Push-wall: stone', 'tile'), @('?s', 'Push-wall: stone, banner', 'tile'), @('?W', 'Push-wall: wood', 'tile'), @('?w', 'Push-wall: wood, portrait', 'tile'),
     @('?B', 'Push-wall: blue', 'tile'), @('?R', 'Push-wall: brick', 'tile'), @('?M', 'Push-wall: steel', 'tile'), @('?G', 'Push-wall: moss', 'tile'), @('?T', 'Push-wall: tech', 'tile'),
     @('!S', 'Cracked wall: stone', 'tile'), @('!M', 'Cracked wall: steel', 'tile'), @('!T', 'Cracked wall: tech', 'tile'), @('!G', 'Cracked wall: moss', 'tile'),
     @('=S', 'Window: stone', 'tile'), @('=T', 'Window: tech', 'tile'), @('=W', 'Window: wood', 'tile'), @('=R', 'Window: brick', 'tile'),
     @('g^', 'Enemy: guard', 'enemy'), @('d^', 'Enemy: dog', 'enemy'), @('o^', 'Enemy: officer', 'enemy'), @('e^', 'Enemy: elite', 'enemy'),
     @('m^', 'Enemy: mutant', 'enemy'), @('s^', 'Enemy: sniper', 'enemy'), @('h^', 'Enemy: shield bearer', 'enemy'), @('k^', 'Enemy: kamikaze bot', 'enemy'),
-    @('b^', 'Boss: commander', 'enemy'), @('u^', 'Boss: war machine', 'enemy'), @(':^', 'Patrol waypoint', 'dir'),
+    @('b^', 'Boss: commander', 'enemy'), @('u^', 'Boss: war machine', 'enemy'), @('x^', 'Boss: BLUE SCREEN', 'enemy'),
+    @('cs', 'Security camera', 'watcher'), @('ts', 'Sentry gun', 'watcher'), @(':^', 'Patrol waypoint', 'dir'),
     @('+a', 'Item: clip', 'tile'), @('+h', 'Item: first aid', 'tile'), @('+f', 'Item: food', 'tile'), @('+d', 'Item: dog food', 'tile'),
     @('+m', 'Item: machine gun', 'tile'), @('+c', 'Item: chain gun', 'tile'), @('+p', 'Item: Pipeline Cannon', 'tile'), @('+r', 'Item: Force Blaster', 'tile'), @('+z', 'Item: Force charge', 'tile'),
     @('+l', 'Item: rocket launcher', 'tile'), @('+o', 'Item: rockets', 'tile'), @('+t', 'Item: flamethrower', 'tile'), @('+j', 'Item: throwing knives', 'tile'),
@@ -107,7 +108,7 @@ function Import-Map([string]$File) {
     foreach ($line in [System.IO.File]::ReadAllLines($File)) {
         if ($inMap) { if ($line.Trim()) { $rows += $line.TrimEnd() }; continue }
         if ($line.StartsWith('@map')) { $inMap = $true }
-        elseif ($line.StartsWith('@spawn') -or $line.StartsWith(';')) { $script:ExtraLines += $line }
+        elseif ($line -match '^@(spawn|dark|event|horde) ' -or $line.StartsWith(';')) { $script:ExtraLines += $line }      # kept as they are: a map may have several of each
         elseif ($line.StartsWith('@')) { $p = $line.Substring(1).Split(' ', 2); $script:Header[$p[0].ToLower()] = "$($p[1])".Trim() }
     }
     if (-not $rows) { throw "No @map block in $File" }
@@ -121,7 +122,7 @@ function Export-Map([string]$File) {
     $lines = [System.Collections.Generic.List[string]]::new()
     foreach ($l in $script:ExtraLines) { if ($l.StartsWith(';')) { $lines.Add($l) } }
     foreach ($k in $script:Header.Keys) { if ("$($script:Header[$k])") { $lines.Add("@$k $($script:Header[$k])") } }
-    foreach ($l in $script:ExtraLines) { if ($l.StartsWith('@spawn')) { $lines.Add($l) } }
+    foreach ($l in $script:ExtraLines) { if ($l.StartsWith('@')) { $lines.Add($l) } }
     $lines.Add('@map')
     for ($y = 0; $y -lt $script:H; $y++) {
         $sb = [System.Text.StringBuilder]::new()
@@ -161,7 +162,7 @@ function Get-BrushCode {
     $entry = $script:Palette[[Math]::Max(0, $script:List.SelectedIndex)]
     if ($entry[2] -eq 'tile') { return $entry[0] }
     $dir = [Math]::Max(0, $script:DirBox.SelectedIndex)
-    $set = if ($entry[2] -eq 'enemy') { ('^>v<', 'nesw', 'NESW')[[Math]::Max(0, $script:ModeBox.SelectedIndex)] } else { '^>v<' }
+    $set = if ($entry[2] -eq 'enemy') { ('^>v<', 'nesw', 'NESW')[[Math]::Max(0, $script:ModeBox.SelectedIndex)] } elseif ($entry[2] -eq 'watcher') { 'nesw' } else { '^>v<' }      # cameras and sentry guns only ever see
     "$($entry[0][0])$($set[$dir])"
 }
 
