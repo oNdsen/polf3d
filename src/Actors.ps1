@@ -81,6 +81,7 @@ function Test-Gunfire([Actor]$a) {
 function Start-Attack([Actor]$a) {
     if (-not $script:Predicting) { $script:Run.Alerts++ }
     if (-not $script:BossNames.ContainsKey($a.Kind)) { Add-PolicyHeat 7 }      # being seen makes the whole house more nervous
+    if (-not $script:Predicting -and -not $script:PolicyQuiet) { Reset-Streak }
     $a.AlertTics = 50
     Start-Sfx (Get-AlertSound $a) $a.X $a.Y
     Set-ActorState $a "$($a.Kind).chase1"
@@ -720,7 +721,8 @@ function Invoke-ActorDamage([Actor]$a, [int]$Damage, [string]$Source = 'bullet')
         return
     }
     if ($Source -ne 'knife') { $script:MadeNoise = $true }     # blades are silent: nobody else wakes up
-    if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a)) {        # flames lick around it
+    if ($Source -eq 'bullet' -and (Test-Signed 'ArmorPiercing')) { $Damage = [int]($Damage * 1.5) }
+    if ($a.Def.Shield -and $Source -in 'bullet', 'knife' -and (Test-ShieldBlocks $a) -and -not ($Source -eq 'bullet' -and (Test-Signed 'ArmorPiercing'))) {        # flames lick around it
         Add-Effect 'puff' ($a.X + ($script:P.X - $a.X) * 0.15) ($a.Y + ($script:P.Y - $a.Y) * 0.15)
         Start-Sfx 'clang' $a.X $a.Y
         if (-not $a.AttackMode) { $a.React = 0; Start-Attack $a }
@@ -761,8 +763,8 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
         Add-TranscriptLine "Stop-Enemy -Kind $($a.Kind)$(if (-not $a.AttackMode) { ' -Unaware' })   # with $cause"
     }
     Set-ActorState $a "$($a.Kind).die1"
-    switch ($a.Def.Drop) {
-        'clip_small'   { Add-Item 'clip_small' $tx $ty }
+    if (-not $NoScore) { Update-Streak (-not $a.AttackMode) }
+    foreach ($drop in @(Get-Loot $a)) { switch ($drop) {
         'key_gold'     {
             # the commander's gold key - but only where it opens something: a floor without a gold lock (or a player who
             # has the key already) gets his strongbox instead. A key for a door that does not exist only confuses.
@@ -772,7 +774,8 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
         }
         'crown'        { Add-Item 'crown' $tx $ty; $script:Stats.TreasureTotal++ }
         'mgun_or_clip' { if (-not $script:P.Owned[2]) { Add-Item 'mgun' $tx $ty } else { Add-Item 'clip_small' $tx $ty } }
-    }
+        default        { Add-Item $drop $tx $ty }
+    } }
     if (-not $a.Def.NoCount) { $script:Stats.Kills++ }
     if (-not $script:NetAsPeer) { Add-Privilege 6 }
     $a.Shootable = $false

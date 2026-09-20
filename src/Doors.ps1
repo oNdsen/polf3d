@@ -56,8 +56,14 @@ function Close-Door([int]$Index) {
 function Invoke-DoorUse([int]$Index) {
     $d = $script:Doors[$Index]
     if ($d.Lock -eq 4 -and -not $d.Unlocked) { Start-Sfx 'noway'; Show-Message 'This door is opened from somewhere else'; return }
-    if ($d.Lock -eq 1 -and -not $script:P.KeyGold)   { Start-Sfx 'noway'; Show-Message 'Locked - you need the gold key';   return }
-    if ($d.Lock -eq 2 -and -not $script:P.KeySilver) { Start-Sfx 'noway'; Show-Message 'Locked - you need the silver key'; return }
+    if (($d.Lock -eq 1 -and -not $script:P.KeyGold) -or ($d.Lock -eq 2 -and -not $script:P.KeySilver)) {
+        $which = if ($d.Lock -eq 1) { 'gold' } else { 'silver' }
+        if ([int]$script:P.Keycards -le 0) { Start-Sfx 'noway'; Show-Message "Locked - you need the $which key (or a keycard)"; return }
+        # a keycard: the lock is gone for good
+        $script:P.Keycards = [int]$script:P.Keycards - 1
+        $d.Lock = 0; $d.Unlocked = $true; $d.TexId = $script:TEX_DOOR
+        Start-Sfx 'key'; Show-Message "Keycard accepted: the $which lock is open for good ($($script:P.Keycards) left)"; $script:HudDirty = $true
+    }
     $d.Jam = 0.0                                                   # whoever jammed it can also free it
     if ($script:NOISE_DOOR -gt $script:StepNoise) { $script:StepNoise = $script:NOISE_DOOR }      # doors creak
     if ($d.Action -in 'closed', 'closing') { Open-Door $Index } else { Close-Door $Index }

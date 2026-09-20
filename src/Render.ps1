@@ -408,6 +408,8 @@ function Show-Overlays {
     # progress on this floor, and the clock when speedrunning
     $st = $script:Stats
     Write-HudText ("KILLS {0}/{1}   SECRETS {2}/{3}   TREASURE {4}/{5}" -f $st.Kills, $st.KillTotal, $st.Secrets, $st.SecretTotal, $st.Treasures, $st.TreasureTotal) 'Small' 'A0B4D0' 2 ($viewH - 19) 150 8
+    $extras = @(if ([int]$script:P.Keycards -gt 0) { "KEYCARDS $($script:P.Keycards)" }; foreach ($m in @($script:P.Signed)) { if ($m) { "+$m" } }; if ([int]$st.Streak -ge 2) { "STREAK x$($st.Streak)" })
+    if ($extras) { Write-HudLine ($extras -join '   ') 'Small' '40E0FF' 4 ($viewH - 27) }
     if ($script:Speedrun) {
         $now = $st.Tics / $script:TICRATE
         Write-HudText ("{0}   par {1}   run {2}" -f (Format-Time $now -Tenths), (Format-Time $script:ParSeconds), (Format-Time (($script:P.RunTics + $st.Tics) / $script:TICRATE))) 'Mid' $(if ($now -le $script:ParSeconds) { '40FF60' } else { 'FF8040' }) 60 14 200 10
@@ -498,6 +500,7 @@ function Show-Hud {
     $hpColor = if ($hp -le 25) { 'FF5040' } elseif ($hp -le 50) { 'FFC040' } else { 'FFFFFF' }
     Write-HudPanel '80101A2C' 78 ($y + 4) 72 33
     Write-HudText 'HEALTH' 'Small' '8FB0FF' 80 ($y + 5) 30 8
+    if ([int]$script:P.Armor -gt 0) { Write-HudText "ARMOUR $([int]$script:P.Armor)" 'Small' '40E0FF' 110 ($y + 5) 40 8 }
     Write-HudText "$hp" 'Big' $hpColor 78 ($y + 10) 72 18
     $low, $high = if ($hp -le 25) { 'C02020', 'FF5040' } elseif ($hp -le 50) { 'C07010', 'FFC040' } else { '20A040', '60FF80' }
     Write-HudGauge 82 ($y + 29) 64 5 ($hp / 100.0) $low $high

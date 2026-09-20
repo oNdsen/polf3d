@@ -679,6 +679,12 @@ function Add-ThingSprites {
     $S['pipeline'] = New-Sprite { Add-Box '4A3018' 6 52 8 8; Add-Box '203040' 12 52 44 5; Add-Box '40E0FF' 14 53 40 1; foreach ($x in 22, 32, 42) { Add-Box '80F0FF' $x 50 2 9 } }
     $S['forcegun'] = New-Sprite { Add-Box '2A2A30' 10 47 34 13; Add-Box '44444C' 10 47 34 2; Add-Oval '101418' 36 44 18 18; Add-Oval '40FF60' 40 48 10 10; Add-Oval 'C0FFC8' 43 51 4 4; Add-Box '30C050' 14 52 18 2 }
     $S['charge'] = New-Sprite { Add-Box '808890' 28 45 8 3; Add-Box '2A2A30' 25 48 14 14; Add-Box '40FF60' 27 50 10 10; Add-Box 'C0FFC8' 29 52 2 6 }
+    # what the fallen leave behind (Loot.ps1)
+    $S['armor_shard'] = New-Sprite { Add-Poly '5A7AA0' @(26, 60, 28, 50, 36, 48, 40, 54, 38, 60); Add-Poly '8FB0D8' @(29, 58, 30, 52, 35, 51, 36, 56); Add-Box 'FFFFFF' 31 53 2 1 }
+    $S['vest'] = New-Sprite { Add-Poly '2E3E58' @(22, 40, 28, 38, 32, 41, 36, 38, 42, 40, 41, 60, 23, 60); Add-Poly '4A648C' @(25, 43, 31, 44, 31, 58, 25, 58); Add-Poly '4A648C' @(33, 44, 39, 43, 39, 58, 33, 58); Add-Box '8FB0D8' 25 47 14 1; Add-Box '8FB0D8' 25 52 14 1; Add-Box '101418' 31 41 2 19 }
+    $S['keycard'] = New-Sprite { Add-Box 'E8E8E8' 24 52 16 9; Add-Box '2C54C4' 24 52 16 3; Add-Box '101418' 26 57 6 2; Add-Box 'E0B030' 35 56 3 3 }
+    $S['scrap'] = New-Sprite { Add-Poly '3A4450' @(22, 60, 25, 54, 31, 56, 34, 52, 40, 55, 42, 60); Add-Box '8A929A' 27 56 4 2; Add-Box 'C03030' 35 56 2 2; Add-Box '56626F' 30 58 8 2 }
+    $S['signed'] = New-Sprite { Add-Oval '2040FFFF' 18 38 28 26; Add-Box '101418' 23 42 18 18; Add-Box '2C54C4' 24 43 16 16; Add-Box 'E8E8E8' 27 43 10 6; Add-Box '101418' 33 44 2 4; Add-Box 'E8E8E8' 26 52 12 6; Add-Box '40E0FF' 28 54 8 1; Add-Box '40E0FF' 28 56 5 1 }
     $S['sudo'] = New-Sprite { Add-Oval 'C09010' 18 28 28 28; Add-Oval 'F0D040' 20 30 24 24; Add-Oval '8A6A08' 23 33 18 18; Add-Box 'FFFFFF' 28 36 2 12; Add-Box 'FFFFFF' 34 36 2 12; Add-Box 'FFFFFF' 25 39 14 2; Add-Box 'FFFFFF' 25 44 14 2 }
     $S['rocket'] = New-Sprite { Add-Oval 'C03008' 22 22 20 20; Add-Oval 'FF7010' 24 24 16 16; Add-Oval 'FFD040' 27 27 10 10; Add-Oval 'FFFFFF' 30 30 4 4 }
     $S['rocket.boom1'] = New-Sprite { Add-Oval 'FF7010' 18 18 28 28; Add-Oval 'FFD040' 23 23 18 18; Add-Oval 'FFFFFF' 28 28 8 8 }

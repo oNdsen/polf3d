@@ -277,6 +277,7 @@ function Add-Item([string]$Name, [int]$X, [int]$Y) {
     $s = [Static]::new()
     $s.X = $X; $s.Y = $Y; $s.Item = $Name
     $s.Sprite = $script:Spr[$(if ($Name -eq 'clip_small') { 'clip' } else { $Name })]
+    if ($null -eq $s.Sprite -and $script:Spr.Count) { throw "There is no picture for the item '$Name'." }      # better here than somewhere in the renderer
     $script:Statics.Add($s); $script:Items.Add($s)
     if ($script:NetLive -and -not $script:NetClient) { Send-NetMessage "A|$Name|$X|$Y" }      # dropped during a network game
 }

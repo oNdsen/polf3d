@@ -157,6 +157,7 @@ $script:ItemCodes = @{
     [char]'u' = 'oneup'
     [char]'p' = 'pipeline'; [char]'r' = 'forcegun'; [char]'z' = 'charge'; [char]'q' = 'sudo'
     [char]'l' = 'launcher'; [char]'o' = 'rockets'; [char]'t' = 'flamer'; [char]'j' = 'tknives'
+    [char]'b' = 'vest'; [char]'k' = 'keycard'
 }
 $script:TreasureItems = @('coins', 'goblet', 'chest', 'crown', 'oneup')
 

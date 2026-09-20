@@ -29,6 +29,7 @@ function New-Player {
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0; PainTics = 0.0; RageTics = 0.0; LookHold = 0.0; FaceKey = ''
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
+        Armor = 0; Keycards = 0; Signed = @()                     # what the fallen left behind (Loot.ps1)
         Light = $false                                            # the flashlight (dark rooms)
         Modules = @()                                             # Install-Module between the floors (Perks.ps1)
     }
@@ -79,6 +80,7 @@ function Reset-PlayerForLevel {
     $p.X = $script:StartX; $p.Y = $script:StartY; $p.Angle = $script:StartAngle
     $p.Area = $script:AreaOf[[int][Math]::Floor($p.Y) * $script:MapW + [int][Math]::Floor($p.X)]
     $p.AttackFrame = -1; $p.WeaponFrame = 0; $p.KeyGold = $false; $p.KeySilver = $false
+    $p.Signed = @()                                              # signed drops are imported with -Scope Floor
     $p.UseHeld = $true; $p.FireHeld = $true
     Update-AreaByPlayer
 }
@@ -88,7 +90,7 @@ function Reset-PlayerKit {
     $p.Health = 100; $p.Ammo = Get-AmmoCount $script:START_AMMO
     $p.Weapon = 1; $p.ChosenWeapon = 1
     $p.Owned = New-OwnedList $false
-    $p.Charges = 0; $p.Rockets = 0; $p.Knives = 0; $p.SudoTics = 0.0
+    $p.Charges = 0; $p.Rockets = 0; $p.Knives = 0; $p.SudoTics = 0.0; $p.Armor = 0
 }
 
 function Show-Message([string]$Text) {
@@ -282,6 +284,7 @@ function Use-WeaponResource {
     $p = $script:P; $w = $script:Weapons[$p.Weapon]
     if ($script:InfiniteAmmo -or $w.Res -eq 'none') { return $true }
     if ((Get-ResourceCount $w.Res) -lt $w.Cost) { return $false }
+    if ($w.Res -eq 'ammo' -and (Test-Signed 'Compress-Archive')) { $p.FreeRound = -not $p.FreeRound; if ($p.FreeRound) { return $true } }      # every second round is free
     switch ($w.Res) { 'ammo' { $p.Ammo -= $w.Cost } 'charges' { $p.Charges -= $w.Cost } 'rockets' { $p.Rockets -= $w.Cost } 'knives' { $p.Knives -= $w.Cost } }
     $script:HudDirty = $true
     $true
@@ -346,7 +349,7 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
             }
             elseif ($action -notlike 'fire*' -and $action -notlike 'flame*') { Start-Sfx 'noway' }
         }
-        $p.AttackTics += $cur[0]
+        $p.AttackTics += $cur[0] * $(if ((Test-Signed 'Overclock') -and $script:Weapons[$p.Weapon].Res -eq 'ammo') { 0.66 } else { 1.0 })
         $p.AttackFrame++
         $p.WeaponFrame = $frames[$p.AttackFrame][2]
     }
@@ -389,6 +392,8 @@ function Add-Weapon([int]$Index) {
 # Returns $false if the player has no use for the item right now (it stays on the floor).
 function Invoke-Pickup([string]$Item) {
     $p = $script:P
+    $loot = Invoke-LootPickup $Item                              # armour, keycards, scrap, signed drops
+    if ($null -ne $loot) { if ($loot) { $script:HudDirty = $true }; return $loot }
     switch ($Item) {
         'dogfood'    { if ($p.Health -ge 100) { return $false }; Add-Health 4;  Start-Sfx 'pickup' }
         'food'       { if ($p.Health -ge 100) { return $false }; Add-Health 10; Start-Sfx 'pickup' }
@@ -447,6 +452,7 @@ function Invoke-PlayerDamage([int]$Points, [Actor]$Attacker) {
     if ($p.SudoTics -gt 0) { $Points = [int][Math]::Floor($Points / 2) }
     if ($script:OneHitKill) { $Points = 999 }                    # the cheat cuts both ways: every hit is fatal
     if ($Points -le 0) { return }
+    if (-not $script:GodMode) { $Points = Get-ArmoredDamage $Points }      # armour takes half of it while it lasts
     $before = $p.Health
     if (-not $script:GodMode) { $p.Health -= $Points }
     if ($p.Health -lt $script:Run.MinHealth) { $script:Run.MinHealth = $p.Health }

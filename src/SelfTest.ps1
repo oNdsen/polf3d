@@ -484,6 +484,26 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($drops[0] -ne 'key_gold' -or $drops[1] -ne 'chest') { throw 'key test failed.' }
     $script:LevelIndex = 0
 
+    # ---- loot: tables, armour, a keycard on a locked door, a silent streak that ends when somebody notices, a signed drop ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2; $keepGod = $script:GodMode; $script:GodMode = $false
+    $p = $script:P; $p.Health = 100; $p.Armor = 0
+    $null = Invoke-Pickup 'vest'; Invoke-PlayerDamage 40 $null; $afterHit = "$($p.Health)/$($p.Armor)"
+    $silver = $script:Doors | Where-Object { $_.Lock -eq 2 } | Select-Object -First 1; $index = [Array]::IndexOf($script:Doors.ToArray(), $silver)
+    Invoke-DoorUse $index; $stillLocked = $silver.Lock
+    $null = Invoke-Pickup 'keycard'; Invoke-DoorUse $index
+    $victims = @($script:Actors | Where-Object { $_.Kind -eq 'guard' -and $_.Shootable } | Select-Object -First 6)
+    $items = $script:Items.Count
+    foreach ($v in $victims[0..4]) { Stop-Actor $v }
+    $streak = $script:Stats.Streak; $dropped = @($script:Items | Select-Object -Skip $items | ForEach-Object Item)
+    Start-Attack $victims[5]; $afterNotice = $script:Stats.Streak
+    $null = Invoke-Pickup 'signed'; $signed = @($p.Signed)
+    Reset-PlayerForLevel
+    Write-Step "loot test: 40 damage against a vest leave health/armour $afterHit; silver lock $stillLocked -> $($silver.Lock) with a keycard ($($p.Keycards) left); five silent kills: streak $streak, drops $(($dropped | Group-Object | ForEach-Object { "$($_.Count) $($_.Name)" }) -join ', '); noticed: streak $afterNotice; signed '$($signed -join ',')', on the next floor $(@($p.Signed).Count)"
+    if ($afterHit -ne '88/38' -or $stillLocked -ne 2 -or $silver.Lock -ne 0 -or $p.Keycards -ne 0 -or $streak -ne 5 -or 'signed' -notin $dropped -or @($dropped | Where-Object { $_ -eq 'clip_small' }).Count -ne 5 -or
+        $afterNotice -ne 0 -or $signed.Count -ne 1 -or @($p.Signed).Count -ne 0) { throw 'loot test failed.' }
+    $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

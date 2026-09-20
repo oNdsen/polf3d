@@ -223,7 +223,7 @@ function Update-ConsoleData {
         [pscustomobject]@{ Type = 'Trap'; Id = $i; Kind = $t.Kind; Disabled = [bool]$t.Disabled; Distance = (Get-Range ($t.X + 0.5) ($t.Y + 0.5)); Bearing = (Get-Bearing ($t.X + 0.5) ($t.Y + 0.5)) }
     }
     $st = $script:Stats
-    $player = [pscustomobject]@{ Type = 'Player'; Health = $p.Health; Ammo = $p.Ammo; Privilege = [int]$p.Privilege; Floor = $script:LevelName
+    $player = [pscustomobject]@{ Type = 'Player'; Health = $p.Health; Armour = [int]$p.Armor; Ammo = $p.Ammo; Keycards = [int]$p.Keycards; Signed = (@($p.Signed) -join ', '); Privilege = [int]$p.Privilege; Floor = $script:LevelName
         Policy = (Get-Policy).Name; Kills = "$($st.Kills)/$($st.KillTotal)"; Secrets = "$($st.Secrets)/$($st.SecretTotal)"; Treasure = "$($st.Treasures)/$($st.TreasureTotal)" }
     # the files of this floor - but only at one of the building's own terminals
     $files = @(); $texts = @{}
