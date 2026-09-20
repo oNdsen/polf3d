@@ -11,8 +11,8 @@
 # What a wave still has to send is kept in $script:Stats (a new array with every change): Undo and saved games work.
 
 $script:HordeSeed = 0
-$script:HordePrices = [ordered]@{ guard = 1; dog = 1; officer = 2; bot = 2; elite = 3; mutant = 3; sniper = 3; shield = 4 }
-$script:HordeGifts = @{ 2 = 'mgun'; 4 = 'chaingun'; 6 = 'launcher'; 8 = 'pipeline'; 10 = 'flamer'; 12 = 'forcegun' }
+$script:HordePrices = [ordered]@{ guard = 1; dog = 1; bug = 1; officer = 2; bot = 2; elite = 3; mutant = 3; sniper = 3; engineer = 3; shield = 4 }
+$script:HordeGifts = @{ 2 = 'mgun'; 3 = 'vest'; 4 = 'chaingun'; 5 = 'mine'; 6 = 'launcher'; 7 = 'taser'; 8 = 'pipeline'; 9 = 'vest'; 10 = 'flamer'; 12 = 'forcegun' }
 
 function Get-HordeMap { Join-Path (Split-Path $script:MapFiles[0]) 'arena.map' }
 function Get-HordePath { Join-Path $script:SaveDir 'horde.json' }

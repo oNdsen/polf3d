@@ -237,6 +237,7 @@ Add-Things @(
     27, 2, '+h',   40, 2, '+h',   27, 11, '+a',  40, 11, '+a',   34, 2, '+2',   33, 11, '+a',  35, 11, '+h'
     43, 7, '*l'
 )
+Add-Things @(37, 19, 'y<',  35, 21, 'y^')                                   # something lives between the crates
 Add-Spawns 3 @(23, 20, 'g<',  26, 18, 'g<',  37, 18, 'e<')
 Add-Spawns 4 @(25, 21, 'e^',  38, 28, 'mv',  20, 10, 'ov')
 Save-Level 1 'Shellstein Dungeon' 330 '383838' '6E6E6E' 'SS' -Look '@floortex flat_stone', '@ceiltex ceil_plain', '@fog 101010 16'
@@ -283,6 +284,7 @@ Add-Things @(
     12, 17, 'Sb',  22, 17, 'Sb',  32, 17, 'Sp',  38, 17, 'Sp',  9, 22, 'Sb',   19, 22, 'Sb',  30, 22, 'Sb',  40, 22, 'Sb'
     42, 12, 'Wp',  38, 8, 'Ws',   2, 12, 'Wp',   22, 12, 'Ws'
 )
+Add-Things @(34, 25, 'y<',  36, 27, 'y^',  14, 27, '+v')                     # bugs in the wash room; a taser in the armoury
 Add-Spawns 3 @(20, 21, 'g>',  31, 18, 'e<',  28, 11, 'ev')
 Add-Spawns 4 @(48, 16, 'h<',  38, 21, 'o<',  15, 27, 'e^')
 Save-Level 2 'The Barracks' 300 '403830' '6A6258' 'SS' -Look '@floortex flat_wood', '@ceiltex ceil_plain', '@fog 14100C 16'
@@ -327,6 +329,7 @@ Add-Things @(
     15, 9, 'Sb',   28, 9, 'Sb',   10, 25, 'Gv',  1, 27, 'Gv',   17, 24, 'Gv',  27, 28, 'Gv',  34, 22, 'Gv',  45, 28, 'Gv'
     6, 37, 'Gv',   18, 38, 'Gv',  27, 36, 'Gv',  35, 14, 'Bc',  45, 11, 'Bc',  33, 35, 'Sb',  46, 36, 'Sb'
 )
+Add-Things @(6, 25, 'yv',  36, 25, 'y>',  12, 27, '+i')                      # bugs in the caves, mines in the tunnel
 Add-Spawns 3 @(21, 26, 'm>',  37, 27, 'k<',  24, 12, 'ov')
 Add-Spawns 4 @(40, 28, 'e<',  39, 35, 'h^',  5, 27, 'd>')
 Save-Level 3 'The Catacombs' 420 '1E2A1C' '4A5240' 'GG' -Look '@floortex flat_moss', '@ceiltex ceil_rock', '@fog 060C06 9'
@@ -372,6 +375,7 @@ Add-Things @(
     20, 12, 'Tl',  32, 12, 'Tl',  20, 25, 'Tl',  32, 25, 'Tl',  15, 15, 'Tl',  15, 23, 'Tl',  36, 15, 'Tl',  36, 23, 'Tl'
     16, 39, 'Bc',  22, 39, 'Bc',  44, 20, 'Tl',  44, 10, 'Tl'
 )
+Add-Things @(47, 28, 'n<',  17, 3, 'av',  47, 18, '+b')                       # an engineer keeps the servers running, an auditor visits lab A
 Add-Spawns 3 @(20, 19, 'e>',  20, 30, 'm>',  33, 8, 'm<')
 Add-Spawns 4 @(30, 36, 'h>',  38, 36, 'h<',  47, 24, 's<')
 Save-Level 4 'Lab Zero' 480 '20262E' '4A525C' 'TT' -Look '@floortex flat_tech', '@ceiltex ceil_tech', '@fog 0A1018 14'
@@ -413,6 +417,7 @@ Add-Things @(
     14, 15, 'Sb',  18, 15, 'Sb',  28, 15, 'Sb',  32, 15, 'Sb',  14, 31, 'Sb',  32, 31, 'Sb',  11, 19, 'Sp',  36, 19, 'Sp'
     2, 20, 'Bc',   2, 25, 'Bc',   45, 22, 'Rb',  16, 39, 'Sb',  31, 35, 'Sb'
 )
+Add-Things @(23, 36, 'n^',  24, 18, 'av')
 Add-Spawns 3 @(24, 20, 'ev',  22, 26, 'mv',  39, 20, 'e<')
 Add-Spawns 4 @(20, 8, 'hv',  27, 8, 'hv',  6, 23, 'k>')
 Save-Level 5 'The Citadel' 540 '30203A' '5A5060' 'SS' -Look '@floortex flat_carpet', '@ceiltex ceil_plain', '@fog 140A1C 15'
@@ -457,6 +462,7 @@ Add-Things @(
     # security: cameras at the east ends of both corridors, sentry guns in the lift lobby and in the cage
     47, 11, 'cw',  36, 30, 'cw',  44, 5, 'ts',   47, 31, 'tw'
 )
+Add-Things @(44, 18, 'n^',  25, 22, 'a^',  6, 18, 'y^',  9, 13, 'yv',  6, 32, '+v')      # the NOC has an engineer, an aisle an auditor, the dark plant bugs
 Add-Spawns 3 @(14, 20, 'ev',  25, 30, 'h<',  43, 18, 'e^')
 Add-Spawns 4 @(45, 29, 'h<',  5, 15, 'm>',  30, 9, 's<')
 Add-Event 'powerfail' 100; Add-Event 'patch' 540
@@ -509,6 +515,7 @@ Add-Things @(
     18, 25, 'Wp',  34, 25, 'Wp',  2, 14, 'Wp',   15, 14, 'Wp',  23, 24, 'Wp',  29, 24, 'Wp'
     24, 27, 'cn',  3, 13, 'ce',   26, 17, 'ts'           # a camera in the passage and in the catalogue room, a sentry gun behind the gold door
 )
+Add-Things @(12, 27, 'y<',  40, 30, 'y>',  10, 13, 'av',  44, 18, '+b')                 # paper eaters between the shelves
 Add-Spawns 3 @(26, 33, 'ov',  9, 14, 'o>',  43, 15, 'ev')
 Add-Spawns 4 @(24, 15, 'h^',  10, 30, 'k>',  42, 30, 's<')
 Add-Event 'lockdown' 150; Add-Event 'patch' 600
@@ -554,6 +561,7 @@ Add-Things @(
     7, 30, 'Rb',   22, 26, 'Rb',  22, 33, 'Rb',  25, 21, 'Rb',  25, 35, 'Rb'
     21, 30, 'cw',  48, 28, 'tw'                          # a camera over the smelter, a sentry gun at the end of the conveyor
 )
+Add-Things @(30, 25, 'n^',  43, 30, 'n<',  29, 37, '+i')                       # the foundry has engineers, of course
 Add-Spawns 3 @(16, 31, 'e<',  34, 22, 'ev',  52, 30, 'h^')
 Add-Spawns 4 @(55, 22, 'hv',  24, 29, 's>',  35, 34, 'e^')
 Add-Event 'powerfail' 170; Add-Event 'lockdown' 330
@@ -602,6 +610,7 @@ Add-Things @(
     12, 21, 'Wp',  20, 21, 'Ws',  34, 21, 'Ws',  42, 21, 'Wp',  10, 25, 'Wp',  23, 25, 'Ws',  31, 25, 'Ws',  44, 25, 'Wp'
     48, 22, 'cw',  27, 6, 'ts',   45, 18, 'ts'           # a camera in the gallery, sentry guns behind the CEO's and security's doors
 )
+Add-Things @(15, 30, 'a^',  13, 14, 'av',  43, 18, 'n^',  27, 19, '+b')                # two auditors on the executive floor
 Add-Spawns 3 @(27, 30, 'ov',  30, 24, 'e<',  27, 15, 'hv')
 Add-Spawns 4 @(24, 5, 'hv',  8, 28, 's>',  45, 16, 'kv')
 Add-Event 'lockdown' 110; Add-Event 'patch' 480; Add-Event 'powerfail' 560
@@ -651,6 +660,7 @@ Add-Things @(
     23, 17, 'tn',  27, 17, 'tn',  20, 4, 'ce',   30, 46, 'cw'          # two sentry guns cover the door of the core, cameras watch the outer ring
     16, 16, '+h',  34, 16, '+h',  16, 34, '+h',  34, 34, '+h',  17, 16, '+a',  33, 16, '+a',  17, 34, '+o',  33, 34, '+o',  16, 25, '+z',  34, 25, '+z',  25, 33, '+q'
 )
+Add-Things @(22, 18, 'y^',  28, 18, 'y^',  25, 21, 'n^',  22, 6, 'a>',  9, 41, '+i',  26, 9, '+b')
 Add-Spawns 3 @(30, 44, 'e<',  14, 25, 'h<',  24, 31, 'e^')
 Add-Spawns 4 @(20, 20, 'h^',  30, 20, 'h^',  4, 20, 'sv')
 Add-Event 'powerfail' 240; Add-Event 'lockdown' 420; Add-Event 'patch' 660
