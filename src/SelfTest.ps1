@@ -1233,24 +1233,28 @@ function Export-Screenshots([string]$OutDir) {
     Stop-Network
 
     # the cast: front views of every enemy, 3x
-    $cast = 'guard.s', 'dog.s', 'officer.s', 'elite.s', 'mutant.s', 'sniper.s', 'shield.s', 'bot.s', 'boss.s', 'uber.s', 'pilot.s'
-    $names = 'Guard', 'Dog', 'Officer', 'Elite', 'Mutant', 'Sniper', 'Shield bearer', 'Kamikaze bot', 'Commander', 'War machine', 'Pilot'
-    $cell = 160
-    $bmp = [System.Drawing.Bitmap]::new($cell * $cast.Count, 236)
+    $cast = 'guard.s', 'dog.s', 'officer.s', 'elite.s', 'mutant.s', 'sniper.s', 'shield.s', 'engineer.s', 'auditor.s',
+            'bug.s', 'bot.s', 'camera.s', 'turret.s', 'boss.s', 'uber.s', 'pilot.s', 'bsod.s'
+    $names = 'Guard', 'Dog', 'Officer', 'Elite', 'Mutant', 'Sniper', 'Shield bearer', 'Engineer', 'Auditor',
+             'Bug', 'Kamikaze bot', 'Camera', 'Sentry gun', 'Commander', 'War machine', 'Pilot', 'BLUE SCREEN'
+    $cell = 160; $perRow = 9; $rowH = 236
+    $bmp = [System.Drawing.Bitmap]::new($cell * $perRow, $rowH * [int][Math]::Ceiling($cast.Count / $perRow))
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.Clear([System.Drawing.Color]::FromArgb(255, 10, 16, 32))
-    $g.FillRectangle((Get-Brush '6E6E6E'), 0, 150, $bmp.Width, 60); $g.FillRectangle((Get-Brush '0A1428'), 0, 206, $bmp.Width, 30)
+    for ($r = 0; $r * $perRow -lt $cast.Count; $r++) { $g.FillRectangle((Get-Brush '6E6E6E'), 0, $r * $rowH + 150, $bmp.Width, 60); $g.FillRectangle((Get-Brush '0A1428'), 0, $r * $rowH + 206, $bmp.Width, 30) }
     $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
     $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
     $font = [System.Drawing.Font]::new('Consolas', 11, [System.Drawing.FontStyle]::Bold)
     $fmt = [System.Drawing.StringFormat]::new(); $fmt.Alignment = [System.Drawing.StringAlignment]::Center
     for ($i = 0; $i -lt $cast.Count; $i++) {
+        $row = [int][Math]::Floor($i / $perRow); $inRow = [Math]::Min($perRow, $cast.Count - $row * $perRow)
+        $x = ($i % $perRow) * $cell + [int](($perRow - $inRow) * $cell / 2); $y = $row * $rowH      # a shorter last row is centred
         $px = $script:Spr[$cast[$i]]; if ($px[0] -isnot [int]) { $px = $px[0] }
         $tile = [System.Drawing.Bitmap]::new(64, 64, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
         $bd = $tile.LockBits([System.Drawing.Rectangle]::new(0, 0, 64, 64), 'WriteOnly', $tile.PixelFormat)
         [System.Runtime.InteropServices.Marshal]::Copy([int[]]$px, 0, $bd.Scan0, 4096); $tile.UnlockBits($bd)
-        $g.DrawImage($tile, [System.Drawing.Rectangle]::new($i * $cell - 16, 8, 192, 192)); $tile.Dispose()
-        $g.DrawString($names[$i], $font, [System.Drawing.Brushes]::White, [System.Drawing.RectangleF]::new($i * $cell, 212, $cell, 22), $fmt)
+        $g.DrawImage($tile, [System.Drawing.Rectangle]::new($x - 16, $y + 8, 192, 192)); $tile.Dispose()
+        $g.DrawString($names[$i], $font, [System.Drawing.Brushes]::White, [System.Drawing.RectangleF]::new($x, $y + 212, $cell, 22), $fmt)
     }
     $bmp.Save((Join-Path $OutDir 'cast.png'), [System.Drawing.Imaging.ImageFormat]::Png); $g.Dispose(); $bmp.Dispose()
 

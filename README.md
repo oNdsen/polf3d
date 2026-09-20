@@ -3,7 +3,7 @@
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
 <i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
 verifiable runs,<br>ten floors, a secret one and an ending worth playing for, fifteen kinds of enemies plus cameras and sentry guns, ten weapons and a mine, an arena with endless waves, co-op and deathmatch for up to four over the network, a terminal
-mode –<br>procedurally generated graphics, sound, speech and music, and under 400 lines of C#.</i></p>
+mode –<br>procedurally generated graphics, sound, speech and music – as much PowerShell as possible, as little C# as necessary.</i></p>
 
 <p align="center">
 <a href="https://github.com/oNdsen/polf3d/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/oNdsen/polf3d?label=release&color=2C54C4"></a>
@@ -12,7 +12,6 @@ mode –<br>procedurally generated graphics, sound, speech and music, and under 
 <img alt="PowerShell 7.2+" src="https://img.shields.io/badge/PowerShell-7.2%2B-5391FE?logo=powershell&logoColor=white">
 <img alt="Platform: Windows" src="https://img.shields.io/badge/platform-Windows-0078D6">
 <img alt="Asset files: 0" src="https://img.shields.io/badge/asset%20files-0-40C060">
-<img alt="C#: 380 lines" src="https://img.shields.io/badge/C%23-380%20lines-8A8A8A">
 <a href="https://github.com/oNdsen/polf3d/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/oNdsen/polf3d?color=506080"></a>
 <a href="https://github.com/oNdsen/polf3d/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/oNdsen/polf3d?style=flat&color=F0D040"></a>
 </p>
@@ -79,12 +78,12 @@ casting, map format, HUD, menus, music, network protocol, even the GIF at the to
   game (with a `$PROFILE`, background jobs and hotkeys), the special powers are PowerShell's common parameters, the
   building has an execution policy, the lift installs modules, the walls are full of consoles and error screens, the
   bosses are a batch file, a printer and a blue screen, and every floor ends with a transcript and a Pester report.
-* **No asset files.** All wall and floor textures, about 400 sprite images, 47 sound effects and the whole soundtrack
+* **No asset files.** All wall and floor textures, about 480 sprite images, 50 sound effects and the whole soundtrack
   are generated procedurally (GDI+ primitives, a 3×5 pixel font, a tiny square/saw/noise synthesiser and a chiptune
   composer); the enemies' lines are spoken by Windows' own speech synthesiser. That is also why a [mod](#mods) can add
   an enemy with ten lines of data.
-* **As little C# as possible** – 380 lines next to some 12,000 of PowerShell: the innermost pixel loops (scale one
-  wall strip, draw one sprite, fill one floor row, turn a frame into terminal characters), the audio callback that
+* **As much PowerShell as possible, as little C# as necessary.** Everything that can reasonably be done in PowerShell
+  is PowerShell. C# is only used where PowerShell cannot keep up: the innermost pixel loops (scale one wall strip, draw one sprite, fill one floor row, turn a frame into terminal characters), the audio callback that
   mixes the sounds, and two P/Invoke declarations (game pad, keyboard state). PowerShell cannot push 64,000 pixels
   per frame or feed a sound card every few milliseconds – but it handles the 320 rays per frame with ease.
 * **45–60 fps** in a 960×720 window on an ordinary office laptop.
