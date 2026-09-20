@@ -157,7 +157,7 @@ $script:ItemCodes = @{
     [char]'u' = 'oneup'
     [char]'p' = 'pipeline'; [char]'r' = 'forcegun'; [char]'z' = 'charge'; [char]'q' = 'sudo'
     [char]'l' = 'launcher'; [char]'o' = 'rockets'; [char]'t' = 'flamer'; [char]'j' = 'tknives'
-    [char]'b' = 'vest'; [char]'k' = 'keycard'
+    [char]'b' = 'vest'; [char]'k' = 'keycard'; [char]'v' = 'taser'; [char]'i' = 'mine'
 }
 $script:TreasureItems = @('coins', 'goblet', 'chest', 'crown', 'oneup')
 
@@ -359,6 +359,8 @@ $script:MiscDefs = @{
     procket = @{ Speed = 0.16; Rotates = $false; Doors = $false; Pain = $false; BlastRadius = 1.9; BlastDamage = 120 }
     tknife  = @{ Speed = 0.22; Rotates = $false; Doors = $false; Pain = $false }
     fx = @{ Rotates = $false; Doors = $false; Pain = $false }      # short-lived effects: blood, sparks
+    # Invoke-Command, the remote kind: lies where the player put it until the key is pressed again (or something hits it)
+    mine = @{ Inert = $true; HP = 1; Rotates = $false; Doors = $false; Pain = $false; Points = 0; BlastRadius = 2.6; BlastDamage = 150 }
     drone = @{ Rotates = $false; Doors = $false; Pain = $false; Speed = 0.07; Capacity = 6; Life = 2100.0 }      # Start-Job: a background job with rotors
     peer = @{ Rotates = $true; Doors = $false; Pain = $false; Points = 0 }      # the other player of a network game
     # explosive barrel: an "inert" actor - it can be shot, but never thinks, scores or counts as a kill
@@ -443,6 +445,11 @@ function Initialize-States {
     Add-State 'rocket.boom2' 'rocket.boom2' $false 6 $null $null 'rocket.boom3'
     Add-State 'rocket.boom3' 'rocket.boom3' $false 6 $null 'Remove' 'rocket.boom3'
 
+    # the mine blinks while it waits
+    Add-State 'mine.idle'  'mine.a' $false 25 $null $null 'mine.idle2'
+    Add-State 'mine.idle2' 'mine.b' $false 10 $null $null 'mine.idle'
+    Add-State 'mine.fuse'  'mine.b' $false 3 $null 'Explode' 'rocket.boom1'
+
     # Start-Job's drone: two frames of rotor, thinking in both
     Add-State 'drone.fly1' 'drone.a' $false 4 'Drone' $null 'drone.fly2'
     Add-State 'drone.fly2' 'drone.b' $false 4 'Drone' $null 'drone.fly1'
@@ -490,7 +497,11 @@ $script:Weapons = @(
     @{ Name = 'Rocket launcher'; Key = 'launcher'; Snd = 'rocket';      Res = 'rockets'; Cost = 1; Frames = @(@(10, 'none', 1), @(10, 'launch', 2), @(22, 'none', 3), @(10, 'end', 4)) }
     @{ Name = 'Flamethrower';    Key = 'flamer';   Snd = 'flame';       Res = 'ammo';    Cost = 1; Frames = @(@(3, 'none', 1), @(4, 'flame', 2), @(4, 'flamerepeat', 3), @(4, 'end', 4)) }
     @{ Name = 'Throwing knives'; Key = 'tknife';   Snd = 'knife';       Res = 'knives';  Cost = 1; Frames = @(@(5, 'none', 1), @(5, 'throw', 2), @(8, 'none', 3), @(6, 'end', 4)) }
+    # key 0. Stop-Process: silent and short of reach. It stuns whoever it touches for five seconds and switches machines
+    # off for good. Its battery (a third per shot) recharges by itself.
+    @{ Name = 'Taser';           Key = 'taser';    Snd = 'taser';       Res = 'battery'; Cost = 34; Frames = @(@(5, 'none', 1), @(6, 'zap', 2), @(10, 'none', 3), @(8, 'end', 4)) }
 )
+$script:WEAPON_TASER = 9
 $script:WEAPON_PIPELINE = 4
 $script:WEAPON_FORCE = 5
 $script:WEAPON_LAUNCHER = 6

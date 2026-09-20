@@ -8,13 +8,13 @@ $script:BindDefaults = [ordered]@{
     Forward = 87; Back = 83; StrafeLeft = 65; StrafeRight = 68; TurnLeft = 37; TurnRight = 39
     Run = 16; Sneak = 67; Fire = 17; Use = 32; Map = 77; Console = 84
     WhatIf = 90; Confirm = 88; Verbose = 86; Force = 70; Undo = 82
-    Macro1 = 71; Macro2 = 72; Macro3 = 66; Macro4 = 89; Light = 76
+    Macro1 = 71; Macro2 = 72; Macro3 = 66; Macro4 = 89; Light = 76; Mine = 81
 }
 $script:BindLabels = @{
     Forward = 'forward'; Back = 'back'; StrafeLeft = 'strafe left'; StrafeRight = 'strafe right'; TurnLeft = 'turn left'; TurnRight = 'turn right'
     Run = 'run'; Sneak = 'sneak'; Fire = 'fire'; Use = 'use'; Map = 'automap (hold)'; Console = 'console'
     WhatIf = '-WhatIf'; Confirm = '-Confirm'; Verbose = '-Verbose'; Force = '-Force'; Undo = 'Undo'
-    Light = 'flashlight'; Macro1 = 'console hotkey 1'; Macro2 = 'console hotkey 2'; Macro3 = 'console hotkey 3'; Macro4 = 'console hotkey 4'
+    Light = 'flashlight'; Mine = 'mine'; Macro1 = 'console hotkey 1'; Macro2 = 'console hotkey 2'; Macro3 = 'console hotkey 3'; Macro4 = 'console hotkey 4'
 }
 # what every row of the menu is for - shown to the right of its value
 $script:OptionHelp = @{
@@ -41,6 +41,7 @@ $script:OptionHelp = @{
     Verbose = '15 privilege: ten seconds of seeing everybody nearby through walls'
     Force = '35 privilege: kicks in the door or the cracked wall in front of you'
     Undo = '60 privilege: the last five seconds never happened'
+    Mine = 'puts a mine down - and, pressed again, sets off what lies out there'
     Light = 'in dark rooms: you see further - and everybody sees you'
     Macro1 = 'runs the command line you put on it in the console: Set-Hotkey 1 ''...'''
     Macro2 = 'the second console hotkey: Set-Hotkey 2 ''...'''
@@ -50,7 +51,7 @@ $script:OptionHelp = @{
 }
 
 # keys that mean something in every mode and must not be given away
-$script:BindReserved = 13, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 123, 49, 50, 51, 52, 53, 54, 55, 56, 57
+$script:BindReserved = 48, 13, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 123, 49, 50, 51, 52, 53, 54, 55, 56, 57
 
 $script:Settings = @{ Mouse = 0.12; Sfx = 0.7; Music = 0.45; MiniMap = $true; Fps = $false; FlatFloors = $false; Scale = 3 }
 $script:Bind = @{}

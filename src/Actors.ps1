@@ -858,7 +858,7 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
     }
     if (-not $NoScore) { Add-Score $a.Def.Points }
     if (-not $script:NetAsPeer) {
-        $cause = switch ($script:KillCause) { 'explosion' { 'an explosion' } 'console' { 'the console' } 'trap' { 'a crusher' } 'turret' { 'a turret that had changed sides' } default { "the $($script:Weapons[$script:P.Weapon].Name.ToLower())" } }
+        $cause = switch ($script:KillCause) { 'explosion' { 'an explosion' } 'console' { 'the console' } 'trap' { 'a crusher' } 'turret' { 'a turret that had changed sides' } 'taser' { 'the taser' } default { "the $($script:Weapons[$script:P.Weapon].Name.ToLower())" } }
         Add-TranscriptLine "Stop-Enemy -Kind $($a.Kind)$(if (-not $a.AttackMode) { ' -Unaware' })   # with $cause"
     }
     Set-ActorState $a "$($a.Kind).die1"

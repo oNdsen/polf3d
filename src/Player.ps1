@@ -29,6 +29,7 @@ function New-Player {
         FaceTimer = 0.0; FaceLook = 0; GrinTics = 0.0; PainTics = 0.0; RageTics = 0.0; LookHold = 0.0; FaceKey = ''
         Cheated = [bool]($script:GodMode -or $script:InfiniteAmmo -or $script:OneHitKill)      # marks the high score entry
         RunTics = 0.0; RunInvalid = $false                       # speedrun clock over all floors, deaths included
+        Battery = 100.0; Mines = 0                                # the taser's battery, mines in the bag
         Armor = 0; Keycards = 0; Signed = @()                     # what the fallen left behind (Loot.ps1)
         Light = $false                                            # the flashlight (dark rooms)
         Modules = @()                                             # Install-Module between the floors (Perks.ps1)
@@ -241,6 +242,37 @@ function Invoke-GunAttack {
     if ($wall) { Add-Effect 'puff' $wall[0] $wall[1] }
 }
 
+# Stop-Process. Within two and a half tiles: machines are switched off for good, bosses flinch, everybody else is
+# stunned for five seconds - and, if he had not noticed anything, still has not.
+function Invoke-TaserAttack {
+    Start-Sfx 'taser'
+    $targets = Get-AimedTargets
+    if ($targets.Count -eq 0 -or $targets[0].Depth -gt 2.6) { return }
+    $t = $targets[0]
+    Add-Effect 'puff' ($t.X + ($script:P.X - $t.X) * 0.2) ($t.Y + ($script:P.Y - $t.Y) * 0.2)
+    if ($t.Def.Inert) { Invoke-ActorDamage $t 50 'taser'; return }
+    if ($script:BossNames.ContainsKey($t.Kind)) { $t.Stun = 35.0; return }
+    if ($t.Def.Machine -or $t.Kind -eq 'bot') { $script:KillCause = 'taser'; Stop-Actor $t; $script:KillCause = $null; return }
+    $t.Stun = 350.0
+}
+
+# Invoke-Command: the first press puts a mine down, the next one sets off whatever lies out there.
+function Invoke-MineKey {
+    $p = $script:P
+    $live = @($script:Actors | Where-Object { $_.Kind -eq 'mine' -and $_.Shootable })
+    if ($live.Count) { foreach ($m in $live) { Stop-Actor $m }; return }
+    if ([int]$p.Mines -le 0) { Show-Message 'No mines'; Start-Sfx 'noway'; return }
+    $p.Mines = [int]$p.Mines - 1
+    $m = [Actor]::new()
+    $m.Kind = 'mine'; $m.Def = $script:MiscDefs.mine
+    $m.X = $p.X; $m.Y = $p.Y; $m.TX = [int][Math]::Floor($p.X); $m.TY = [int][Math]::Floor($p.Y)
+    $m.HP = 1; $m.Shootable = $true; $m.Active = $true; $m.Area = $p.Area
+    Set-ActorState $m 'mine.idle'
+    $m.NetId = ++$script:NextNetId
+    $script:Actors.Add($m)
+    Start-Sfx 'lever'; Show-Message "Mine armed - $(Get-KeyName $script:Bind.Mine) again sets it off ($($p.Mines) left)"; $script:HudDirty = $true
+}
+
 function Invoke-KnifeAttack {
     Start-Sfx 'knife'
     $targets = Get-AimedTargets
@@ -270,7 +302,7 @@ function Invoke-BlastAttack {
 
 # Can the weapon fire at all right now?
 function Get-ResourceCount([string]$Res) {
-    switch ($Res) { 'ammo' { $script:P.Ammo } 'charges' { $script:P.Charges } 'rockets' { $script:P.Rockets } 'knives' { $script:P.Knives } default { 0 } }
+    switch ($Res) { 'ammo' { $script:P.Ammo } 'charges' { $script:P.Charges } 'rockets' { $script:P.Rockets } 'knives' { $script:P.Knives } 'battery' { [int]$script:P.Battery } default { 0 } }
 }
 
 function Test-WeaponReady([int]$Index) {
@@ -285,7 +317,7 @@ function Use-WeaponResource {
     if ($script:InfiniteAmmo -or $w.Res -eq 'none') { return $true }
     if ((Get-ResourceCount $w.Res) -lt $w.Cost) { return $false }
     if ($w.Res -eq 'ammo' -and (Test-Signed 'Compress-Archive')) { $p.FreeRound = -not $p.FreeRound; if ($p.FreeRound) { return $true } }      # every second round is free
-    switch ($w.Res) { 'ammo' { $p.Ammo -= $w.Cost } 'charges' { $p.Charges -= $w.Cost } 'rockets' { $p.Rockets -= $w.Cost } 'knives' { $p.Knives -= $w.Cost } }
+    switch ($w.Res) { 'ammo' { $p.Ammo -= $w.Cost } 'charges' { $p.Charges -= $w.Cost } 'rockets' { $p.Rockets -= $w.Cost } 'knives' { $p.Knives -= $w.Cost } 'battery' { $p.Battery = [double]$p.Battery - $w.Cost } }
     $script:HudDirty = $true
     $true
 }
@@ -336,7 +368,7 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
         elseif ($action -ne 'none') {
             # every other action fires something - if the player can pay for it
             if (Use-WeaponResource) {
-                if ($action -ne 'throw') { $script:Run.Shots++ }
+                if ($action -notin 'throw', 'zap') { $script:Run.Shots++ }      # blades and the taser are no guns
                 if ($action -like '*repeat' -and $Trigger) { $p.AttackFrame -= 2 }
                 switch -Wildcard ($action) {
                     'fire*'  { Invoke-GunAttack }
@@ -345,6 +377,7 @@ function Update-Attack([double]$Tics, [bool]$Trigger) {
                     'flame*' { Invoke-FlameAttack }
                     'launch' { $script:MadeNoise = $true; Start-Sfx 'rocket'; Add-PlayerProjectile 'procket' }
                     'throw'  { Start-Sfx 'knife'; Add-PlayerProjectile 'tknife' }          # silent: no noise
+                    'zap'    { Invoke-TaserAttack }                                        # silent as well
                 }
             }
             elseif ($action -notlike 'fire*' -and $action -notlike 'flame*') { Start-Sfx 'noway' }
@@ -379,6 +412,7 @@ function Add-Weapon([int]$Index) {
         'launcher' { $p.Rockets = [Math]::Min(20, $p.Rockets + 2) }
         'tknife'   { $p.Knives = [Math]::Min(20, $p.Knives + 5) }
         'flamer'   { Add-Ammo 12 }
+        'taser'    { }                                             # it has a battery
         default    { Add-Ammo 6 }
     }
     if (-not $p.Owned[$Index]) {
@@ -410,6 +444,8 @@ function Invoke-Pickup([string]$Item) {
         'tknives'    { if ($p.Owned[8] -and $p.Knives -ge 20) { return $false }; Add-Weapon 8; Start-Sfx 'ammo'; Show-Message 'Throwing knives - silent and deadly from behind' }
         'charge'     { $p.Charges++; Start-Sfx 'ammo'; Show-Message 'Force charge' ; if ($p.AttackFrame -lt 0) { Select-UsableWeapon } }
         'sudo'       { $p.SudoTics = $script:SUDO_TICS; Start-Sfx 'sudo'; Show-Message 'SUDO!  Double damage dealt, half damage taken' }
+        'taser'      { Add-Weapon $script:WEAPON_TASER; Start-Sfx 'weapon'; Show-Message 'TASER!  Stop-Process - silent, close, and the end of any machine (key 0)' }
+        'mine'       { $p.Mines = [int]$p.Mines + 2; Start-Sfx 'ammo'; Show-Message "Two mines ($($p.Mines)) - $(Get-KeyName $script:Bind.Mine) puts one down, and sets it off" }
         'key_gold'   { $p.KeyGold = $true;   Start-Sfx 'key'; Show-Message 'Gold key' }
         'key_silver' { $p.KeySilver = $true; Start-Sfx 'key'; Show-Message 'Silver key' }
         'coins'      { Add-Score 100;  $script:Stats.Treasures++; Start-Sfx 'treasure' }
@@ -494,6 +530,7 @@ function Update-Player([double]$Tics, [hashtable]$In) {
         foreach ($k in 'Fire', 'Use', 'Run') { if ($In.ContainsKey($k)) { $In[$k] = $false } }
         $In.Weapon = -1
     }
+    if ($p.Battery -lt 100) { $p.Battery = [Math]::Min(100.0, [double]$p.Battery + $Tics * 0.085) }      # the taser recharges: a shot in under six seconds
     $p.Sneaking = [bool]$In.Sneak
     $p.Running = [bool]$In.Run -and -not $p.Sneaking
     $script:StepNoise = 0.0                                      # how far this frame's footsteps and doors can be heard

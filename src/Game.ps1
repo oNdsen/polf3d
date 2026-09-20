@@ -318,7 +318,7 @@ function Show-TitleScreen {
     $k = { param($name) Get-KeyName $bind[$name] }
     $columns = @(
         @(@("$(& $k Forward) $(& $k StrafeLeft) $(& $k Back) $(& $k StrafeRight) / arrows", 'move'), @((& $k Run), 'run'), @((& $k Sneak), 'sneak'), @("$(& $k Fire) / mouse 1", 'fire'), @("$(& $k Use) / E / mouse 2", 'use')),
-        @(@('1-9', 'weapons'), @("$(& $k Map) / N", 'map, radar'), @((& $k Light), 'flashlight'), @('P / Esc', 'pause, save'), @("$(& $k Console) / Tab", 'console')),
+        @(@('1-9, 0', 'weapons'), @("$(& $k Map) / N", 'map, radar'), @("$(& $k Light) / $(& $k Mine)", 'flashlight, mine'), @('P / Esc', 'pause, save'), @("$(& $k Console) / Tab", 'console')),
         @(@("$(& $k WhatIf) $(& $k Confirm) $(& $k Verbose) $(& $k Force) $(& $k Undo)", 'the powers'), @("$(& $k Macro1) $(& $k Macro2) $(& $k Macro3) $(& $k Macro4)", 'console hotkeys'), @('F2 F3 F4', 'mouse, fps, music'), @('F5 F9 F12', 'save, load, demo'), @('F6 F7 F8 F11', 'cheats'))
     )
     $x = 16.0
@@ -554,6 +554,8 @@ function Start-GameLoop {
             'play' {
                 foreach ($h in $hits) {
                     if ($h -ge 49 -and $h -le 57) { $script:WeaponKey = $h - 49 }
+                    elseif ($h -eq 48) { $script:WeaponKey = 9 }                       # 0: the taser
+                    elseif ($h -eq $script:Bind.Mine) { $script:AbilityKey = 7 }
                     elseif ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'paused' }
                     elseif ($h -eq $vk.F2) { Set-MouseLook (-not $script:MouseLook) }
                     elseif ($h -eq $vk.N) { $script:Settings.MiniMap = -not $script:Settings.MiniMap; Update-Settings }

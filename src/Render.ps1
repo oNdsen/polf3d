@@ -408,7 +408,7 @@ function Show-Overlays {
     # progress on this floor, and the clock when speedrunning
     $st = $script:Stats
     Write-HudText ("KILLS {0}/{1}   SECRETS {2}/{3}   TREASURE {4}/{5}" -f $st.Kills, $st.KillTotal, $st.Secrets, $st.SecretTotal, $st.Treasures, $st.TreasureTotal) 'Small' 'A0B4D0' 2 ($viewH - 19) 150 8
-    $extras = @(if ([int]$script:P.Keycards -gt 0) { "KEYCARDS $($script:P.Keycards)" }; foreach ($m in @($script:P.Signed)) { if ($m) { "+$m" } }; if ([int]$st.Streak -ge 2) { "STREAK x$($st.Streak)" })
+    $extras = @(if ([int]$script:P.Mines -gt 0) { "MINES $($script:P.Mines)" }; if ([int]$script:P.Keycards -gt 0) { "KEYCARDS $($script:P.Keycards)" }; foreach ($m in @($script:P.Signed)) { if ($m) { "+$m" } }; if ([int]$st.Streak -ge 2) { "STREAK x$($st.Streak)" })
     if ($extras) { Write-HudLine ($extras -join '   ') 'Small' '40E0FF' 4 ($viewH - 27) }
     if ($script:Speedrun) {
         $now = $st.Tics / $script:TICRATE
@@ -522,7 +522,7 @@ function Show-Hud {
         $current = $i -eq $p.Weapon
         $color = if ($current) { '40E0FF' } elseif ($p.Owned[$i]) { '2C4A86' } else { '141E30' }
         Write-HudPanel $color $x ($y + 6) ($bw - 1) 9 1.2
-        Write-HudText "$($i + 1)" 'Small' $(if ($current) { '000000' } elseif ($p.Owned[$i]) { 'C0D0F0' } else { '3A4660' }) $x ($y + 6.5) ($bw - 1) 8
+        Write-HudText "$(($i + 1) % 10)" 'Small' $(if ($current) { '000000' } elseif ($p.Owned[$i]) { 'C0D0F0' } else { '3A4660' }) $x ($y + 6.5) ($bw - 1) 8
     }
     Write-HudText $script:Weapons[$p.Weapon].Name.ToUpper() 'Small' $(if ($p.Weapon -ge $script:WEAPON_PIPELINE) { '40E0FF' } else { 'FFFFFF' }) 250 ($y + 17) 66 9
     foreach ($k in @($p.KeyGold, 'E8C020', 266), @($p.KeySilver, 'D0D8E0', 286)) {

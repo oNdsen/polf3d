@@ -28,6 +28,7 @@ ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight sec
               Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
 MODULES       Get-Module shows what you have installed between the floors.
+REMOTE        Invoke-Command sets off the mines you have put down (so does the mine key)
 JOBS          Start-Job (30): a drone collects what lies around in the rooms open to you - six things or thirty seconds
               Get-Job shows how it is doing, Receive-Job drops its load at your feet, Stop-Job calls it back
 PROFILE       function kn { Get-Enemy | select -First 1 | Stop-Enemy }      Set-Alias ge Get-Enemy
@@ -72,6 +73,7 @@ function Initialize-Console {
         'Set-Hotkey' = 'param([Parameter(Position = 0)][int]$Key, [Parameter(Position = 1)][string]$Command) [pscustomobject]@{ PolfAction = "Set-Hotkey"; Id = $Key; WhatIf = $false; Value = $Command }'
         'Get-Hotkey' = '$PolfHotkeys'
         'Get-ExecutionPolicy' = '$PolfPolicy'
+        'Invoke-Command' = '[pscustomobject]@{ PolfAction = "Invoke-Mine"; Id = 0; WhatIf = $false }'
         'Get-Module' = 'if ($PolfModules) { $PolfModules } else { "No modules installed. The lift offers three after every floor." }'
         'Install-Module' = '"Install-Module: the repository can only be reached from the lift - between two floors."'
         'Get-Job' = 'if ($PolfJobs) { $PolfJobs } else { "No jobs. Start-Job sends out a drone." }'
@@ -102,7 +104,7 @@ process {
     foreach ($a in @('?', 'Where-Object'), @('where', 'Where-Object'), @('%', 'ForEach-Object'), @('foreach', 'ForEach-Object'), @('select', 'Select-Object'), @('sort', 'Sort-Object'),
         @('measure', 'Measure-Object'), @('group', 'Group-Object'), @('ft', 'Format-Table'), @('fl', 'Format-List'), @('gm', 'Get-Member'), @('echo', 'Write-Output'),
         @('help', 'Get-Help'), @('man', 'Get-Help'), @('gcm', 'Get-Command'), @('kill', 'Stop-Enemy'), @('spps', 'Stop-Enemy'), @('ps', 'Get-Process'), @('gps', 'Get-Process'),
-        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('sajb', 'Start-Job'), @('gjb', 'Get-Job'), @('rcjb', 'Receive-Job'), @('spjb', 'Stop-Job'), @('Remove-Job', 'Stop-Job'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
+        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('icm', 'Invoke-Command'), @('sajb', 'Start-Job'), @('gjb', 'Get-Job'), @('rcjb', 'Receive-Job'), @('spjb', 'Stop-Job'), @('Remove-Job', 'Stop-Job'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
         $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateAliasEntry]::new($a[0], $a[1]))
     }
     $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
@@ -298,6 +300,11 @@ function Invoke-ConsoleAction($Action) {
         if (-not (Get-Drone) -and -not @($script:Stats.Cargo).Count) { Write-ConsoleLine 'Receive-Job: there is no job.' 'F14C4C'; return $true }
         $cargo = @(Receive-Drone)
         Write-ConsoleLine $(if ($cargo.Count) { "Received: $($cargo -join ', ') - at your feet." } else { 'The drone has not found anything yet.' }) '60FF80'
+        return $true
+    }
+    if ($name -eq 'Invoke-Mine') {
+        $live = @($script:Actors | Where-Object { $_.Kind -eq 'mine' -and $_.Shootable })
+        if ($live.Count) { foreach ($m in $live) { Stop-Actor $m }; Write-ConsoleLine "Invoke-Command: $($live.Count) mine(s) told to go off. Leave the console and mind the blast." '60FF80' } else { Write-ConsoleLine 'Invoke-Command: there is no mine out there. Put one down first.' 'F14C4C' }
         return $true
     }
     if ($name -eq 'Set-Policy') {

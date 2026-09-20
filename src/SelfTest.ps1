@@ -531,6 +531,32 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($afterBullet -ne 0 -or $buglets -ne 2 -or $script:Stats.KillTotal -ne $total + 2 -or -not $takenBack -or -not $repaired -or $auditor.VX -ne 1 -or [int]$script:Stats.Policy -le $level) { throw 'newcomer test failed.' }
     $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod
 
+    # ---- the taser stuns men and ends machines, silently; a mine waits for the second press ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    $keepGod = $script:GodMode; $script:GodMode = $true
+    Set-TestCamera 24.5 20.5 0
+    foreach ($a in @($script:Actors)) { if ($a.Shootable -and -not $a.Def.Inert -and $script:AreaByPlayer[$a.Area]) { $script:ActorAt[$a.TY * $script:MapW + $a.TX] = $null; $a.State = 'gone' } }
+    Update-Actors 0.01
+    Add-Enemy 'guard' 26 20 0 'stand'; $guard = $script:Actors[$script:Actors.Count - 1]
+    $null = Invoke-Pickup 'taser'; $null = Invoke-Pickup 'mine'
+    $p = $script:P; $zap = $idle.Clone(); $zap.Weapon = 9; $zap.Fire = $true
+    Update-World 1.0 $idle                                          # let go of the trigger first: it counts as held when a floor starts
+    $script:MadeNoise = $false; $noise = $false
+    for ($f = 0; $f -lt 30; $f++) { Set-TestAim $guard; Show-PlayFrame; Update-World 2.0 $zap; $zap.Weapon = -1; if ($script:MadeNoise) { $noise = $true } }
+    $stunned = $guard.Stun -gt 0 -and -not $guard.AttackMode; $battery = [int]$p.Battery
+    Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-taser.png')
+    Add-Enemy 'turret' 26 22 4 'ambush'; $turret = $script:Actors[$script:Actors.Count - 1]
+    $p.Battery = 100; Set-TestCamera 24.5 22.5 0; Update-World 1.0 $idle      # (one shot per pull of the trigger)
+    for ($f = 0; $f -lt 30 -and $turret.Shootable; $f++) { Set-TestAim $turret; Show-PlayFrame; Update-World 2.0 $zap }
+    $mineKey = $idle.Clone(); $mineKey.Ability = 7
+    Set-TestCamera 27.5 20.5 0; Update-World 1.0 $mineKey
+    $armed = @($script:Actors | Where-Object { $_.Kind -eq 'mine' -and $_.Shootable }).Count
+    Set-TestCamera 21.5 20.5 0; Update-World 1.0 $mineKey
+    for ($f = 0; $f -lt 12; $f++) { Update-World 2.0 $idle }
+    Write-Step "weapon test: the taser stunned the guard unnoticed: $stunned (noise: $noise, battery left $battery), switched the sentry gun off: $(-not $turret.Shootable); a mine armed: $armed, $($p.Mines) left, the second press killed the guard next to it: $(-not $guard.Shootable)"
+    if (-not $stunned -or $noise -or $battery -gt 80 -or $turret.Shootable -or $armed -ne 1 -or $p.Mines -ne 1 -or $guard.Shootable) { throw 'weapon test failed.' }
+    $script:GodMode = $keepGod
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
