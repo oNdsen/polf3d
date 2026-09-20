@@ -184,6 +184,7 @@ $script:EnemyCodes = @{
     [char]'o' = 'officer'; [char]'m' = 'mutant'; [char]'b' = 'boss'; [char]'u' = 'uber'
     [char]'s' = 'sniper'; [char]'h' = 'shield'; [char]'k' = 'bot'
     [char]'c' = 'camera'; [char]'t' = 'turret'; [char]'x' = 'bsod'
+    [char]'y' = 'bug'; [char]'n' = 'engineer'; [char]'a' = 'auditor'
 }
 
 $script:EnemyDefs = @{
@@ -257,6 +258,41 @@ $script:EnemyDefs = @{
         Accuracy = 1.0; Drop = $null; AlertSnd = 'bot_beep'; ShotSnd = $null; DieSnd = $null
         Shoot = @(); ChaseThink = 'BotChase'; DieScream = 'Explode'; BlastRadius = 1.9; BlastDamage = 75
         DieTics = 4
+    }
+    # The bug: small, quick, zig-zags and bites. Fix it with a blade, a bullet or fire and it is gone - blow it up and
+    # there are two smaller ones ("fix one, get two").
+    bug = @{
+        HP = @(8, 12, 16, 16); Points = 150; Patrol = 0.02; Chase = 0.05; SplitInto = 'buglet'
+        ReactBase = 1; ReactDiv = 8; Doors = $false; Pain = $false; Rotates = $false
+        Accuracy = 1.0; Drop = $null; AlertSnd = 'bug_chirp'; ShotSnd = 'bite'; DieSnd = 'bug_squish'
+        Shoot = @(); ChaseThink = 'DogChase'; Leaps = $true
+        DieTics = 8
+    }
+    buglet = @{
+        HP = @(3, 4, 5, 5); Points = 50; Patrol = 0.03; Chase = 0.065
+        ReactBase = 1; ReactDiv = 8; Doors = $false; Pain = $false; Rotates = $false
+        Accuracy = 1.0; Drop = $null; AlertSnd = 'bug_chirp'; ShotSnd = 'bite'; DieSnd = 'bug_squish'
+        Shoot = @(); ChaseThink = 'DogChase'; Leaps = $true
+        DieTics = 8
+    }
+    # The engineer: a poor shot, but he keeps the house running - repairs sentry guns and cameras that have been
+    # destroyed, takes hacked sentry guns back and patches up whoever stands near him. Always the first target.
+    engineer = @{
+        HP = @(25, 35, 45, 45); Points = 300; Patrol = 0.0078; Chase = 0.0234
+        ReactBase = 1; ReactDiv = 4; Doors = $true; Pain = $true; Rotates = $true
+        Accuracy = 0.8; Drop = 'clip_small'; AlertSnd = 'alert_guard'; ShotSnd = 'shot_enemy'; DieSnd = 'die_a'
+        Shoot = @(, @('aim', 24, $false)) + @(, @('aim', 20, $true)) + @(, @('fire', 20, $false))
+        ChaseThink = 'EngineerChase'
+        DieTics = 15
+    }
+    # The auditor: unarmed. When he sees the player he runs for the nearest terminal - and if he gets there, his report
+    # raises the building's execution policy by a whole level. Carries a keycard, always.
+    auditor = @{
+        HP = @(20, 30, 40, 40); Points = 800; Patrol = 0.0078; Chase = 0.047
+        ReactBase = 1; ReactDiv = 0; Doors = $true; Pain = $true; Rotates = $true
+        Accuracy = 1.0; Drop = 'keycard'; AlertSnd = 'alert_officer'; ShotSnd = $null; DieSnd = 'die_b'
+        Shoot = @(); ChaseThink = 'AuditorChase'
+        DieTics = 12
     }
     # Security camera: harmless by itself, but what it sees heats up the building's execution policy - fast.
     # It sweeps a quarter turn to either side. Does not count as a kill; the console switches it off quietly.
@@ -386,6 +422,13 @@ function Initialize-States {
     Add-State 'uber.jam3' 'uber.jam' $false 90 $null $null 'uber.jam4'
     Add-State 'uber.jam4' 'uber.s'   $false 20 $null $null 'uber.jam5'
     Add-State 'uber.jam5' 'uber.jam' $false 60 $null $null 'uber.chase1'
+
+    # the bugs leap like the dog does
+    foreach ($k in 'bug', 'buglet') {
+        Add-State "$k.jump1" "$k.jump" $false 8 $null $null   "$k.jump2"
+        Add-State "$k.jump2" "$k.jump" $false 8 $null 'Bite'  "$k.jump3"
+        Add-State "$k.jump3" "$k.s"    $false 12 $null $null  "$k.chase1"
+    }
 
     # the dog's leap
     Add-State 'dog.jump1' 'dog.jump1' $false 10 $null $null   'dog.jump2'

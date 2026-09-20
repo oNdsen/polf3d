@@ -422,6 +422,8 @@ $script:Palettes = @{
     peer1   = @{ Skin = 'E0A878'; Hair = '2A1A0E'; Uniform = '2E9A4A'; UniformDark = '1E7034'; Pants = '2A4A6A'; PantsDark = '1C3450'; Boots = '181818'; Belt = '202020'; Hat = 'E8E8E8'; HatDark = 'B0B0B0'; HatStyle = 'helmet'; Gun = 'mg' }
     peer2   = @{ Skin = 'C88A60'; Hair = '101010'; Uniform = '8A3AB8'; UniformDark = '642A88'; Pants = '2A4A6A'; PantsDark = '1C3450'; Boots = '181818'; Belt = '202020'; Hat = 'E8E8E8'; HatDark = 'B0B0B0'; HatStyle = 'helmet'; Gun = 'mg' }
     peer3   = @{ Skin = 'E0A878'; Hair = 'C0A050'; Uniform = 'D8C020'; UniformDark = 'A89418'; Pants = '2A4A6A'; PantsDark = '1C3450'; Boots = '181818'; Belt = '202020'; Hat = 'E8E8E8'; HatDark = 'B0B0B0'; HatStyle = 'helmet'; Gun = 'mg' }
+    engineer = @{ Skin = 'E0A878'; Hair = '3A2A1A'; Uniform = 'E07818'; UniformDark = 'B05A10'; Pants = '3A4450'; PantsDark = '2A323C'; Boots = '181410'; Belt = 'E8E020'; Hat = 'F0D020'; HatDark = 'C0A010'; HatStyle = 'helmet'; Gun = 'pistol' }
+    auditor = @{ Skin = 'E8B890'; Hair = 'B0B0B0'; Uniform = '5A5F68'; UniformDark = '42464E'; Pants = '4A4E56'; PantsDark = '363A40'; Boots = '101010'; Belt = '202020'; Hat = '000000'; HatDark = '000000'; HatStyle = 'none'; Gun = 'pistol' }
     boss    = @{ Skin = 'E0A878'; Hair = '3A2A1A'; Uniform = '5A7AA0'; UniformDark = '3E5A7C'; Pants = '4A6688'; PantsDark = '364E6A'; Boots = '202830'; Belt = 'C0A030'; Hat = '3A4A6A'; HatDark = '2A3650'; HatStyle = 'helmet'; Gun = 'twin' }
 }
 
@@ -684,6 +686,7 @@ function Add-ThingSprites {
     $S['vest'] = New-Sprite { Add-Poly '2E3E58' @(22, 40, 28, 38, 32, 41, 36, 38, 42, 40, 41, 60, 23, 60); Add-Poly '4A648C' @(25, 43, 31, 44, 31, 58, 25, 58); Add-Poly '4A648C' @(33, 44, 39, 43, 39, 58, 33, 58); Add-Box '8FB0D8' 25 47 14 1; Add-Box '8FB0D8' 25 52 14 1; Add-Box '101418' 31 41 2 19 }
     $S['keycard'] = New-Sprite { Add-Box 'E8E8E8' 24 52 16 9; Add-Box '2C54C4' 24 52 16 3; Add-Box '101418' 26 57 6 2; Add-Box 'E0B030' 35 56 3 3 }
     $S['scrap'] = New-Sprite { Add-Poly '3A4450' @(22, 60, 25, 54, 31, 56, 34, 52, 40, 55, 42, 60); Add-Box '8A929A' 27 56 4 2; Add-Box 'C03030' 35 56 2 2; Add-Box '56626F' 30 58 8 2 }
+    $S['mine'] = New-Sprite { Add-Oval '101010' 22 57 20 5; Add-Oval '3A4450' 23 52 18 9; Add-Oval '56626F' 25 53 14 5; Add-Box '101418' 30 49 4 4; Add-Box 'FF2020' 31 50 2 2 }
     $S['signed'] = New-Sprite { Add-Oval '2040FFFF' 18 38 28 26; Add-Box '101418' 23 42 18 18; Add-Box '2C54C4' 24 43 16 16; Add-Box 'E8E8E8' 27 43 10 6; Add-Box '101418' 33 44 2 4; Add-Box 'E8E8E8' 26 52 12 6; Add-Box '40E0FF' 28 54 8 1; Add-Box '40E0FF' 28 56 5 1 }
     $S['sudo'] = New-Sprite { Add-Oval 'C09010' 18 28 28 28; Add-Oval 'F0D040' 20 30 24 24; Add-Oval '8A6A08' 23 33 18 18; Add-Box 'FFFFFF' 28 36 2 12; Add-Box 'FFFFFF' 34 36 2 12; Add-Box 'FFFFFF' 25 39 14 2; Add-Box 'FFFFFF' 25 44 14 2 }
     $S['rocket'] = New-Sprite { Add-Oval 'C03008' 22 22 20 20; Add-Oval 'FF7010' 24 24 16 16; Add-Oval 'FFD040' 27 27 10 10; Add-Oval 'FFFFFF' 30 30 4 4 }
@@ -843,7 +846,7 @@ function Add-WhatIfSprites {
 
 function Initialize-Sprites {
     $script:Spr = @{}
-    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield') { Add-SoldierSprites $k }
+    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield', 'engineer', 'auditor') { Add-SoldierSprites $k }
     foreach ($k in $script:ModKinds) { Add-SoldierSprites $k }     # newcomers from mods: a palette is all they need
     Add-ShieldOverlay
     Add-BossSprites
@@ -853,6 +856,7 @@ function Initialize-Sprites {
     Add-BotSprites              # after the things: the bot dies in the rocket's explosion frames
     Add-SecuritySprites
     Add-BsodSprites
+    Add-BugSprites
     $script:Spr['uber.jam'] = New-Sprite { Add-MechArt 'stand'; Add-Box 'F4F4F4' 25 27 14 10; Add-Box 'B0B0B0' 27 30 10 1; Add-Box 'B0B0B0' 27 33 8 1; Add-Box 'FF2020' 27 22 10 3 }
     Add-WhatIfSprites
     Add-WeaponSprites
@@ -952,6 +956,39 @@ function Add-BotArt([string]$Pose) {
     Add-Oval '101418' 27 40 10 8; Add-Oval $(if ($blink) { 'FF2020' } else { '801010' }) 29 41 6 6
     if ($blink) { Add-Oval 'FFA0A0' 31 42 2 2 }
     Add-Box '8A929A' 31 30 2 7; Add-Oval $(if ($blink) { 'FFD040' } else { 'C03030' }) 30 27 4 4
+}
+
+# The bug: a beetle the size of a shoe box - and, at two thirds of that, what crawls out when one is blown up.
+function Add-BugArt([string]$Pose, [double]$Size) {
+    $s = { param($v) [int][Math]::Round($v * $Size) }
+    $cx = 32; $ground = 60
+    if ($Pose -in 'die2', 'die3', 'dead') {
+        Add-Oval '2A5A1A' ($cx - (& $s 11)) ($ground - (& $s 4)) (& $s 22) (& $s 5); Add-Oval '7AC040' ($cx - (& $s 6)) ($ground - (& $s 3)) (& $s 9) (& $s 3)
+        foreach ($l in -12, -7, 8, 13) { Add-Box '101810' ($cx + (& $s $l)) ($ground - (& $s 2)) (& $s 3) 1 }
+        return
+    }
+    $lift = if ($Pose -eq 'jump') { & $s 12 } elseif ($Pose -in 'w2', 'w4') { 1 } else { 0 }
+    $top = $ground - (& $s 15) - $lift
+    Add-Oval '101010' ($cx - (& $s 10)) ($ground - 3) (& $s 20) 4
+    $swing = switch ($Pose) { 'w1' { 2 } 'w3' { -2 } default { 0 } }
+    foreach ($l in -1, 0, 1) {                                   # six legs
+        Add-Poly '101810' @(($cx - (& $s 6)), ($top + (& $s (7 + $l * 3))), ($cx - (& $s (13 + $swing * $l))), ($top + (& $s (9 + $l * 4))), ($cx - (& $s (13 + $swing * $l))), ($ground - $lift), ($cx - (& $s (12 + $swing * $l))), ($top + (& $s (10 + $l * 4))))
+        Add-Poly '101810' @(($cx + (& $s 6)), ($top + (& $s (7 + $l * 3))), ($cx + (& $s (13 - $swing * $l))), ($top + (& $s (9 + $l * 4))), ($cx + (& $s (13 - $swing * $l))), ($ground - $lift), ($cx + (& $s (12 - $swing * $l))), ($top + (& $s (10 + $l * 4))))
+    }
+    Add-Oval '1E4A14' ($cx - (& $s 9)) $top (& $s 18) (& $s 14)                                  # the shell
+    Add-Oval '3A8A24' ($cx - (& $s 7)) ($top + 1) (& $s 14) (& $s 9); Add-Box '1E4A14' $cx ($top + 1) 1 (& $s 12)
+    Add-Oval '9AE060' ($cx - (& $s 5)) ($top + 2) (& $s 4) (& $s 3)
+    Add-Oval '142E0E' ($cx - (& $s 5)) ($top + (& $s 9)) (& $s 10) (& $s 7)                       # the head, towards the viewer
+    Add-Box 'FF3020' ($cx - (& $s 4)) ($top + (& $s 11)) (& $s 2) (& $s 2); Add-Box 'FF3020' ($cx + (& $s 2)) ($top + (& $s 11)) (& $s 2) (& $s 2)
+    Add-Box '101810' ($cx - (& $s 3)) ($top - (& $s 3)) 1 (& $s 4); Add-Box '101810' ($cx + (& $s 2)) ($top - (& $s 3)) 1 (& $s 4)      # feelers
+    if ($Pose -eq 'jump') { Add-Box 'E8E8E8' ($cx - (& $s 3)) ($top + (& $s 15)) (& $s 2) (& $s 3); Add-Box 'E8E8E8' ($cx + (& $s 1)) ($top + (& $s 15)) (& $s 2) (& $s 3) }      # mandibles
+    if ($Pose -eq 'die1') { Add-Oval '7AC040' ($cx - (& $s 8)) ($top + (& $s 2)) (& $s 16) (& $s 10) }
+}
+
+function Add-BugSprites {
+    foreach ($kind in @('bug', 1.0), @('buglet', 0.62)) {
+        foreach ($pose in 's', 'w1', 'w2', 'w3', 'w4', 'jump', 'die1', 'die2', 'die3', 'dead') { $size = $kind[1]; $script:Spr["$($kind[0]).$pose"] = New-Sprite { Add-BugArt $pose $size } }
+    }
 }
 
 # BLUE SCREEN: an old monitor riding on a tangle of cables. What is on the screen tells what it is about to do.

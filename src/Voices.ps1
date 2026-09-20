@@ -5,7 +5,7 @@
 # so that it sits well next to the synthesised effects; after that the lines are ordinary sounds.
 # No speech engine, no English voice, -NoVoices: then everybody just beeps as before.
 
-$script:VOICE_VERSION = 2
+$script:VOICE_VERSION = 3
 $script:Voices = @{}                 # kind -> names of alert lines;  "kind.die" -> names of last words
 
 # kind, line, pitch (-10..10), rate (-10..10), voice wanted ('m' or 'f'), priority
@@ -16,6 +16,8 @@ $script:VoiceLines = @(
     @('officer', 'Unauthorised access!',                   3,  3, 'm', 6), @('officer', 'Who approved this change?',          4,  3, 'm', 6)
     @('elite',   'Execution policy: restricted!',         -6,  1, 'm', 6), @('elite',   'You do not have permission!',       -6,  2, 'm', 6)
     @('shield',  'Permission denied!',                    -8,  0, 'm', 6), @('shield',  'Firewall up!',                      -8,  1, 'm', 6)
+    @('engineer', 'Have you tried turning it off and on again?', 1, 2, 'm', 6), @('engineer', 'That is not covered by the warranty!', 2, 3, 'm', 6)
+    @('auditor', 'This will be in my report!',            6,  4, 'm', 6), @('auditor', 'Non-compliant! Non-compliant!',      7,  5, 'm', 6)
     , @('pilot',   'Eject! Eject!',                           5,  5, 'm', 7)
     , @('boss',    'I am the administrator here!',          -10, -1, 'm', 8)
     @('uber',    'Terminating process.',                  -10, -3, 'f', 9), @('uber',    'P C load letter.',                    -10, -3, 'f', 9)

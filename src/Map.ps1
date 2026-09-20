@@ -16,6 +16,7 @@
 #   D1..D9  X1..X9                           remote door and the wall lever (same number) that opens it for good
 #   ..                                       floor
 #   P^ P> Pv P<                              player start + view direction
+#   y n a  +  direction                          bug, engineer, auditor
 #   x  +  direction                              BLUE SCREEN, the last boss
 #   c t  +  nesw                                 security camera, sentry gun (they only see, so: always the "deaf" letters)
 #   g d e o m s h k b u  +  ^>v< | nesw | NESW   enemy: standing | standing & deaf (ambush) | patrolling
@@ -190,6 +191,7 @@ function Initialize-Level([string]$Path) {
     $script:DarkArea = [bool[]]::new([Math]::Max(1, $area))      # rooms without light (Render.ps1, Test-Sight)
     foreach ($d in $map.Darks) { $at = $script:AreaOf[$d[1] * $w + $d[0]]; if ($at -ge 0) { $script:DarkArea[$at] = $true } }
     $script:Darkness = 0.0; $script:LightFlash = 0.0; $script:DarkTold = $false
+    $script:TerminalField = $null                                 # the auditor's way to the nearest terminal, made when first needed
     $script:HordeSpots = @($map.Gates)                            # where the arena's waves come from (Horde.ps1)
     $script:LevelEvents = @($map.Events)                          # what the floor has scheduled (Events.ps1)
     $script:AreaConnect = New-Object 'int[,]' $area, $area

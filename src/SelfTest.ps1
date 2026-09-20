@@ -504,6 +504,33 @@ function Invoke-SelfTest([string]$OutDir) {
         $afterNotice -ne 0 -or $signed.Count -ne 1 -or @($p.Signed).Count -ne 0) { throw 'loot test failed.' }
     $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod
 
+    # ---- the newcomers: a bug that is blown up splits, the engineer repairs and takes back, the auditor runs to a terminal and reports ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false; $script:Message = $null
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2; $keepGod = $script:GodMode; $script:GodMode = $true
+    Set-TestCamera 24.5 20.5 0
+    foreach ($a in @($script:Actors)) { if ($a.Shootable -and -not $a.Def.Inert -and $script:AreaByPlayer[$a.Area]) { $script:ActorAt[$a.TY * $script:MapW + $a.TX] = $null; $a.State = 'gone' } }
+    Update-Actors 0.01
+    Add-Enemy 'bug' 27 19 4 'stand'; $bug = $script:Actors[$script:Actors.Count - 1]
+    Add-Enemy 'bug' 27 23 4 'stand'; $other = $script:Actors[$script:Actors.Count - 1]
+    Add-Enemy 'engineer' 28 21 4 'stand'; $engineer = $script:Actors[$script:Actors.Count - 1]
+    Add-Enemy 'turret' 26 21 4 'ambush'; $turret = $script:Actors[$script:Actors.Count - 1]
+    Add-Enemy 'auditor' 21 15 0 'stand'; $auditor = $script:Actors[$script:Actors.Count - 1]
+    Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-newcomers.png')
+    $total = $script:Stats.KillTotal
+    $script:KillCause = 'bullet'; Stop-Actor $other; $script:KillCause = $null; $afterBullet = $script:Stats.KillTotal - $total
+    $script:KillCause = 'explosion'; Stop-Actor $bug; $script:KillCause = $null; Update-Actors 0.01
+    $buglets = @($script:Actors | Where-Object { $_.Kind -eq 'buglet' -and $_.Shootable }).Count
+    $turret.Hacked = $true; $null = Invoke-EngineerRepair $engineer; $takenBack = -not $turret.Hacked
+    Stop-Actor $turret; for ($f = 0; $f -lt 40; $f++) { Update-Actor $turret 5 }
+    $null = Invoke-EngineerRepair $engineer; $repaired = $turret.Shootable -and -not $turret.Corpse
+    $heat = $script:Stats.Heat; $level = [int]$script:Stats.Policy
+    Start-Attack $auditor
+    for ($f = 0; $f -lt 600 -and $auditor.VX -eq 0; $f++) { Update-Actor $auditor 4; Update-Doors 4 }
+    Update-Policy 1
+    Write-Step "newcomer test: a bug shot leaves $afterBullet, a bug blown up leaves $buglets buglets (kill total +$($script:Stats.KillTotal - $total)); the engineer took the sentry gun back: $takenBack, repaired it: $repaired; the auditor reported after $f steps: policy $level -> $([int]$script:Stats.Policy)"
+    if ($afterBullet -ne 0 -or $buglets -ne 2 -or $script:Stats.KillTotal -ne $total + 2 -or -not $takenBack -or -not $repaired -or $auditor.VX -ne 1 -or [int]$script:Stats.Policy -le $level) { throw 'newcomer test failed.' }
+    $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

@@ -259,6 +259,7 @@ function Invoke-Walk([Actor]$a, [double]$Tics, [string]$Select) {
             'Path'  { Select-PathDir $a }
             'Chase' { Select-ChaseDir $a }
             'Dodge' { Select-DodgeDir $a }
+            'Terminal' { Select-TerminalDir $a }
         }
         if ($a.Dir -eq $script:DIR_NONE) { return }
     }
@@ -301,7 +302,7 @@ function Invoke-ThinkDogChase([Actor]$a, [double]$Tics) {
     }
     $reach = 1.0 + $a.Speed * $Tics
     if ([Math]::Abs($script:P.X - $a.X) -le $reach -and [Math]::Abs($script:P.Y - $a.Y) -le $reach -and (Test-LineToPlayer $a.X $a.Y)) {
-        Set-ActorState $a 'dog.jump1'
+        Set-ActorState $a "$($a.Kind).jump1"                     # the dog - and the bugs, who have learnt it from him
         return
     }
     Invoke-Walk $a $Tics 'Dodge'
@@ -314,6 +315,102 @@ function Invoke-ThinkBotChase([Actor]$a, [double]$Tics) {
     }
     if ([Math]::Abs($script:P.X - $a.X) -le 1.1 -and [Math]::Abs($script:P.Y - $a.Y) -le 1.1) { Stop-Actor $a $true; return }   # close enough: boom
     Invoke-Walk $a $Tics 'Chase'
+}
+
+# ---- the engineer ------------------------------------------------------------------------------------
+# Once in a while he looks around (six tiles, line of sight): a hacked sentry gun is taken back, a destroyed sentry gun
+# or camera is put back on its feet, somebody wounded is patched up. Returns $true if there was something to do.
+function Invoke-EngineerRepair([Actor]$a) {
+    $best = $null; $bestRank = 0
+    foreach ($o in $script:Actors) {
+        if ($o -eq $a -or $o.Kind -in 'peer', 'whatif') { continue }
+        $rank = 0
+        if ($o.Kind -eq 'turret' -and $o.Hacked -and $o.Shootable) { $rank = 3 }
+        elseif ($o.Kind -in 'turret', 'camera' -and $o.Corpse -and $o.State.EndsWith('.dead')) { $rank = 2 }
+        elseif ($o.Shootable -and $o.Def.HP -and -not $o.Def.Inert -and -not $script:BossNames.ContainsKey($o.Kind) -and -not $o.Hacked -and $o.HP -lt 0.7 * $o.Def.HP[$script:Difficulty]) { $rank = 1 }
+        if ($rank -le $bestRank) { continue }
+        if (($o.X - $a.X) * ($o.X - $a.X) + ($o.Y - $a.Y) * ($o.Y - $a.Y) -gt 36 -or -not (Test-LineToPlayer $a.X $a.Y $o.X $o.Y)) { continue }
+        $best = $o; $bestRank = $rank
+    }
+    if (-not $best) { return $false }
+    $what = ''
+    switch ($bestRank) {
+        3 { $best.Hacked = $false; $best.AttackMode = $false; Set-ActorState $best 'turret.stand'; $what = 'has taken the sentry gun back' }
+        2 {
+            $idx = $best.TY * $script:MapW + $best.TX
+            if ($null -ne $script:ActorAt[$idx] -or ([int][Math]::Floor($script:P.X) -eq $best.TX -and [int][Math]::Floor($script:P.Y) -eq $best.TY)) { return $false }
+            $best.HP = $best.Def.HP[$script:Difficulty]; $best.Shootable = $true; $best.Corpse = $false; $best.Hacked = $false; $best.AttackMode = $false; $best.Active = $false
+            Set-ActorState $best "$($best.Kind).stand"; $script:ActorAt[$idx] = $best
+            $what = "has repaired the $(if ($best.Kind -eq 'turret') { 'sentry gun' } else { 'camera' })"
+        }
+        1 { $best.HP = [Math]::Min([int]$best.Def.HP[$script:Difficulty], $best.HP + 20) }
+    }
+    Add-Effect 'puff' $best.X $best.Y; Start-Sfx 'lever' $best.X $best.Y
+    if ($what -and -not $script:Predicting) { Show-Message "The engineer $what" }
+    $true
+}
+
+function Invoke-ThinkEngineerChase([Actor]$a, [double]$Tics) {
+    $a.Cool -= $Tics
+    if ($a.Cool -le 0) { $a.Cool = 90.0; if (Invoke-EngineerRepair $a) { return } }
+    Invoke-ThinkChase $a $Tics
+}
+
+# ---- the auditor -------------------------------------------------------------------------------------
+# How far it is from every tile to the nearest terminal (rack, desk or console), through doors. Made when first asked for.
+function Get-TerminalField {
+    if ($script:TerminalField) { return , $script:TerminalField }
+    $w = $script:MapW; $h = $script:MapH
+    $field = [int[]]::new($w * $h); for ($i = 0; $i -lt $field.Length; $i++) { $field[$i] = 9999 }
+    $queue = [System.Collections.Generic.Queue[int]]::new()
+    $open = {
+        param([int]$i)
+        $t = $script:Tiles[$i]
+        if ($t -eq 0) { return -not $script:StaticBlock[$i] }
+        if ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL) { $d = $script:Doors[$t - $script:TILE_DOOR_BASE]; return ($d.Lock -ne 4 -or $d.Unlocked) }
+        $false
+    }
+    foreach ($at in $script:TerminalAt.Keys) {
+        foreach ($n in -1, 1, (- $w), $w) { $i = [int]$at + $n; if ($i -ge 0 -and $i -lt $field.Length -and $field[$i] -ne 0 -and (& $open $i)) { $field[$i] = 0; $queue.Enqueue($i) } }
+    }
+    while ($queue.Count) {
+        $c = $queue.Dequeue()
+        foreach ($n in -1, 1, (- $w), $w) { $i = $c + $n; if ($i -ge 0 -and $i -lt $field.Length -and $field[$i] -gt $field[$c] + 1 -and (& $open $i)) { $field[$i] = $field[$c] + 1; $queue.Enqueue($i) } }
+    }
+    $script:TerminalField = $field
+    , $field
+}
+
+# The next step towards a terminal: the neighbour that is nearer to one.
+function Select-TerminalDir([Actor]$a) {
+    $field = Get-TerminalField; $w = $script:MapW
+    $here = $field[$a.TY * $w + $a.TX]
+    $a.Dir = $script:DIR_NONE
+    foreach ($try in 0, 2, 4, 6) {
+        $nx = $a.TX + $script:DirDX[$try]; $ny = $a.TY + $script:DirDY[$try]
+        if ($field[$ny * $w + $nx] -lt $here) { $a.Dir = $try; if (Step-Actor $a) { return } }
+    }
+    $a.Dir = $script:DIR_NONE
+}
+
+# He runs for the nearest terminal ($a.VX: 1 once the report has been filed - after that he just stands there and shakes).
+function Invoke-ThinkAuditorChase([Actor]$a, [double]$Tics) {
+    if ($a.VX -ne 0) { return }
+    $field = Get-TerminalField
+    $here = $field[$a.TY * $script:MapW + $a.TX]
+    if ($here -ge 9999) { return }                              # no terminal he could get to
+    if ($here -eq 0 -and $a.Dist -le 0.001) {
+        $a.VX = 1
+        if ($script:Predicting) { return }
+        $level = [Math]::Min(3, [int]$script:Stats.Policy + 1)
+        $script:Stats.Heat = [Math]::Max([double]$script:Stats.Heat, [double]$script:PolicyLevels[$level].From + 5)
+        Start-Sfx 'noway' $a.X $a.Y
+        Show-Message 'The auditor has filed his report.'
+        Add-TranscriptLine 'an auditor reached a terminal and filed his report' 'WARNING'
+        return
+    }
+    if ($a.Dir -eq $script:DIR_NONE) { Select-TerminalDir $a; if ($a.Dir -eq $script:DIR_NONE) { return } }
+    Invoke-Walk $a $Tics 'Terminal'
 }
 
 # ---- Start-Job: the drone ---------------------------------------------------------------------
@@ -664,6 +761,8 @@ function Invoke-Think([Actor]$a, [string]$Think, [double]$Tics) {
         'CameraChase' { Invoke-ThinkCameraChase $a $Tics }
         'TurretChase' { Invoke-ThinkTurretChase $a $Tics }
         'Drone' { Invoke-ThinkDrone $a $Tics }
+        'EngineerChase' { Invoke-ThinkEngineerChase $a $Tics }
+        'AuditorChase' { Invoke-ThinkAuditorChase $a $Tics }
         'Projectile' { Invoke-ThinkProjectile $a $Tics }
         'PlayerProjectile' { Invoke-ThinkPlayerProjectile $a $Tics }
     }
@@ -777,6 +876,20 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
         default        { Add-Item $drop $tx $ty }
     } }
     if (-not $a.Def.NoCount) { $script:Stats.Kills++ }
+    if ($a.Def.SplitInto -and $script:KillCause -eq 'explosion') {
+        # a bug that has been blown up: two smaller ones crawl out of what is left
+        $made = 0
+        foreach ($n in @(1, 0), @(-1, 0), @(0, 1), @(0, -1), @(1, 1), @(-1, -1), @(1, -1), @(-1, 1)) {
+            $x = $a.TX + $n[0]; $y = $a.TY + $n[1]
+            if ($made -ge 2 -or -not (Test-TileFree $x $y) -or ([int][Math]::Floor($script:P.X) -eq $x -and [int][Math]::Floor($script:P.Y) -eq $y)) { continue }
+            $small = New-Enemy $a.Def.SplitInto $x $y 6 'stand'
+            $small.Active = $true; $script:ActorAt[$y * $script:MapW + $x] = $small
+            $script:NewActors.Add($small); $script:Stats.KillTotal++
+            $script:PolicyQuiet = $true; Start-Attack $small; $script:PolicyQuiet = $false
+            $made++
+        }
+        if ($made -and -not $script:Predicting) { Show-Message 'Fix one, get two.' }
+    }
     if (-not $script:NetAsPeer) { Add-Privilege 6 }
     $a.Shootable = $false
     $a.Corpse = $true
