@@ -2,7 +2,7 @@
 
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
 <i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
-verifiable runs,<br>ten floors, a secret one and an ending worth playing for, eleven kinds of enemies plus cameras and sentry guns, nine weapons, co-op and deathmatch for up to four over the network, a terminal
+verifiable runs,<br>ten floors, a secret one and an ending worth playing for, a dozen kinds of enemies plus cameras and sentry guns, nine weapons, an arena with endless waves, co-op and deathmatch for up to four over the network, a terminal
 mode –<br>procedurally generated graphics, sound, speech and music, and under 400 lines of C#.</i></p>
 
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
@@ -52,21 +52,23 @@ composed, spoken and cached there the first time they are needed.
 ## What is this?
 
 POLF 3D is a complete first-person shooter with a textured ray caster (walls, floors, ceilings, windows, distance fog),
-sliding doors, keys, levers, traps, teleporters, secret push-walls, enemy AI, bosses, saved games, demos, a level
-editor and a two-player network mode – and almost all of it is **plain PowerShell**: game logic, AI, ray casting,
-map format, HUD, menus, music, network protocol.
+sliding doors, keys, levers, traps, teleporters, secret push-walls, dark rooms, enemy AI, bosses, saved games, demos,
+a level editor and a network mode for up to four – and almost all of it is **plain PowerShell**: game logic, AI, ray
+casting, map format, HUD, menus, music, network protocol, even the GIF at the top of this page.
 
 * **PowerShell is not just the language, it is the theme.** A sandboxed but real PowerShell console is part of the
-  game, the special powers are PowerShell's common parameters, the walls are full of consoles and error screens, the
-  final boss is a printer, and every floor ends with a transcript.
-* **No asset files.** All wall and floor textures, about 380 sprite images, 40 sound effects and the whole soundtrack
+  game (with a `$PROFILE`, background jobs and hotkeys), the special powers are PowerShell's common parameters, the
+  building has an execution policy, the lift installs modules, the walls are full of consoles and error screens, the
+  bosses are a batch file, a printer and a blue screen, and every floor ends with a transcript and a Pester report.
+* **No asset files.** All wall and floor textures, about 400 sprite images, 47 sound effects and the whole soundtrack
   are generated procedurally (GDI+ primitives, a 3×5 pixel font, a tiny square/saw/noise synthesiser and a chiptune
   composer); the enemies' lines are spoken by Windows' own speech synthesiser. That is also why a [mod](#mods) can add
   an enemy with ten lines of data.
-* **As little C# as possible:** the innermost pixel loops (scale one wall strip, draw one sprite, fill one floor row,
-  turn a frame into terminal characters) and two P/Invoke declarations (game pad, keyboard state). PowerShell cannot
-  push 64,000 pixels per frame – but it handles the 320 rays per frame with ease.
-* **50–60 fps** in a 960×720 window on an ordinary office laptop.
+* **As little C# as possible** – 380 lines next to some 12,000 of PowerShell: the innermost pixel loops (scale one
+  wall strip, draw one sprite, fill one floor row, turn a frame into terminal characters), the audio callback that
+  mixes the sounds, and two P/Invoke declarations (game pad, keyboard state). PowerShell cannot push 64,000 pixels
+  per frame or feed a sound card every few milliseconds – but it handles the 320 rays per frame with ease.
+* **45–60 fps** in a 960×720 window on an ordinary office laptop.
 
 ## Screenshots
 
@@ -127,7 +129,9 @@ The status bar shows floor, score, lives, health, ammunition for the weapon in h
 keys – and **the admin on call**: he collects a new layer of damage every 20 health, winces at every hit and then
 looks towards whoever fired, grins over a new weapon, grits his teeth while you hold the trigger, squints when
 sneaking and wears shades during SUDO. Above it: floor progress (kills, secrets, treasures), a three-step **noise meter**, `?` and `!` above enemies
-who have noticed something or are coming for you, and the radar with alerted enemies as red dots.
+who have noticed something or are coming for you, and the radar with alerted enemies as red dots – each with a nose
+that shows where it is looking. In the top left corner: the building's [execution policy](#stealth) and, below it,
+whatever the floor has [scheduled](#level-machinery) (or, in the arena, the wave).
 
 ## The campaign
 
@@ -143,10 +147,10 @@ ends with a tally (kills, secrets, treasures, a bonus for beating the par time).
 | 3 | The Catacombs | 43 / ~3400 | Caves without doors – noise carries far. Dogs in the fog, mutants lying in ambush behind every pillar |
 | 4 | Lab Zero | 37 / ~5800 | A ring corridor with elite patrols around the reactor hall, windows to shoot (and be shot) through, snipers, **the first war machine** |
 | 5 | The Citadel | 40 / ~6500 | The end of the first half: a great hall with three patrols, two commanders, and a throne hall with a war machine and its escort |
-| 6 | The Data Centre | 44 / ~4100 | Six cold aisles between two cross corridors: snipers at the far ends, windows in the rack rows, a commander in the silver cage |
-| 7 | The Archive | 46 / ~3700 | Two halls of shelves to get lost in, with things waiting between them. Four secrets – the microfiche knows them all |
-| 8 | The Foundry | 35 / ~5500 | A production line: a conveyor with three crushers and a gate, three levers – and THE PRINTER in the assembly hall |
-| 9 | The Executive Floor | 46 / ~7000 | Carpet and plants. A gallery of offices, the board (two commanders) behind the silver door, and a CEO who keeps a printer |
+| 6 | The Data Centre | 44 / ~4200 | Six cold aisles between two cross corridors: snipers at the far ends, windows in the rack rows, a commander in the silver cage |
+| 7 | The Archive | 46 / ~3800 | Two halls of shelves to get lost in, with things waiting between them. Four secrets – the microfiche knows them all |
+| 8 | The Foundry | 35 / ~5600 | A production line: a conveyor with three crushers and a gate, three levers – and THE PRINTER in the assembly hall |
+| 9 | The Executive Floor | 46 / ~7100 | Carpet and plants. A gallery of offices, the board (two commanders) behind the silver door, and a CEO who keeps a printer |
 | 10 | Ring 0 | 47 / ~10000 | Two rings around the core. Patrols outside, levers for the gates, and in the dark of the core two printers, **BLUE SCREEN** – and the lift in the middle of it |
 
 **Every floor is a test suite.** When you throw the lift switch the run is put through ten tests and the result is
@@ -172,7 +176,8 @@ or `3` – can be installed for the rest of the run. `Get-Module` in the console
 **It is worth finishing.** Whoever throws the last switch on floor 10 gets a proper ending, with a piece of music
 written for it. There is no picture of it here, on purpose: it has to be earned.
 
-\* on *root*, where everybody shows up.
+\* on *root*, where everybody shows up. Cameras and sentry guns (floors 6–10) are equipment, not staff: they are not
+counted here and they are not kills.
 
 **The difficulty really matters.** It changes how many enemies are on the floor, how tough they are, how well and how
 quickly they shoot, how far your gunfire carries and what a clip is worth:
@@ -389,7 +394,7 @@ down again, for 15 privilege a step. (Setting it to `Unrestricted` is free. You 
 
 Guests gather on the host's title screen, which lists who has joined; the host picks the difficulty and presses
 Enter. The port is 27500/TCP (`-Port` changes it) – the host's firewall has to let it in. Whoever connects while a
-floor is being played waits in the lobby and is in from the next floor. Every player wears the colour of his slot:
+floor is being played waits in the lobby and is in from the next floor. Every player wears the colour of their slot:
 orange (the host), green, purple, yellow.
 
 * **Co-op:** the whole campaign together. Enemies go for whoever is nearest, keys are shared, anybody can call the
@@ -401,13 +406,14 @@ orange (the host), green, purple, yellow.
   host keeps the frag count and everybody sees it; the lift switch ends the round.
 
 **The host is the admin.** `F1` opens the player list – slot, name, address, state, frags. `K` kicks the selected
-player, `B` bans him: he is thrown out and his address is turned away from then on (the list is kept in
+player, `B` bans them: they are thrown out and their address is turned away from then on (the list is kept in
 `saves/banned.json`), `U` lifts a ban. A guest who was kicked, banned or found the game full is told why and does not
 keep knocking. Guests see the same list without the buttons. If a guest leaves or loses the connection the floor
-simply goes on without him; if the host leaves, everybody is back at the title screen.
+simply goes on without them; if the host leaves, everybody is back at the title screen.
 
-All computers need the same maps (the game warns if they differ). Saving, loading, demos, the console and the
-time-bending powers are switched off in a network game (`-Verbose` works), and menus do not stop the world.
+All computers need the same maps (the game warns if they differ). Saving, loading, demos, the console (and with it
+hotkeys, drone and hacked sentry guns), the modules in the lift and the time-bending powers are switched off in a
+network game (`-Verbose` works), and menus do not stop the world. The arena and the dungeon are solo affairs.
 
 ## Saved games, demos, speedruns
 
@@ -473,7 +479,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 ## Command line
 
 ```powershell
-./Start-Polf3D.ps1 -Scale 4        # window size: 2..5 times 320x240 (default 3)
+./Start-Polf3D.ps1 -Scale 4        # window size: 2..5 times 320x240 (default: what the options menu says, 3 at first)
 ./Start-Polf3D.ps1 -Columns 160    # half the number of rays, for slow machines
 ./Start-Polf3D.ps1 -FlatFloors     # plain floors and ceilings (the 1992 look, a little faster)
 ./Start-Polf3D.ps1 -Difficulty 4   # preselect the difficulty (1..4)
@@ -483,6 +489,8 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -NoSound -NoMusic -NoVoices -NoGamepad -NoMods
 ./Start-Polf3D.ps1 -HostGame Coop  # network game, see above (-JoinGame <host>, -Port, -MaxPlayers, -PlayerName)
 ./Start-Polf3D.ps1 -Daily          # today's dungeon (-Dungeon <number> for any other)
+./Start-Polf3D.ps1 -Horde          # the arena with today's waves (-HordeNumber <number> for any other)
+./Start-Polf3D.ps1 -ExportGif <file>    # a demo as an animated GIF (-GifPath, -GifStart, -GifSeconds, -GifScale)
 ./Start-Polf3D.ps1 -VerifyDemo <file>   # is this demo genuine, and how long did the run take?
 ./Start-Polf3D.ps1 -Terminal       # no window: play in the terminal (-TerminalKeys over SSH)
 ```
@@ -564,6 +572,18 @@ A few details for the curious:
   up with `System.Numerics.Vector`, sixteen samples at a time. Half a minute of music renders in under a second.
 * **Presentation:** `int[]` frame buffer → bitmap → `BufferedGraphics`. Its GDI blit is about six times faster than
   drawing a GDI+ bitmap straight to the window – the difference between 30 and 55 fps.
+* **One place for the state of a floor:** the execution policy's heat, which scheduled events have fired, how long the
+  power stays out, how long the controls hang, what a wave still has to send, what the drone carries – all of it lives
+  in the floor's statistics table, as numbers or as arrays that are replaced rather than changed. That table is what
+  saved games write and what Undo and the `-WhatIf` forecast copy, so every new mechanism is undone, forecast and
+  saved correctly without knowing about any of them.
+* **Darkness is fog.** A dark room multiplies the distance haze and pulls its colour to black; a shot takes most of it
+  away for a few frames. The flashlight is an array with one factor per screen column – a bell curve around the
+  middle – that the wall, sprite and floor code multiply into their fog value.
+* **The GIF encoder** lets Windows do the two expensive things – a median cut palette over a sheet of frames from all
+  over the clip, and LZW – by encoding every frame as a GIF of its own, and then does what Windows cannot: it cuts the
+  frame out of each of those files and writes them one after the other, with a loop block in front and a delay
+  before each.
 * **Approved verbs:** every function, including every internal helper, uses a verb from `Get-Verb`;
   [tools/Test-Verbs.ps1](tools/Test-Verbs.ps1) checks that via the AST.
 
@@ -574,12 +594,22 @@ A few details for the curious:
 ```
 
 Every `maps/level<N>.map` is a text file; the campaign simply consists of all of them in numerical order – a
-`level6.map` automatically becomes floor 6, and `bonus<N>.map` is where the secret lift switch of floor N leads.
+`level11.map` automatically becomes floor 11 (and the ending moves there with it), `bonus<N>.map` is where the secret
+lift switch of floor N leads, and `arena.map` is the arena.
 After the header the grid follows `@map`, **every cell two characters wide**.
 
 Header: `@name`, `@par <seconds>`, `@ceiling <RRGGBB>`, `@floor <RRGGBB>`, optionally `@floortex` / `@ceiltex`
 (`flat_stone flat_wood flat_moss flat_tech flat_carpet` / `ceil_plain ceil_rock ceil_tech`), `@fog <RRGGBB> <tiles>`
-and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements.
+and any number of these:
+
+| Header line | Meaning |
+|---|---|
+| `@spawn <min. difficulty> <x> <y> <enemy code>` | reinforcements that only show up from that difficulty on |
+| `@dark <x> <y>` | the room this tile is in has no light |
+| `@event lockdown\|powerfail\|patch <seconds>` | something the floor has scheduled |
+| `@horde <x> <y>` | a tile the waves of the arena come from |
+
+The editor keeps these lines as they are; they are edited as text.
 
 | Code | Meaning |
 |---|---|
@@ -596,7 +626,7 @@ and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements
 | `P^ P> Pv P<` | player start and view direction |
 | `g d e o m s h k b u` + direction | guard, dog, elite, officer, mutant, sniper, shield bearer, kamikaze bot, commander, war machine |
 | `x` + direction | BLUE SCREEN |
-| `c t` + `n e s w` | security camera, sentry gun (floors 6–10 have them) |
+| `c t` + `n e s w` | security camera, sentry gun (they only ever see, so always the "deaf" letters; floors 6–10 have them) |
 | direction `^ > v <` / `n e s w` / `N E S W` | standing / standing and "deaf" (ambush, reacts to sight only) / patrolling |
 | `:^ :> :v :<` | waypoint: patrols turn here |
 | `~s ~c` | trap: spikes, crusher |
@@ -605,10 +635,12 @@ and any number of `@spawn <min. difficulty> <x> <y> <enemy code>` reinforcements
 | `*l *h *L *t *b *p *a *c *f *x *v *s *u *k *B *m *g` `*e` | decoration: ceiling lamp, chandelier, floor lamp, table, barrel, plant, suit of armour, column, flag, crates, vat, bones, puddle, dead guard, bed, console, stalagmite · **explosive barrel** |
 | `*r *T` | server rack and desk with a CRT (both open the console when "used") |
 
-The bundled maps are generated by [tools/New-Levels.ps1](tools/New-Levels.ps1) from room lists – rooms are rectangles
-carved out of solid rock; where they touch they merge into corridors and caves – and decorated with PowerShell
+The bundled maps – ten floors, the treasury and the arena – are generated by [tools/New-Levels.ps1](tools/New-Levels.ps1)
+from room lists: rooms are rectangles carved out of solid rock; where they touch they merge into corridors and caves.
+Shelves and the free-standing lift shaft of Ring 0 are blocks put back into a room. They are decorated with PowerShell
 scenery by position, so they come out the same every time. The game only ever reads the `.map`
-files, though, so you can just as well edit them by hand or in the editor. Validate and play:
+files, though, so you can just as well edit them by hand or in [the editor](tools/Edit-Level.ps1). Validate
+([tools/Test-Level.ps1](tools/Test-Level.ps1)) and play:
 
 ```powershell
 ./tools/Test-Level.ps1 -Map ./maps/mine.map    # border closed? everything reachable? keys, levers, teleporter pairs? patrol routes clear?
@@ -622,8 +654,12 @@ files, though, so you can just as well edit them by hand or in the editor. Valid
                                # bosses, saved games, demo determinism, the network protocol (a host with two
                                # guests, relay, kick and ban; a guest among three players - over loopback), sprite order, the face, snapshots and every power, the console (which
                                # tries three ways to delete a canary file), dungeons (valid, reproducible, a run
-                               # verifies, a doctored one does not), terminal frames, transcripts, the example mod
-                               # and the music - plus a soak test of every floor that fights every boss
+                               # verifies, a doctored one does not), terminal frames, transcripts, the example mod,
+                               # the mixer and the music, the options, the files on the terminals, the console's
+                               # profile and hotkeys (with a canary of its own), the execution policy, cameras and
+                               # sentry guns, the drone, the modules, darkness and the flashlight, the paper jam and
+                               # BLUE SCREEN, the floors' schedules, the arena, the floor tests, the ending and the
+                               # GIF encoder (read back by GDI+) - plus a soak test of every floor that fights every boss
 ./tools/Test-Level.ps1         # validates all maps and prints an overview of each
 ./tools/Test-Verbs.ps1         # every function uses an approved verb
 ./Start-Polf3D.ps1 -BalanceTest 1   # a bot plays floor 1 on every difficulty and duels its bosses: who wins how often?
