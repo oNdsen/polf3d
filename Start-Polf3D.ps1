@@ -72,6 +72,8 @@
     Cheat: start with every weapon, full ammunition and both keys (F6).
 .PARAMETER SelfTest
     No window: simulate and render a number of frames, write PNGs to ./selftest and print timings.
+.PARAMETER Version
+    Print the version and leave.
 .EXAMPLE
     ./Start-Polf3D.ps1 -Scale 4
 .EXAMPLE
@@ -114,6 +116,7 @@ param(
     [switch]$OneHitKill,
     [switch]$AllWeapons,
     [switch]$SelfTest,
+    [switch]$Version,
     [Parameter(DontShow)][string]$RecordAttractDemo,     # maintenance: let the bot play floor 1 and save the demo to this file
     [Parameter(DontShow)][int]$BalanceTest = 0,          # maintenance: let the bot play this floor on every difficulty and print how it fared (negative: only the boss duels)
     [Parameter(DontShow)][string]$Screenshots,           # maintenance: stage and save the README pictures into this folder
@@ -121,6 +124,8 @@ param(
 )
 
 Set-StrictMode -Off
+$script:PolfVersion = '1.0.0'          # the one place the version is written down: title screen, -Version and tools/New-Release.ps1 read it
+if ($Version) { "POLF 3D $script:PolfVersion"; return }
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'POLF 3D needs Windows (Windows Forms / GDI+).' }
 
@@ -189,7 +194,7 @@ function Initialize-Scaler {
     }
 }
 
-Write-Step 'POLF 3D starting ...'
+Write-Step "POLF 3D $script:PolfVersion starting ..."
 foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Events', 'Horde', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }

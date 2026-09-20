@@ -21,7 +21,7 @@ function Start-Horde([int]$Seed) {
     if ($script:Net -and ($script:Net.Role -ne 'host' -or $script:Net.Mode -ne 'coop')) { Show-Message 'In a network game the arena is opened by the host of a co-op game'; return $false }
     if (-not (Test-Path -LiteralPath (Get-HordeMap))) { Show-Message 'maps/arena.map is missing'; return $false }
     if ($Seed -le 0) { $Seed = Get-DailySeed }
-    $script:HordeSeed = $Seed; $script:BonusMap = $null; $script:NextSeed = $Seed
+    $script:HordeSeed = $Seed; $script:BonusMap = $null; $script:NextSeed = $Seed; $script:LevelIndex = 0
     Start-Level $false $false
     $script:P.Lives = 0                                           # one life
     Show-Message "Horde #$Seed - one life. They come through the four gates. The lift is the way out."

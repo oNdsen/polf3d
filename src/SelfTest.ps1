@@ -1060,7 +1060,7 @@ function Export-Screenshots([string]$OutDir) {
 
     # title
     $script:HighScores = @([pscustomobject]@{ Name = 'root'; Score = 184300; Result = 'VICTORY' }, [pscustomobject]@{ Name = 'sysadmin'; Score = 96500; Result = 'killed' }, [pscustomobject]@{ Name = 'intern'; Score = 12400; Result = 'killed' })
-    $script:Difficulty = 1; Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'title.png'); $script:Difficulty = 3
+    $script:Difficulty = 1; $script:AchievementCount = "37 of $($script:MapFiles.Count * $script:Tests.Count)"; Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'title.png'); $script:Difficulty = 3
 
     # floor 1: the hub hall
     $script:LevelIndex = 0; Start-Level $false $false; $script:Message = $null
@@ -1265,6 +1265,18 @@ function Export-Screenshots([string]$OutDir) {
     Set-TestCamera 25.5 16.4 270; $script:P.Light = $true
     for ($f = 0; $f -lt 40; $f++) { Show-PlayFrame }
     $script:Message = $null; Save-Shot $OutDir 'ring0'
+
+    # the arena: wave three is on its way in
+    if (Start-Horde 4711) {
+        $script:Message = $null; $script:P.Owned = (New-OwnedList $true); $script:P.Ammo = 72; $script:P.Weapon = 3; $script:P.ChosenWeapon = 3
+        $script:Stats.Wave = 2; $script:Stats.WaveQueue = @(); $script:Stats.WaveTimer = 1.0
+        for ($f = 0; $f -lt 260 -and @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert }).Count -lt 9; $f++) { Update-World 4.0 $idle }
+        Set-TestCamera 16.5 17.5 90
+        for ($f = 0; $f -lt 30; $f++) { Update-World 2.0 $idle }
+        Set-TestCamera 16.5 17.5 90; $script:Message = $null
+        Save-Shot $OutDir 'arena'
+        Stop-Horde
+    }
 
     # a floor's test report (the epilogue is NOT among the pictures: it has to be earned)
     $script:LevelIndex = 2; Start-Level $false $false; $script:P.Cheated = $false

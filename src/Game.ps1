@@ -263,6 +263,7 @@ function Show-TitleScreen {
     Write-HudText 'POLF 3D' 'Huge' '102050' 1.5 9.5 320 40
     Write-HudText 'POLF 3D' 'Huge' 'FFFFFF' 0 8 320 40
     Write-HudText '>_  a ray casting shooter in PowerShell' 'Mid' '40E0FF' 0 46 320 12
+    Write-HudText "v$($script:PolfVersion)" 'Small' '506080' 270 4 46 8
 
     Write-HudText 'DIFFICULTY  (arrow keys, Enter = start)' 'Small' '8FB0FF' 0 66 320 8
     for ($i = 0; $i -lt 4; $i++) {

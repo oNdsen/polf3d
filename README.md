@@ -5,10 +5,25 @@
 verifiable runs,<br>ten floors, a secret one and an ending worth playing for, a dozen kinds of enemies plus cameras and sentry guns, nine weapons, an arena with endless waves, co-op and deathmatch for up to four over the network, a terminal
 mode –<br>procedurally generated graphics, sound, speech and music, and under 400 lines of C#.</i></p>
 
+<p align="center">
+<a href="https://github.com/oNdsen/polf3d/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/oNdsen/polf3d?label=release&color=2C54C4"></a>
+<a href="https://github.com/oNdsen/polf3d/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/oNdsen/polf3d/total?label=downloads&color=2C54C4"></a>
+<a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/oNdsen/polf3d?color=2C54C4"></a>
+<img alt="PowerShell 7.2+" src="https://img.shields.io/badge/PowerShell-7.2%2B-5391FE?logo=powershell&logoColor=white">
+<img alt="Platform: Windows" src="https://img.shields.io/badge/platform-Windows-0078D6">
+<img alt="Asset files: 0" src="https://img.shields.io/badge/asset%20files-0-40C060">
+<img alt="C#: 380 lines" src="https://img.shields.io/badge/C%23-380%20lines-8A8A8A">
+<a href="https://github.com/oNdsen/polf3d/commits/main"><img alt="Last commit" src="https://img.shields.io/github/last-commit/oNdsen/polf3d?color=506080"></a>
+<a href="https://github.com/oNdsen/polf3d/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/oNdsen/polf3d?style=flat&color=F0D040"></a>
+</p>
+
 <p align="center"><img src="media/banner.png" alt="POLF 3D - the war machine opens fire" width="900"></p>
 
 <p align="center"><img src="media/gameplay.gif" alt="Ten seconds of the attract demo: the hub hall of floor 1" width="640"><br>
 <sub>Ten seconds of the demo that plays on the title screen – exported by the game itself: <code>./Start-Polf3D.ps1 -ExportGif demos/attract.json</code></sub></p>
+
+**[Download polf3d.zip](https://github.com/oNdsen/polf3d/releases/latest/download/polf3d.zip)**, unpack it and start
+`Play.cmd` – or clone the repository:
 
 ```powershell
 git clone https://github.com/oNdsen/polf3d.git
@@ -16,7 +31,11 @@ cd polf3d
 ./Start-Polf3D.ps1
 ```
 
-Requirements: **Windows** and **PowerShell 7.2+**. Nothing else – no modules, no asset files, no installation.
+Requirements: **Windows** and **PowerShell 7.2+** (`winget install Microsoft.PowerShell`). Nothing else – no modules,
+no asset files, no installation. Windows marks scripts that come out of a downloaded ZIP as "from the internet", and
+PowerShell may then refuse them; `Play.cmd` starts the game with `-ExecutionPolicy Bypass` for that one process and
+changes nothing on the machine (`Get-ChildItem -Recurse | Unblock-File` is the other way). What changed from release
+to release is in the [changelog](CHANGELOG.md).
 On first start the four small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Mixer.cs](src/Mixer.cs),
 [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs)) are compiled once into `bin/` - every later start
 just loads the DLLs, until a source file changes; the music and the enemies' spoken lines are
@@ -90,8 +109,10 @@ casting, map format, HUD, menus, music, network protocol, even the GIF at the to
 | `-Terminal`: the same game as half-block characters | The plan of a generated dungeon: the lift behind the gold door, the key with the boss |
 | ![The Data Centre](media/datacentre.png) | ![Ring 0](media/ring0.png) |
 | Floor 6: a cold aisle of the data centre – there is a sniper at the far end of every one | Floor 10: the core of Ring 0 – dark, and something in there is glowing blue |
-| ![A floor's tests](media/tests.png) | ![The player list](media/players.png) |
-| Every floor is a test suite, and Pester reports: a pacifist run through the catacombs | `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban |
+| ![The arena](media/arena.png) | ![A floor's tests](media/tests.png) |
+| The arena: wave three comes through the gates – the radar shows where from | Every floor is a test suite, and Pester reports: a pacifist run through the catacombs |
+| ![The player list](media/players.png) | |
+| `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban | |
 
 <p align="center"><img src="media/faces.png" alt="The face in the status bar" width="880"></p>
 
@@ -498,6 +519,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -ExportGif <file>    # a demo as an animated GIF (-GifPath, -GifStart, -GifSeconds, -GifScale)
 ./Start-Polf3D.ps1 -VerifyDemo <file>   # is this demo genuine, and how long did the run take?
 ./Start-Polf3D.ps1 -Terminal       # no window: play in the terminal (-TerminalKeys over SSH)
+./Start-Polf3D.ps1 -Version        # which version is this?
 ```
 
 `Get-Help ./Start-Polf3D.ps1 -Full` lists everything.
@@ -539,6 +561,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Terminal.ps1](src/Terminal.ps1) | terminal mode: keys, text screens, presenting a frame |
 | [src/Scaler.cs](src/Scaler.cs), [src/Mixer.cs](src/Mixer.cs), [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs) | **the only C#**: the pixel loops (screen and terminal), the audio callback, XInput and keyboard state declarations. Compiled once, then loaded from `bin/` |
 | [src/SelfTest.ps1](src/SelfTest.ps1) | headless tests and the screenshots for this README |
+| [tools/New-Release.ps1](tools/New-Release.ps1) | builds `polf3d.zip` from the committed state and, with `-Publish`, the GitHub release |
 
 A few details for the curious:
 

@@ -153,7 +153,7 @@ function Show-TerminalFrame {
         $hpColor = if ($p.Health -le 25) { "`e[38;2;255;80;64m" } elseif ($p.Health -le 50) { "`e[38;2;255;192;64m" } else { "`e[38;2;96;255;128m" }
         $keys = "$(if ($p.KeyGold) { "`e[38;2;232;192;32mgold " })$(if ($p.KeySilver) { "`e[38;2;208;216;224msilver " })"
         $null = $sb.Append("$pad`e[97m$(Get-TerminalFace) $hpColor$([char]0x2665) $($p.Health.ToString().PadLeft(3)) $(Get-TerminalBar ($p.Health / 100.0) 10)`e[97m  $($res.Label) $($res.Text)  `e[38;2;64;224;255m$($script:Weapons[$p.Weapon].Name.ToUpper())`e[97m  $keys`e[38;2;143;176;255mPRIV $(Get-TerminalBar ($p.Privilege / 100.0) 8)`e[0m`e[K`n")
-        $floor = if ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }
+        $floor = if ($script:HordeSeed) { 'ARENA' } elseif ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }
         $null = $sb.Append("$pad`e[38;2;160;180;208m$floor  SCORE $('{0:000000}' -f $p.Score)  LIVES $($p.Lives)   KILLS $($st.Kills)/$($st.KillTotal)  SECRETS $($st.Secrets)/$($st.SecretTotal)  TREASURE $($st.Treasures)/$($st.TreasureTotal)$(if ($script:ShowFps) { "   $([int]$script:Fps) fps" })`e[0m`e[K`n")
         $bossLine = ''
         foreach ($a in $script:Actors) { if ($a.Shootable -and $a.AttackMode -and $script:BossNames.ContainsKey($a.Kind)) { $bossLine = "$($script:BossNames[$a.Kind])  $(Get-TerminalBar ($a.HP / [double]$a.Def.HP[$script:Difficulty]) 20)"; break } }
