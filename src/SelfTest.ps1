@@ -473,6 +473,17 @@ function Invoke-SelfTest([string]$OutDir) {
     Stop-Horde; $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod; $script:LevelIndex = 0
     Remove-Item -LiteralPath (Get-HordePath) -ErrorAction SilentlyContinue
 
+    # ---- the commander's gold key: only where there is a gold lock to open - otherwise his strongbox ----
+    $drops = foreach ($floor in 0, 1) {
+        $script:LevelIndex = $floor; $script:BonusMap = $null; Start-Level $false $false
+        $commander = $script:Actors | Where-Object Kind -eq 'boss' | Select-Object -First 1
+        $count = $script:Items.Count; Stop-Actor $commander
+        "$($script:Items[$count].Item)"
+    }
+    Write-Step "key test: the commander of floor 1 (a gold door) drops '$($drops[0])', the one of floor 2 (none) drops '$($drops[1])'"
+    if ($drops[0] -ne 'key_gold' -or $drops[1] -ne 'chest') { throw 'key test failed.' }
+    $script:LevelIndex = 0
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

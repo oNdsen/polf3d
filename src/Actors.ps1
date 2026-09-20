@@ -763,7 +763,13 @@ function Stop-Actor([Actor]$a, [bool]$NoScore = $false) {     # killed
     Set-ActorState $a "$($a.Kind).die1"
     switch ($a.Def.Drop) {
         'clip_small'   { Add-Item 'clip_small' $tx $ty }
-        'key_gold'     { Add-Item 'key_gold' $tx $ty }
+        'key_gold'     {
+            # the commander's gold key - but only where it opens something: a floor without a gold lock (or a player who
+            # has the key already) gets his strongbox instead. A key for a door that does not exist only confuses.
+            $locked = $false
+            foreach ($d in $script:Doors) { if ($d.Lock -eq 1) { $locked = $true; break } }
+            if ($locked -and -not $script:P.KeyGold) { Add-Item 'key_gold' $tx $ty } else { Add-Item 'chest' $tx $ty; $script:Stats.TreasureTotal++ }
+        }
         'crown'        { Add-Item 'crown' $tx $ty; $script:Stats.TreasureTotal++ }
         'mgun_or_clip' { if (-not $script:P.Owned[2]) { Add-Item 'mgun' $tx $ty } else { Add-Item 'clip_small' $tx $ty } }
     }
