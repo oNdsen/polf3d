@@ -5,6 +5,8 @@
 # a war machine. Between the waves supplies drop in the middle of the hall, and now and then a new weapon.
 # The waves are made from the horde's number: the same number, the same waves - so runs can be compared, and
 # saves/horde.json keeps the best of every number and difficulty. The lift is the way out: taking it ends the run.
+# The host of a co-op game can open the arena too (H, or -HostGame Coop -Horde): the waves grow with the number of
+# players, nobody runs out of lives, and the run is not rated. The guests load the arena the way they load a secret floor.
 #
 # What a wave still has to send is kept in $script:Stats (a new array with every change): Undo and saved games work.
 
@@ -16,7 +18,7 @@ function Get-HordeMap { Join-Path (Split-Path $script:MapFiles[0]) 'arena.map' }
 function Get-HordePath { Join-Path $script:SaveDir 'horde.json' }
 
 function Start-Horde([int]$Seed) {
-    if ($script:Net) { Show-Message 'The arena is a solo affair'; return $false }
+    if ($script:Net -and ($script:Net.Role -ne 'host' -or $script:Net.Mode -ne 'coop')) { Show-Message 'In a network game the arena is opened by the host of a co-op game'; return $false }
     if (-not (Test-Path -LiteralPath (Get-HordeMap))) { Show-Message 'maps/arena.map is missing'; return $false }
     if ($Seed -le 0) { $Seed = Get-DailySeed }
     $script:HordeSeed = $Seed; $script:BonusMap = $null; $script:NextSeed = $Seed
@@ -32,6 +34,7 @@ function Stop-Horde { $script:HordeSeed = 0 }
 function Get-HordeWave([int]$Wave) {
     $rng = [System.Random]::new(($script:HordeSeed % 1000000) * 97 + $Wave)
     $budget = 4 + 3 * $Wave
+    if ($script:Net) { $budget = [int]($budget * (1.0 + 0.6 * @($script:Net.Guests).Count)) }      # more players, more visitors
     $list = [System.Collections.Generic.List[string]]::new()
     if ($Wave % 10 -eq 0) { $list.Add('uber'); $budget -= 12 } elseif ($Wave % 5 -eq 0) { $list.Add('boss'); $budget -= 8 }
     $kinds = @($script:HordePrices.Keys | Where-Object { $script:HordePrices[$_] -le 1 + $Wave / 2 })
@@ -105,6 +108,7 @@ function Save-HordeRun([bool]$Evacuated) {
     if (Test-Path -LiteralPath $path) { try { $runs = @(Get-Content -LiteralPath $path -Raw | ConvertFrom-Json) } catch { } }
     $mine = @($runs | Where-Object { $_.Seed -eq $script:HordeSeed -and $_.Difficulty -eq $script:Difficulty + 1 } | Sort-Object Waves, Score -Descending)
     $best = if ($mine.Count) { $mine[0] } else { $null }
+    if ($script:Net) { $script:HordeResult = "Horde #$($script:HordeSeed): $wave wave(s) cleared together. Co-op runs are not rated."; return $script:HordeResult }
     $line = "Horde #$($script:HordeSeed): $wave wave(s) cleared, $($p.Score) points - " + $(if ($p.Cheated) { 'not rated' } elseif (-not $best) { 'the first run with this number' } elseif ($wave -gt $best.Waves -or ($wave -eq $best.Waves -and $p.Score -gt $best.Score)) { "NEW RECORD (it was $($best.Waves) waves, $($best.Score) points)" } else { "your best: $($best.Waves) waves, $($best.Score) points" })
     if (-not $p.Cheated) {
         $runs = @($runs) + [pscustomobject]@{ Seed = $script:HordeSeed; Difficulty = $script:Difficulty + 1; Waves = $wave; Score = $p.Score; Evacuated = $Evacuated; Date = (Get-Date).ToString('yyyy-MM-dd') }

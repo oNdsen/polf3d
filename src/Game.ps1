@@ -394,7 +394,7 @@ function Start-GameLoop {
     $vk = $script:VK
     Set-Mode 'title'
     if ($script:AutoDungeon -and (Start-Dungeon $script:AutoDungeon)) { Set-Mode 'play' }
-    elseif ($script:AutoHorde -and (Start-Horde $script:AutoHorde)) { Set-Mode 'play' }
+    elseif ($script:AutoHorde -and -not $script:Net -and (Start-Horde $script:AutoHorde)) { Set-Mode 'play' }      # (a host waits for the guests and then presses Enter)
     $last = $script:Clock.Elapsed.TotalSeconds
     $fpsTime = $last; $fpsFrames = 0
     $autoStart = $last; $autoFrames = 0
@@ -455,7 +455,7 @@ function Start-GameLoop {
                 $script:Buffered.Render($shotG); $shotG.Dispose()
                 $null = New-Item -ItemType Directory -Path (Join-Path $script:SaveDir '../selftest') -Force
                 $script:BackBmp.Save((Join-Path $script:SaveDir "../selftest/window$(if ($script:Net) { "-$($script:Net.Role)" }).png"))
-                Write-Step ('Window test: {0:0.0} fps on average, mode {1}, health {2}' -f ($autoFrames / ($now - $autoStart)), $script:Mode, $script:P.Health)
+                Write-Step ("Window test: {0:0.0} fps on average, mode {1}, health {2}, on '{3}' with {4} enemies met so far" -f ($autoFrames / ($now - $autoStart)), $script:Mode, $script:P.Health, $script:LevelName, $script:Stats.KillTotal)
                 if ($script:Con) { Write-Step "Console test: $(($script:Con.Lines | Select-Object -Last 5 | ForEach-Object { $_[0] }) -join ' / ')" }
                 if ($script:Net) {
                     $net = $script:Net
@@ -473,13 +473,14 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.Down) { $script:Difficulty = ($script:Difficulty + 1) % 4 }
                     elseif ($h -ge 49 -and $h -le 52) { $script:Difficulty = $h - 49 }
                     elseif ($h -eq $vk.Enter -and -not (Test-NetStart)) { }          # network game: the host starts, once the guest is there
+                    elseif ($h -eq $vk.Enter -and $script:Net -and $script:AutoHorde) { if (Start-Horde $script:AutoHorde) { Set-Mode 'play' } }      # -HostGame Coop -Horde: Enter opens the arena
                     elseif ($h -eq $vk.Enter) {
                         $script:LevelIndex = $script:StartLevelIndex; $script:BonusMap = $null; Start-Level $false $false; Set-Mode 'play'
                         if ($script:CheatAllWeapons) { Invoke-Cheat 'GiveAll' }
                     }
                     elseif ($h -eq $vk.L -and -not $script:Net -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
                     elseif ($h -eq $vk.G -and -not $script:Net) { if (Start-Dungeon 0) { Set-Mode 'play' } }
-                    elseif ($h -eq 72 -and -not $script:Net) { if (Start-Horde 0) { Set-Mode 'play' } }              # H: the arena
+                    elseif ($h -eq 72 -and (-not $script:Net -or (Test-NetStart))) { if (Start-Horde 0) { Set-Mode 'play' } }      # H: the arena (in a network game: the host, co-op)
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.O) { Open-Options }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
@@ -545,6 +546,7 @@ function Start-GameLoop {
                 Update-World $tics $in
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
+                elseif ($script:LevelDone -and $script:HordeSeed -and $script:Net) { $null = Save-HordeRun $true; Set-Mode 'title'; Show-Message $script:HordeResult }      # co-op: everybody goes home together
                 elseif ($script:LevelDone -and $script:HordeSeed) { $null = Save-HordeRun $true; Start-Sfx 'level_done'; Set-Mode 'gameover' }      # the lift: the way out
                 elseif ($script:LevelDone) { Complete-Level }
             }

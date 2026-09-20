@@ -329,7 +329,12 @@ first guards and dogs, later elites, snipers, shield bearers and kamikaze bots; 
 commander, every tenth by a war machine. Between the waves supplies drop in the middle of the hall, and now and then a
 new weapon. The waves are made from the horde's number – today's date by default – so everybody fights the same ones,
 and `saves/horde.json` keeps your best for every number and difficulty. The lift in the corner is the way out: taking
-it ends the run with what you have. The console works in there. So do sentry guns, if you think of it.
+it ends the run with what you have. The console works in there. So does the drone.
+
+**Together:** the host of a co-op game can open the arena as well – `H` on the title screen once the guests are
+there, or `./Start-Polf3D.ps1 -HostGame Coop -Horde`, where Enter opens it. The waves grow with the number of players,
+nobody runs out of lives (whoever falls is back a moment later with the basic kit), and the run is not rated. The
+guests need nothing special: they load the arena the way they load a secret floor.
 
 ## Terminal mode
 
@@ -413,7 +418,7 @@ simply goes on without them; if the host leaves, everybody is back at the title 
 
 All computers need the same maps (the game warns if they differ). Saving, loading, demos, the console (and with it
 hotkeys, drone and hacked sentry guns), the modules in the lift and the time-bending powers are switched off in a
-network game (`-Verbose` works), and menus do not stop the world. The arena and the dungeon are solo affairs.
+network game (`-Verbose` works), and menus do not stop the world. The dungeon is a solo affair; [the arena](#the-arena) is not.
 
 ## Saved games, demos, speedruns
 

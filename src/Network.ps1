@@ -428,7 +428,7 @@ function Initialize-NetLevel([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:P.RunInvalid = $true                                  # no speedrun records from network games
 
     if ($isHost) {
-        $bonus = if ($script:BonusMap) { Split-Path $script:BonusMap -Leaf } else { '' }
+        $bonus = if ($script:HordeSeed) { Split-Path (Get-HordeMap) -Leaf } elseif ($script:BonusMap) { Split-Path $script:BonusMap -Leaf } else { '' }      # the guests load the arena like a secret floor
         $list = ($n.Roster | ForEach-Object { "$($_.Slot):$($_.Name):$($_.X):$($_.Y)" }) -join ','
         foreach ($g in $n.Guests) {
             $g.InLevel = $true; $g.Ready = $false
@@ -680,12 +680,12 @@ function Send-NetSnapshot {
     $doors = @(foreach ($d in $script:Doors) { [int]($d.Open * 100) * 8 + (@('closed', 'opening', 'open', 'closing').IndexOf($d.Action)) * 2 + [int]$d.Unlocked }) -join ','
     $doorPart = if ($doors -ne $n.DoorsSent) { $n.DoorsSent = $doors; $doors } else { '' }
     $st = $script:Stats
-    $stats = "$($st.Kills)|$($st.Secrets)|$($st.Treasures)"
+    $stats = "$($st.Kills)|$($st.Secrets)|$($st.Treasures)"; $total = [int]$st.KillTotal      # the total only changes where enemies arrive later: the arena
     $gone = $n.Gone -join ','
     $n.Gone.Clear()
-    if ($sb.Length -eq 0 -and -not $doorPart -and -not $gone -and $stats -eq $n.StatsSent) { return }
-    $n.StatsSent = $stats
-    Send-NetMessage "Z|$stats|$doorPart|$($sb.ToString())|$gone"
+    if ($sb.Length -eq 0 -and -not $doorPart -and -not $gone -and "$stats|$total" -eq $n.StatsSent) { return }
+    $n.StatsSent = "$stats|$total"
+    Send-NetMessage "Z|$stats|$doorPart|$($sb.ToString())|$gone|$total"
 }
 
 # Deathmatch: what has been picked up comes back after a while. The host keeps the clock.
@@ -750,6 +750,7 @@ function Update-ClientActors([double]$Tics) {
 function Import-NetSnapshot([string[]]$f) {
     $n = $script:Net; $st = $script:Stats
     $st.Kills = [int]$f[1]; $st.Secrets = [int]$f[2]; $st.Treasures = [Math]::Max($st.Treasures, [int]$f[3])
+    if ($f.Count -gt 7 -and $f[7]) { $st.KillTotal = [Math]::Max([int]$st.KillTotal, [int]$f[7]) }      # at the end of the line, so an older guest simply ignores it
     if ($f[4]) {
         $values = $f[4].Split(','); $actions = 'closed', 'opening', 'open', 'closing'
         for ($i = 0; $i -lt $values.Count -and $i -lt $script:Doors.Count; $i++) {
