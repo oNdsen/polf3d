@@ -33,6 +33,7 @@ function Initialize-Renderer([int]$Scale, [int]$ColumnStep) {
         Mid   = [System.Drawing.Font]::new('Consolas', [single](5.0 * $Scale), [System.Drawing.FontStyle]::Bold)
         Big   = [System.Drawing.Font]::new('Consolas', [single](8.5 * $Scale), [System.Drawing.FontStyle]::Bold)
         Huge  = [System.Drawing.Font]::new('Consolas', [single](22 * $Scale), [System.Drawing.FontStyle]::Bold)
+        Giant = [System.Drawing.Font]::new('Consolas', [single](84 * $Scale), [System.Drawing.FontStyle]::Bold)      # the prompt behind the title screen
     }
     $script:RadarPen = [System.Drawing.Pen]::new([System.Drawing.Color]::FromArgb(255, 255, 112, 96), [single][Math]::Max(1.5, $Scale * 0.6))
     $script:Centered = [System.Drawing.StringFormat]::new()
@@ -304,6 +305,11 @@ function Write-HudText([string]$Text, [string]$Font, [string]$Color, [double]$X,
     $s = $script:Scale
     $rect = [System.Drawing.RectangleF]::new([single]($X * $s), [single]($Y * $s), [single]($W * $s), [single]($H * $s))
     $script:BackG.DrawString($Text, $script:Fonts[$Font], (Get-Brush $Color), $rect, $script:Centered)
+}
+
+# Text that starts at a point (Write-HudText centres it in a box).
+function Write-HudLine([string]$Text, [string]$Font, [string]$Color, [double]$X, [double]$Y) {
+    $script:BackG.DrawString($Text, $script:Fonts[$Font], (Get-Brush $Color), [single]($X * $script:Scale), [single]($Y * $script:Scale))
 }
 
 function Write-HudBar([string]$Color, [double]$X, [double]$Y, [double]$W, [double]$H) {

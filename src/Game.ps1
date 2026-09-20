@@ -258,50 +258,89 @@ function Show-PlayFrame {
 function Show-Shade([string]$Color) { Write-HudBar $Color 0 0 320 240 }
 
 function Show-TitleScreen {
+    $g = $script:BackG; $sc = $script:Scale; $bind = $script:Bind
     Show-Shade 'FF0A1020'
+    # a big, faint prompt behind it all, and scan lines
+    $g.DrawString('>', $script:Fonts.Giant, (Get-Brush 'FF0F1A36'), [single](196 * $sc), [single](44 * $sc))
+    for ($y = 6; $y -lt 236; $y += 4) { Write-HudBar '0CFFFFFF' 0 $y 320 0.4 }
     Write-HudBar '2C54C4' 0 0 320 3; Write-HudBar '2C54C4' 0 237 320 3
-    Write-HudText 'POLF 3D' 'Huge' '102050' 1.5 9.5 320 40
-    Write-HudText 'POLF 3D' 'Huge' 'FFFFFF' 0 8 320 40
-    Write-HudText '>_  a ray casting shooter in PowerShell' 'Mid' '40E0FF' 0 46 320 12
-    Write-HudText "v$($script:PolfVersion)" 'Small' '506080' 270 4 46 8
 
-    Write-HudText 'DIFFICULTY  (arrow keys, Enter = start)' 'Small' '8FB0FF' 0 66 320 8
+    Write-HudLine 'POLF 3D' 'Huge' '102050' 13.5 7.5
+    Write-HudLine 'POLF 3D' 'Huge' 'FFFFFF' 12 6
+    Write-HudLine '>_  a ray casting shooter in PowerShell' 'Mid' '40E0FF' 16 44
+    Write-HudText "v$($script:PolfVersion)" 'Small' '506080' 270 5 46 8
+
+    # left: the menu, written the way one would type it
+    Write-HudLine 'PS Shellstein:\> ./Start-Polf3D.ps1 -Difficulty' 'Small' '8FB0FF' 16 62
     for ($i = 0; $i -lt 4; $i++) {
         $sel = $i -eq $script:Difficulty
-        if ($sel) { Write-HudBar '2C54C4' 80 (76 + $i * 11) 160 10 }
-        Write-HudText "$($i + 1)  $($script:Difficulties[$i].Name)" 'Mid' $(if ($sel) { 'FFFFFF' } else { '7080A0' }) 80 (76 + $i * 11) 160 10
+        if ($sel) { Write-HudBar '2C54C4' 14 (71.5 + $i * 11) 152 10 }
+        Write-HudLine "$(if ($sel) { '>' } else { ' ' }) $($i + 1)  $($script:Difficulties[$i].Name)" 'Mid' $(if ($sel) { 'FFFFFF' } else { '7080A0' }) 16 (72 + $i * 11)
     }
-    $load = if ($script:HasSaves) { 'L = load a saved game     ' } else { '' }
-    if ($script:Net) { $load = ''; Write-HudText (Get-NetStatus) 'Small' '60FF80' 0 131 320 8 }
+    $rows = [System.Collections.Generic.List[object]]::new()
+    if ($script:Net) { $rows.Add(@('', (Get-NetStatus), '60FF80')); if (Test-NetStart) { $rows.Add(@('Enter', 'start the campaign together', 'FFFFFF')); $rows.Add(@('H', 'the arena, together', 'C0C8D8')) } }
     else {
         $best = Get-DungeonBest (Get-DailySeed)
-        Write-HudText "G = today's dungeon #$(Get-DailySeed)$(if ($best) { "   (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })     H = the arena: waves until you drop" 'Small' '40E0FF' 0 131 320 8
+        $rows.Add(@('Enter', 'start the campaign', 'FFFFFF'))
+        $rows.Add(@('G', "today's dungeon #$(Get-DailySeed)$(if ($best) { "  (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })", 'C0C8D8'))
+        $rows.Add(@('H', 'the arena: waves until you drop', 'C0C8D8'))
+        if ($script:HasSaves) { $rows.Add(@('L', 'load a saved game', 'C0C8D8')) }
     }
-    Write-HudText "${load}T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     O = options     Esc = quit" 'Small' 'FFE860' 0 123 320 8
+    $y = 121.0
+    foreach ($row in $rows) {
+        if ($row[0]) { Write-HudLine $row[0] 'Small' 'FFE860' 16 $y; Write-HudLine $row[1] 'Small' $row[2] 38 $y } else { Write-HudLine $row[1] 'Small' $row[2] 16 $y }
+        $y += 8.0
+    }
+    $x = 16.0                                                     # the small print: three keys on one line
+    foreach ($pair in @('O', 'options'), @('T', "speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })"), @('Esc', 'quit')) {
+        Write-HudLine $pair[0] 'Small' 'FFE860' $x $y; $x += $pair[0].Length * 2.5 + 5
+        Write-HudLine $pair[1] 'Small' 'C0C8D8' $x $y; $x += $pair[1].Length * 2.5 + 12
+    }
 
-    Write-HudText 'CONTROLS' 'Small' '8FB0FF' 0 138 160 8
-    $help = "W/S or arrows  move`nA/D  strafe   Shift  run   C  sneak`nCtrl / left mouse  fire`nSpace / E  door, switch, secret wall`n1-9  weapon   M  map   N  minimap   P  pause`nZ -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo`nT / Tab  PowerShell console (or use a terminal)`nF2 mouse look  F3 fps  F4 music  F5 save  F9 load  F12 demo`nXInput game pad: sticks, RT fire, A use, B sneak, LB/RB weapon`nCheats: F6 all  F7 ammo  F8 god  F11 1-hit"
-    Write-HudText $help 'Small' 'C0C8D8' 4 144 156 88
-
+    # right: the list of honour, and how many of the floors' tests have been passed
+    Write-HudBar '50060C18' 176 60 132 100
     if ($script:Speedrun) {
-        Write-HudText 'FASTEST RUNS' 'Small' '8FB0FF' 160 138 160 8
-        $y = 148; $runs = @((Get-SpeedrunData).Runs)
-        foreach ($run in $runs) { Write-HudText ('{0,-12} {1,8}  {2}' -f $run.Name, (Format-Time $run.Seconds -Tenths), $run.Difficulty) 'Small' 'C0C8D8' 164 $y 152 8; $y += 9 }
-        if (-not $runs) { Write-HudText '- no complete run yet -' 'Small' '7080A0' 160 150 160 8 }
+        Write-HudLine 'FASTEST RUNS' 'Small' '8FB0FF' 182 63
+        $y = 73.0; $runs = @((Get-SpeedrunData).Runs)
+        foreach ($run in $runs) { Write-HudLine ('{0,-12} {1,8}  {2}' -f $run.Name, (Format-Time $run.Seconds -Tenths), $run.Difficulty) 'Small' 'C0C8D8' 182 $y; $y += 8.5 }
+        if (-not $runs) { Write-HudLine '- no complete run yet -' 'Small' '7080A0' 182 73 }
     }
     else { Show-HighScoreList }
-    Write-HudText "$($script:MapFiles.Count) floors  -  tests passed: $($script:AchievementCount)  -  everything you see and hear is generated at start-up." 'Small' '506080' 0 217 320 8
-    Write-HudText "POLF 3D  $($script:Copyright)" 'Small' '7080A0' 0 226 320 8
+    $passed = 0; $total = [Math]::Max(1, $script:MapFiles.Count * $script:Tests.Count)
+    if ("$($script:AchievementCount)" -match '^(\d+) of') { $passed = [int]$Matches[1] }
+    Write-HudLine "ACHIEVEMENTS   $passed of $total" 'Small' '8FB0FF' 182 134
+    Write-HudBar 'FF16213C' 182 143 120 4; Write-HudBar 'FF60FF80' 182 143 (120.0 * [Math]::Min(1.0, $passed / $total)) 4
+    Write-HudLine 'ten tests per floor - the lift has the report' 'Small' '506080' 182 150
+
+    # bottom: the keys as they are bound right now, in three columns
+    Write-HudBar '302C54C4' 14 165 292 0.6
+    Write-HudLine 'CONTROLS' 'Small' '8FB0FF' 16 168
+    $k = { param($name) Get-KeyName $bind[$name] }
+    $columns = @(
+        @(@("$(& $k Forward) $(& $k StrafeLeft) $(& $k Back) $(& $k StrafeRight) / arrows", 'move'), @((& $k Run), 'run'), @((& $k Sneak), 'sneak'), @("$(& $k Fire) / mouse 1", 'fire'), @("$(& $k Use) / E / mouse 2", 'use')),
+        @(@('1-9', 'weapons'), @("$(& $k Map) / N", 'map, radar'), @((& $k Light), 'flashlight'), @('P / Esc', 'pause, save'), @("$(& $k Console) / Tab", 'console')),
+        @(@("$(& $k WhatIf) $(& $k Confirm) $(& $k Verbose) $(& $k Force) $(& $k Undo)", 'the powers'), @("$(& $k Macro1) $(& $k Macro2) $(& $k Macro3) $(& $k Macro4)", 'console hotkeys'), @('F2 F3 F4', 'mouse, fps, music'), @('F5 F9 F12', 'save, load, demo'), @('F6 F7 F8 F11', 'cheats'))
+    )
+    $x = 16.0
+    foreach ($column in $columns) {
+        $width = ($column | ForEach-Object { $_[0].Length } | Measure-Object -Maximum).Maximum * 2.5 + 5
+        $y = 177.0
+        foreach ($pair in $column) { Write-HudLine $pair[0] 'Small' '40E0FF' $x $y; Write-HudLine $pair[1] 'Small' 'C0C8D8' ($x + $width) $y; $y += 7.4 }
+        $x += $width + ($column | ForEach-Object { $_[1].Length } | Measure-Object -Maximum).Maximum * 2.5 + 12
+    }
+    Write-HudLine 'Game pad (XInput): sticks move and turn, RT fire, LT run, A use, B sneak, LB/RB weapon.   Everything else: O' 'Small' '7080A0' 16 215
+    Write-HudLine "$($script:MapFiles.Count) floors - everything you see and hear is generated at start-up" 'Small' '506080' 16 226
+    Write-HudText "POLF 3D  $($script:Copyright)" 'Small' '506080' 160 226 148 8
 }
 
 function Show-HighScoreList {
-    Write-HudText 'HIGH SCORES' 'Small' '8FB0FF' 160 138 160 8
-    $y = 148
+    Write-HudLine 'HIGH SCORES' 'Small' '8FB0FF' 182 63
+    $y = 73.0
     foreach ($h in $script:HighScores) {
-        Write-HudText ('{0,-12} {1,7}  {2}' -f $h.Name, $h.Score, $h.Result) 'Small' 'C0C8D8' 164 $y 152 8
-        $y += 9
+        Write-HudLine ('{0,-12} {1,7}  {2}' -f $h.Name, $h.Score, $h.Result) 'Small' 'C0C8D8' 182 $y
+        $y += 8.5
     }
-    if (-not $script:HighScores) { Write-HudText '- empty so far -' 'Small' '7080A0' 160 150 160 8 }
+    if (-not $script:HighScores) { Write-HudLine '- empty so far -' 'Small' '7080A0' 182 73 }
 }
 
 function Get-Percent([int]$Count, [int]$Total) { if ($Total -le 0) { 100 } else { [int][Math]::Floor(100 * $Count / $Total) } }
