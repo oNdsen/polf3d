@@ -2,7 +2,7 @@
 
 <p align="center"><b>A 90s-style ray casting shooter – written in PowerShell.</b><br>
 <i>A real PowerShell console inside the game, <code>-WhatIf</code>, <code>-Confirm</code> and <code>-Force</code> as powers, a daily dungeon with
-verifiable runs,<br>ten floors, a secret one and an ending worth playing for, a dozen kinds of enemies plus cameras and sentry guns, nine weapons, an arena with endless waves, co-op and deathmatch for up to four over the network, a terminal
+verifiable runs,<br>ten floors, a secret one and an ending worth playing for, fifteen kinds of enemies plus cameras and sentry guns, ten weapons and a mine, an arena with endless waves, co-op and deathmatch for up to four over the network, a terminal
 mode –<br>procedurally generated graphics, sound, speech and music, and under 400 lines of C#.</i></p>
 
 <p align="center">
@@ -129,7 +129,8 @@ casting, map format, HUD, menus, music, network protocol, even the GIF at the to
 | `C` | sneak (slow and silent) |
 | `Ctrl`, left mouse button | fire |
 | `Space`, `E`, right mouse button | door, lever, lift switch, secret wall |
-| `1`–`9` | weapons (see below) |
+| `1`–`9`, `0` | weapons (see below) – `0` is the taser |
+| `Q` | put a mine down – and, pressed again, set off what lies out there |
 | `Z` `X` `V` `F` `R` | the powers: `-WhatIf`, `-Confirm`, `-Verbose`, `-Force`, Undo (see [below](#powershell-is-the-point)) |
 | `T`, `Tab` | the PowerShell console – or "use" a terminal or a server rack |
 | `G` `H` `B` `Y` | the four console hotkeys: whatever command line you put on them with `Set-Hotkey` |
@@ -231,6 +232,9 @@ all: there you need cover, the special weapons and a plan.
 | Mutant | 30–65 | never shouts an alarm, two shots per attack – loves an ambush |
 | Sniper | 15–30 | slow and fragile, takes his time – and then hits hard at **any** distance. Only running helps |
 | Shield bearer | 45–80 | bullets and blades glance off the shield: get behind him, wait until he lowers it to shoot – or use something that does not care |
+| Bug | 8–16 | small, quick, zig-zags and leaps at you. Fix it with a blade, a bullet or fire and it is gone – **blow it up and two smaller ones crawl out** ("fix one, get two") |
+| Engineer | 25–45 | a poor shot, but he keeps the house running: takes hacked sentry guns back, puts destroyed sentry guns and cameras on their feet again and patches up whoever stands near him. Always the first target |
+| Auditor | 20–40 | unarmed. When he sees you he **runs for the nearest terminal** – and if he gets there, his report raises the [execution policy](#stealth) by a whole level. Always carries a keycard |
 | Kamikaze bot | 10–20 | rolls at you at speed and blows itself up; shooting it has the same effect (mind who stands next to it) |
 | Security camera | 8–12 | hangs from the ceiling and sweeps a quarter turn to either side. Harmless – but every second it sees you heats the [execution policy](#stealth) by eight points. Not a kill; `Get-Enemy -Kind camera \| Stop-Enemy` switches it off quietly |
 | Sentry gun | 35–65 | never moves, fires bursts, explodes when destroyed. `Get-Enemy -Kind turret \| Set-Turret -Owner Me` (25 privilege) makes it change sides: from then on it shoots whoever else comes within ten tiles |
@@ -257,9 +261,21 @@ policy: restricted!" – and now and then a last "Null reference!" (`-NoVoices` 
 | 7 | **Rocket launcher** | a real projectile with splash damage: brings down cracked walls, sets off barrels, ignores shields – and hurts you too |
 | 8 | **Flamethrower** | short range, wide cone, burns everybody in it; flames lick around shields |
 | 9 | **Throwing knives** | silent like the knife, but at a distance – deadly against anyone who has not noticed you |
+| 0 | **Taser** | `Stop-Process`: silent, two and a half tiles of reach. Stuns whoever it touches for five seconds (and he still has not noticed you), makes bosses flinch and switches machines – sentry guns, cameras, kamikaze bots – off for good. The battery recharges by itself; no gun as far as the pacifist achievement is concerned |
+| `Q` | **Mine** | `Invoke-Command`, the remote kind: `Q` puts one down, `Q` again – or `Invoke-Command` in the console, or anything that hits it – sets off whatever lies out there. They come in pairs |
 
 The guns share one kind of ammunition (99 rounds at most); rockets, knives and Force charges are counted separately.
 When a weapon runs dry you automatically draw the best one that still works.
+
+**Loot.** Every kind of enemy has its own loot table, rolled with the floor's random numbers. Officers may carry
+**keycards** – a locked door without its key eats one and stays open for good. Elites and shield bearers leave shards
+of **armour**, the commander a whole vest: armour takes half of every hit until it is gone. Machines leave **scrap**
+that turns into privilege. Rarely there is a **signed drop**, a module that is imported for the rest of the floor –
+`Overclock` (the guns cycle half as fast again), `ArmorPiercing` (bullets hit harder and go through shields) or
+`Compress-Archive` (every second round is free). And there is the **silent streak**: kill enemies who never noticed
+you, one after another without anybody noticing in between, and from the third on they leave more behind; the fifth
+brings a signed drop for certain. Being seen ends it. The commander, by the way, only drops a gold key where there is
+a gold lock to open – otherwise his strongbox.
 
 **Items:** dog food (+4), food (+10), first aid kit (+25), clips, rockets, gold and silver keys, treasures
 (coins 100, goblet 500, chest 1000, crown 5000 points), extra lives, Force charges and the **SUDO** power-up
@@ -553,6 +569,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
 | [src/Events.ps1](src/Events.ps1) | what a floor has scheduled: lockdown, power failure, Patch Tuesday |
 | [src/Policy.ps1](src/Policy.ps1) | the building's execution policy: the alarm level of a floor |
+| [src/Loot.ps1](src/Loot.ps1) | loot tables, armour, keycards, scrap, signed drops, the silent streak |
 | [src/Perks.ps1](src/Perks.ps1) | `Install-Module`: the perks offered between the floors |
 | [src/Abilities.ps1](src/Abilities.ps1) | privilege, the five powers, in-memory world snapshots, the `-WhatIf` forecast |
 | [src/Story.ps1](src/Story.ps1) | the files on the terminals, and what their codes and tokens do |
@@ -653,13 +670,14 @@ The editor keeps these lines as they are; they are edited as text.
 | `..` | floor |
 | `P^ P> Pv P<` | player start and view direction |
 | `g d e o m s h k b u` + direction | guard, dog, elite, officer, mutant, sniper, shield bearer, kamikaze bot, commander, war machine |
+| `y n a` + direction | bug, engineer, auditor |
 | `x` + direction | BLUE SCREEN |
 | `c t` + `n e s w` | security camera, sentry gun (they only ever see, so always the "deaf" letters; floors 6–10 have them) |
 | direction `^ > v <` / `n e s w` / `N E S W` | standing / standing and "deaf" (ambush, reacts to sight only) / patrolling |
 | `:^ :> :v :<` | waypoint: patrols turn here |
 | `~s ~c` | trap: spikes, crusher |
 | `@1`–`@9` | teleporter pad (two pads with the same number form a pair) |
-| `+d +f +h` `+a +o +z` `+m +c +p +r +l +t +j` `+g +s` `+1 +2 +3 +4` `+u +q` | dog food, food, first aid · clip, rockets, Force charge · machine gun, chain gun, Pipeline Cannon, Force Blaster, rocket launcher, flamethrower, throwing knives · keys · treasures · extra life, SUDO |
+| `+d +f +h` `+a +o +z` `+m +c +p +r +l +t +j` `+g +s` `+1 +2 +3 +4` `+u +q` `+v +i +b +k` | dog food, food, first aid · clip, rockets, Force charge · machine gun, chain gun, Pipeline Cannon, Force Blaster, rocket launcher, flamethrower, throwing knives · keys · treasures · extra life, SUDO · taser, mines, armoured vest, keycard |
 | `*l *h *L *t *b *p *a *c *f *x *v *s *u *k *B *m *g` `*e` | decoration: ceiling lamp, chandelier, floor lamp, table, barrel, plant, suit of armour, column, flag, crates, vat, bones, puddle, dead guard, bed, console, stalagmite · **explosive barrel** |
 | `*r *T` | server rack and desk with a CRT (both open the console when "used") |
 
@@ -686,7 +704,8 @@ files, though, so you can just as well edit them by hand or in [the editor](tool
                                # the mixer and the music, the options, the files on the terminals, the console's
                                # profile and hotkeys (with a canary of its own), the execution policy, cameras and
                                # sentry guns, the drone, the modules, darkness and the flashlight, the paper jam and
-                               # BLUE SCREEN, the floors' schedules, the arena, the floor tests, the ending and the
+                               # BLUE SCREEN, the floors' schedules, the arena, loot and the commander's key, the
+                               # bug, the engineer and the auditor, taser and mine, the floor tests, the ending and the
                                # GIF encoder (read back by GDI+) - plus a soak test of every floor that fights every boss
 ./tools/Test-Level.ps1         # validates all maps and prints an overview of each
 ./tools/Test-Verbs.ps1         # every function uses an approved verb

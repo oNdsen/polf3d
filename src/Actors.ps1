@@ -343,7 +343,7 @@ function Invoke-EngineerRepair([Actor]$a) {
             Set-ActorState $best "$($best.Kind).stand"; $script:ActorAt[$idx] = $best
             $what = "has repaired the $(if ($best.Kind -eq 'turret') { 'sentry gun' } else { 'camera' })"
         }
-        1 { $best.HP = [Math]::Min([int]$best.Def.HP[$script:Difficulty], $best.HP + 20) }
+        1 { $best.HP = [Math]::Min([int]$best.Def.HP[$script:Difficulty], $best.HP + (6, 8, 12, 16)[$script:Difficulty]) }      # a field dressing, not a miracle - and less of one on the easier difficulties
     }
     Add-Effect 'puff' $best.X $best.Y; Start-Sfx 'lever' $best.X $best.Y
     if ($what -and -not $script:Predicting) { Show-Message "The engineer $what" }

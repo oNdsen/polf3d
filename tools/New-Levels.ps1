@@ -294,13 +294,13 @@ Save-Level 2 'The Barracks' 300 '403830' '6A6258' 'SS' -Look '@floortex flat_woo
 # pillar. Silver key in the officers' crypt, gold key in the vault, a commander guards the lift.
 # =====================================================================================================
 New-Grid 50 43
-Add-Room 2 38 5 4 'GG' @(2, 2, 'P^',  0, 0, '*s',  4, 3, '+a',  4, 0, '+j')                       # arrival cave
+Add-Room 2 38 5 4 'GG' @(2, 2, 'P^',  0, 0, '*s',  4, 3, '+a',  4, 0, '+j',  0, 3, '+b')                       # arrival cave
 Add-Room 4 30 2 8 'GG'
 Add-Room 2 24 8 6 'GG' @(                                    # dog cave
     1, 1, 'dE',  0, 1, ':>',  7, 1, ':<',  6, 4, 'd<',  3, 4, 'd^',  4, 3, '*g',  7, 5, '*s',  0, 5, '+d',  7, 0, '+f')
 Add-Room 10 26 8 2 'GG' @(6, 0, 'mW',  7, 0, ':<')
 Add-Room 18 22 9 9 'GG' @(                                   # pillar crypt: ambush!
-    2, 2, '*c',  6, 2, '*c',  2, 6, '*c',  6, 6, '*c',  0, 0, 'me',  8, 0, 'mw',  1, 8, 'me',  8, 8, 'mw',  4, 1, 'ms'
+    2, 2, '*c',  6, 2, '*c',  2, 6, '*c',  6, 6, '*c',  8, 0, 'mw',  1, 8, 'me',  4, 1, 'ms'
     4, 4, '+h',  1, 7, '*s',  7, 1, '*s')
 Add-Room 21 14 2 8 'GG'
 Add-Room 16 6 12 8 'SS' @(                                   # officers' crypt: silver key
@@ -329,7 +329,7 @@ Add-Things @(
     15, 9, 'Sb',   28, 9, 'Sb',   10, 25, 'Gv',  1, 27, 'Gv',   17, 24, 'Gv',  27, 28, 'Gv',  34, 22, 'Gv',  45, 28, 'Gv'
     6, 37, 'Gv',   18, 38, 'Gv',  27, 36, 'Gv',  35, 14, 'Bc',  45, 11, 'Bc',  33, 35, 'Sb',  46, 36, 'Sb'
 )
-Add-Things @(6, 25, 'yv',  36, 25, 'y>',  12, 27, '+i')                      # bugs in the caves, mines in the tunnel
+Add-Things @(36, 25, 'y>',  24, 30, 'y^',  12, 27, '+i',  22, 16, '+h')      # bugs deeper in the caves, mines in the tunnel
 Add-Spawns 3 @(21, 26, 'm>',  37, 27, 'k<',  24, 12, 'ov')
 Add-Spawns 4 @(40, 28, 'e<',  39, 35, 'h^',  5, 27, 'd>')
 Save-Level 3 'The Catacombs' 420 '1E2A1C' '4A5240' 'GG' -Look '@floortex flat_moss', '@ceiltex ceil_rock', '@fog 060C06 9'
@@ -392,10 +392,10 @@ Add-Room 12 16 24 15 'SS' @(                                 # great hall
     3, 1, 'eE',  18, 13, 'eW',  22, 6, 'oS',  22, 1, ':v',  22, 13, ':<',  1, 13, ':^',  1, 1, ':>'
     2, 3, 's>',  21, 3, 's<',  8, 5, 'ov',  15, 5, 'ov',  6, 9, 'mv',  17, 9, 'mv',  3, 7, 'g>',  20, 7, 'g<',  11, 3, 'ev'
     0, 0, '+h',  23, 0, '+h',  0, 14, '+a',  23, 14, '+a',  11, 8, '+3')
-Add-Room 21 40 6 4 'MM' @(2, 2, 'P^',  0, 0, '+h',  5, 0, '+a')                                                     # arrival
+Add-Room 21 40 6 4 'MM' @(2, 2, 'P^',  0, 0, '+h',  5, 0, '+a',  5, 3, '+b',  0, 3, '+a')                                                     # arrival
 Add-Room 17 32 14 7 'SS' @(                                  # gate hall
-    5, 2, 'hv',  8, 2, 'hv',  3, 1, 'gv',  10, 1, 'gv',  7, 1, 'ev',  2, 5, 'dE',  0, 5, ':>',  13, 5, ':<',  11, 3, 'dW',  0, 3, ':>',  13, 3, ':<'
-    0, 0, '*f',  13, 0, '*f',  0, 6, '+a',  13, 6, '+a')
+    5, 2, 'hv',  8, 2, 'gv',  3, 1, 'gv',  10, 1, 'gv',  7, 1, 'ov',  2, 5, 'dE',  0, 5, ':>',  13, 5, ':<',  11, 3, 'dW',  0, 3, ':>',  13, 3, ':<'
+    0, 0, '*f',  13, 0, '*f',  0, 6, '+a',  13, 6, '+a',  6, 6, '+h',  1, 1, '+a')
 Add-Room 3 18 8 10 'BB' @(                                   # west tower: silver key
     0, 0, '+s',  1, 2, 'm>',  1, 7, 'm>',  4, 4, 'me',  3, 9, 'm>',  5, 1, 'm>',  6, 1, '*s',  2, 5, '*s',  5, 8, '*u'
     0, 9, '+h',  7, 0, '+c',  7, 9, '+t',  6, 9, '@1')
@@ -417,7 +417,7 @@ Add-Things @(
     14, 15, 'Sb',  18, 15, 'Sb',  28, 15, 'Sb',  32, 15, 'Sb',  14, 31, 'Sb',  32, 31, 'Sb',  11, 19, 'Sp',  36, 19, 'Sp'
     2, 20, 'Bc',   2, 25, 'Bc',   45, 22, 'Rb',  16, 39, 'Sb',  31, 35, 'Sb'
 )
-Add-Things @(23, 36, 'n^',  24, 18, 'av')
+Add-Things @(24, 28, 'n^',  24, 18, 'av')                                   # an engineer at the back of the great hall, an auditor at its front
 Add-Spawns 3 @(24, 20, 'ev',  22, 26, 'mv',  39, 20, 'e<')
 Add-Spawns 4 @(20, 8, 'hv',  27, 8, 'hv',  6, 23, 'k>')
 Save-Level 5 'The Citadel' 540 '30203A' '5A5060' 'SS' -Look '@floortex flat_carpet', '@ceiltex ceil_plain', '@fog 140A1C 15'
