@@ -2,6 +2,17 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.1.1 - 2026-09-21
+
+**Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).
+
+Fixed:
+
+* The window could go "not responding" while a floor was loading (reported on r/PowerShell – thank you). The music of
+  a floor used to be composed when the lift arrived, which takes seconds on a slower machine. The whole soundtrack is
+  now composed in the background as soon as the game is up, and loading a floor shows what it is doing and keeps the
+  window responsive.
+
 ## 1.1.0 - 2026-09-20
 
 **Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).
