@@ -741,6 +741,9 @@ weapons, items and doors work. Only from that description was the game written a
 game mechanics; **nothing** of the original is contained in this repository: own code, own levels, own names, own
 procedurally generated graphics, sounds, speech and music – and the `>_` prompt as a coat of arms.
 
+It is a fun project, and the question behind it is how far PowerShell can be pushed. How it came about and why it grew
+the way it did is written down in [HOW-IT-WAS-BUILT.md](HOW-IT-WAS-BUILT.md).
+
 ## License
 
 Copyright © 2026 oNdsen. Released under the [MIT License](LICENSE) – code, maps and the procedurally generated

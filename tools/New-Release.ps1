@@ -49,7 +49,7 @@ try {
     $null = New-Item -ItemType Directory -Path $outDir -Force
     $zip = Join-Path $outDir 'polf3d.zip'
     Remove-Item -LiteralPath $zip -ErrorAction SilentlyContinue
-    git archive --format=zip --prefix=polf3d/ -o $zip HEAD -- Start-Polf3D.ps1 Play.cmd README.md CHANGELOG.md LICENSE src maps demos mods tools
+    git archive --format=zip --prefix=polf3d/ -o $zip HEAD -- Start-Polf3D.ps1 Play.cmd README.md HOW-IT-WAS-BUILT.md CHANGELOG.md LICENSE src maps demos mods tools
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $zip)) { throw 'git archive failed.' }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
