@@ -579,6 +579,28 @@ function Invoke-SelfTest([string]$OutDir) {
     if (@($wrong).Count -or $first -eq $second -or $first -notlike 'Get-*' -or $door.Action -notin 'opening', 'open' -or $text -notmatch 'What if: Performing the operation "Stop-Enemy"' -or $text -notmatch 'say what you want') { throw "completion test failed:`n$($wrong -join "`n")`n$text" }
     $script:Con.Runspace.Dispose(); $script:Con = $null
 
+    # ---- the onboarding: every room has its hint, the terminal's code opens the lever door, the lift goes back to the title ----
+    $keepDifficulty = $script:Difficulty; $script:Difficulty = 2; $keepGod = $script:GodMode; $script:GodMode = $true
+    $started = Start-Tutorial
+    $forced = $script:Difficulty; $seen = [System.Collections.Generic.List[string]]::new()
+    foreach ($spot in @(3.5, 8.5), @(11.5, 8.5), @(19.5, 8.5), @(27.5, 8.5), @(35.5, 8.5), @(37.5, 13.5), @(31.5, 14.5), @(23.5, 14.5), @(13.5, 14.5), @(5.5, 14.5)) {
+        Set-TestCamera $spot[0] $spot[1] 0; Update-World 1.0 $idle
+        if ($script:HintText -and $script:HintText -notin $seen) { $seen.Add($script:HintText) }
+        if ($seen.Count -eq 6) { Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-tutorial.png') }
+    }
+    $longest = ($seen | ForEach-Object { $script:HintText = $_; @(Get-HintLines).Count } | Measure-Object -Maximum).Maximum
+    $lever = $script:Doors | Where-Object { $_.Lock -eq 4 } | Select-Object -First 1
+    Set-TestCamera 39.5 13.5 0
+    if ($script:Con) { $script:Con.Runspace.Dispose() }; $script:Con = $null
+    Open-Console ([int]@($script:TerminalAt.Keys | Sort-Object)[0]); Invoke-ConsoleLine 'cat welcome.txt'; Invoke-ConsoleLine 'Unlock-Door -Code ONBOARD'
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"; Close-Console
+    $script:LevelDone = $true; $script:TutorialKeep = $script:TutorialMode
+    Stop-Tutorial
+    Write-Step "tutorial test: started $started on difficulty $forced (back to $($script:Difficulty) afterwards), $($seen.Count) hints of $($script:LevelHints.Count) seen, the longest takes $longest lines; the code opened the lever door: $($lever.Unlocked)"
+    if (-not $started -or $forced -ne 0 -or $script:Difficulty -ne 2 -or $seen.Count -ne 10 -or $script:LevelHints.Count -ne 10 -or $longest -gt 6 -or -not $lever.Unlocked -or $text -notmatch 'override is ONBOARD') { throw "tutorial test failed:`n$text" }
+    $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod; $script:LevelDone = $false; $script:LevelIndex = 0
+    $script:Con.Runspace.Dispose(); $script:Con = $null
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P
@@ -1375,6 +1397,14 @@ function Export-Screenshots([string]$OutDir) {
     Set-TestCamera 25.5 16.4 270; $script:P.Light = $true
     for ($f = 0; $f -lt 40; $f++) { Show-PlayFrame }
     $script:Message = $null; Save-Shot $OutDir 'ring0'
+
+    # the onboarding: the console room and what the floor has to say about it
+    if (Start-Tutorial) {
+        $script:Message = $null
+        Set-TestCamera 37.5 13.5 0; Update-World 1.0 $idle; $script:Message = $null
+        Save-Shot $OutDir 'tutorial'
+        Stop-Tutorial
+    }
 
     # the arena: wave three is on its way in
     if (Start-Horde 4711) {

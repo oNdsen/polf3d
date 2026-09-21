@@ -93,7 +93,7 @@ function Show-LoadStep([string]$Text) {
 
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:NetLive = $false; $script:NetClient = $false
-    $script:MapFile = if ($script:HordeSeed) { Get-HordeMap } elseif ($script:DungeonMap) { $script:DungeonMap } elseif ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
+    $script:MapFile = if ($script:TutorialMode) { Get-TutorialMap } elseif ($script:HordeSeed) { Get-HordeMap } elseif ($script:DungeonMap) { $script:DungeonMap } elseif ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
     $script:LevelSeed = if ($script:NextSeed) { $script:NextSeed } else { [int]($script:Clock.ElapsedTicks % 1000000) + 1 }
     $script:NextSeed = $null
     $script:Rng = [System.Random]::new($script:LevelSeed)
@@ -118,8 +118,8 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Show-LoadStep 'saving ...'; Save-Game 'auto' }      # arriving by lift
     Start-RunTranscript
     Reset-RunStats
-    Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
-    $script:MusicWanted = if ($script:HordeSeed) { 5 } elseif ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
+    Show-Message $(if ($script:TutorialMode) { 'Onboarding' } elseif ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })
+    $script:MusicWanted = if ($script:TutorialMode) { $script:MUSIC_BONUS } elseif ($script:HordeSeed) { 5 } elseif ($script:DungeonSeed) { 1 + $script:DungeonSeed % 5 } elseif ($script:BonusMap) { $script:MUSIC_BONUS } else { $script:LevelIndex + 1 }
     Start-Music $script:MusicWanted
     if (-not $script:DungeonSeed -and -not $script:BonusMap -and $script:MapFiles.Count -gt 1 -and $script:LevelIndex -eq $script:MapFiles.Count - 1) { Initialize-MusicTrack $script:MUSIC_ENDING }
 }
@@ -134,7 +134,7 @@ function Set-Mode([string]$Mode) {
     if ($Mode -eq 'dying') { $null = Stop-RunTranscript $false } elseif ($Mode -eq 'title') { $script:Transcript = $null }
     if ($script:Recording -and $Mode -notin 'play', 'paused') { if ($script:DungeonSeed) { $null = Save-DungeonRun $false } else { Stop-DemoRecording } }
     if ($Mode -eq 'title' -and $script:KeepColumnStep) { $script:ColumnStep = $script:KeepColumnStep; $script:KeepColumnStep = 0 }
-    if ($Mode -eq 'title') { Stop-Dungeon; Stop-Horde }
+    if ($Mode -eq 'title') { Stop-Dungeon; Stop-Horde; Stop-Tutorial }
     if ($Mode -eq 'title') { $script:MusicWanted = 0; Start-Music 0; $script:HasSaves = Test-SaveGame; $script:AchievementCount = Get-AchievementCount }
     if ($Mode -eq 'load') { $script:SaveList = @(Get-SaveList) }
 }
@@ -297,12 +297,13 @@ function Show-TitleScreen {
         $rows.Add(@('Enter', 'start the campaign', 'FFFFFF'))
         $rows.Add(@('G', "today's dungeon #$(Get-DailySeed)$(if ($best) { "  (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })", 'C0C8D8'))
         $rows.Add(@('H', 'the arena: waves until you drop', 'C0C8D8'))
+        $rows.Add(@('N', 'new here? the onboarding explains everything', 'C0C8D8'))
         if ($script:HasSaves) { $rows.Add(@('L', 'load a saved game', 'C0C8D8')) }
     }
-    $y = 121.0
+    $y = 119.0
     foreach ($row in $rows) {
         if ($row[0]) { Write-HudLine $row[0] 'Small' 'FFE860' 16 $y; Write-HudLine $row[1] 'Small' $row[2] 38 $y } else { Write-HudLine $row[1] 'Small' $row[2] 16 $y }
-        $y += 8.0
+        $y += 7.4                                                  # six rows when there are saved games: they have to end above the controls
     }
     $x = 16.0                                                     # the small print: three keys on one line
     foreach ($pair in @('O', 'options'), @('T', "speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })"), @('Esc', 'quit')) {
@@ -447,6 +448,7 @@ function Start-GameLoop {
     $vk = $script:VK
     Set-Mode 'title'
     if ($script:AutoDungeon -and (Start-Dungeon $script:AutoDungeon)) { Set-Mode 'play' }
+    elseif ($script:AutoTutorial -and (Start-Tutorial)) { Set-Mode 'play' }
     elseif ($script:AutoHorde -and -not $script:Net -and (Start-Horde $script:AutoHorde)) { Set-Mode 'play' }      # (a host waits for the guests and then presses Enter)
     $last = $script:Clock.Elapsed.TotalSeconds
     $fpsTime = $last; $fpsFrames = 0
@@ -534,6 +536,7 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.L -and -not $script:Net -and (Test-SaveGame)) { $script:LoadReturn = 'title'; Set-Mode 'load' }
                     elseif ($h -eq $vk.G -and -not $script:Net) { if (Start-Dungeon 0) { Set-Mode 'play' } }
                     elseif ($h -eq 72 -and (-not $script:Net -or (Test-NetStart))) { if (Start-Horde 0) { Set-Mode 'play' } }      # H: the arena (in a network game: the host, co-op)
+                    elseif ($h -eq $vk.N -and -not $script:Net) { if (Start-Tutorial) { Set-Mode 'play' } }             # N: new here? the onboarding
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.O) { Open-Options }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
@@ -590,6 +593,7 @@ function Start-GameLoop {
                     elseif ($script:Net -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in a network game' }
                     elseif ($script:DungeonSeed -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in the dungeon: one life, no saving, always recorded' }
                     elseif ($script:HordeSeed -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in the arena: one life, no saving' }
+                    elseif ($script:TutorialMode -and $h -in $vk.F12, $vk.F5, $vk.F9) { Show-Message 'Not in the onboarding' }
                     elseif ($h -eq $vk.F12) { if ($script:Recording) { Stop-DemoRecording } else { Start-DemoRecording } }
                     elseif ($h -eq $vk.F5) { Save-Game }
                     elseif ($h -eq $vk.F9) { $null = Restore-Game }
@@ -601,6 +605,7 @@ function Start-GameLoop {
                 Update-World $tics $in
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
+                elseif ($script:LevelDone -and $script:TutorialMode) { Start-Sfx 'level_done'; Set-Mode 'title'; Show-Message 'Onboarding complete. Welcome to Shellstein.' }
                 elseif ($script:LevelDone -and $script:HordeSeed -and $script:Net) { $null = Save-HordeRun $true; Set-Mode 'title'; Show-Message $script:HordeResult }      # co-op: everybody goes home together
                 elseif ($script:LevelDone -and $script:HordeSeed) { $null = Save-HordeRun $true; Start-Sfx 'level_done'; Set-Mode 'gameover' }      # the lift: the way out
                 elseif ($script:LevelDone) { Complete-Level }

@@ -47,6 +47,7 @@ composed, spoken and cached there the first time they are needed.
 - [What is this?](#what-is-this)
 - [Screenshots](#screenshots)
 - [Controls](#controls)
+- [The onboarding](#the-onboarding)
 - [The campaign](#the-campaign)
 - [Enemies, weapons, items](#enemies-weapons-items)
 - [PowerShell is the point](#powershell-is-the-point)
@@ -110,8 +111,8 @@ casting, map format, HUD, menus, music, network protocol, even the GIF at the to
 | Floor 6: a cold aisle of the data centre – there is a sniper at the far end of every one | Floor 10: the core of Ring 0 – dark, and something in there is glowing blue |
 | ![The arena](media/arena.png) | ![A floor's tests](media/tests.png) |
 | The arena: wave three comes through the gates – the radar shows where from | Every floor is a test suite, and Pester reports: a pacifist run through the catacombs |
-| ![The player list](media/players.png) | |
-| `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban | |
+| ![The player list](media/players.png) | ![The onboarding](media/tutorial.png) |
+| `F1` in a network game: on the host it is an admin panel – `K` kicks, `B` bans, `U` lifts a ban | The onboarding (`N` on the title screen): one room per mechanism, and the floor explains itself |
 
 <p align="center"><img src="media/faces.png" alt="The face in the status bar" width="880"></p>
 
@@ -139,6 +140,7 @@ casting, map format, HUD, menus, music, network protocol, even the GIF at the to
 | `F5` / `F9` | quick save / quick load |
 | `F12` | record a demo (press again to stop and save) |
 | `P`, `Esc` | pause: `1`–`3` save to a slot, `L` load, `Q` main menu |
+| `N` (title screen) | **new here? the onboarding** – a floor that explains every mechanism, one room at a time |
 | `G` / `H` (title screen) | today's dungeon / the arena (horde mode) |
 | `O` (title screen, pause) | options: mouse sensitivity, volumes, radar, fps, floors, window size – **and every key above** |
 | `F1` (network games) | the player list – on the host with kick and ban |
@@ -153,6 +155,18 @@ sneaking and wears shades during SUDO. Above it: floor progress (kills, secrets,
 who have noticed something or are coming for you, and the radar with alerted enemies as red dots – each with a nose
 that shows where it is looking. In the top left corner: the building's [execution policy](#stealth) and, below it,
 whatever the floor has [scheduled](#level-machinery) (or, in the arena, the wave).
+
+## The onboarding
+
+`N` on the title screen (or `./Start-Polf3D.ps1 -Tutorial`) is the place to start: ten rooms, and each of them explains
+one thing and has what it takes to try it – moving and doors, shooting somebody who has not noticed you, sneaking and
+blades, keys and a hollow wall, the five powers (with a gold door that only `-Force` opens – well, almost only), the
+console with a terminal, a file and a code, a camera, a sentry gun and the taser, a dark room with bugs, mines and
+your flashlight, loot – and a lift that goes back to the title screen. The difficulty is *Intern* in there whatever
+you chose, privilege comes back five times as fast, and nothing is rated.
+
+The explaining is done by **hints**, which any map can use: `@hint <x> <y> <width> <height> <text>` shows the text at
+the top of the view the first time the player stands inside that rectangle.
 
 ## The campaign
 
@@ -535,6 +549,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -NoSound -NoMusic -NoVoices -NoGamepad -NoMods
 ./Start-Polf3D.ps1 -HostGame Coop  # network game, see above (-JoinGame <host>, -Port, -MaxPlayers, -PlayerName)
 ./Start-Polf3D.ps1 -Daily          # today's dungeon (-Dungeon <number> for any other)
+./Start-Polf3D.ps1 -Tutorial       # the onboarding: every mechanism explained, one room at a time
 ./Start-Polf3D.ps1 -Horde          # the arena with today's waves (-HordeNumber <number> for any other)
 ./Start-Polf3D.ps1 -ExportGif <file>    # a demo as an animated GIF (-GifPath, -GifStart, -GifSeconds, -GifScale)
 ./Start-Polf3D.ps1 -VerifyDemo <file>   # is this demo genuine, and how long did the run take?
@@ -568,6 +583,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Settings.ps1](src/Settings.ps1) | the options menu, the key bindings, `saves/settings.json` |
 | [src/GifExport.ps1](src/GifExport.ps1) | a demo as an animated GIF |
 | [src/Demo.ps1](src/Demo.ps1) | demo recording and playback, the bot that records the attract demo |
+| [src/Tutorial.ps1](src/Tutorial.ps1) | the onboarding floor, and the hints any map can use |
 | [src/Horde.ps1](src/Horde.ps1) | the arena: waves from a number, supplies, the list of runs |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
@@ -644,7 +660,7 @@ A few details for the curious:
 
 Every `maps/level<N>.map` is a text file; the campaign simply consists of all of them in numerical order – a
 `level11.map` automatically becomes floor 11 (and the ending moves there with it), `bonus<N>.map` is where the secret
-lift switch of floor N leads, and `arena.map` is the arena.
+lift switch of floor N leads, `arena.map` is the arena and `tutorial.map` the onboarding.
 After the header the grid follows `@map`, **every cell two characters wide**.
 
 Header: `@name`, `@par <seconds>`, `@ceiling <RRGGBB>`, `@floor <RRGGBB>`, optionally `@floortex` / `@ceiltex`
@@ -657,6 +673,7 @@ and any number of these:
 | `@dark <x> <y>` | the room this tile is in has no light |
 | `@event lockdown\|powerfail\|patch <seconds>` | something the floor has scheduled |
 | `@horde <x> <y>` | a tile the waves of the arena come from |
+| `@hint <x> <y> <width> <height> <text>` | an explanation, shown when the player first stands in that rectangle |
 
 The editor keeps these lines as they are; they are edited as text.
 

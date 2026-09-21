@@ -30,6 +30,7 @@
 # Header lines "@floortex flat_stone|flat_wood|flat_moss|flat_tech|flat_carpet", "@ceiltex ceil_plain|ceil_rock|ceil_tech"
 # and "@fog RRGGBB <tiles>" choose the floor/ceiling textures and the distance haze.
 # Header line "@spawn <min difficulty 1-4> <x> <y> <enemy code>": reinforcements for the higher difficulties.
+# Header line "@hint <x> <y> <width> <height> <text>": an explanation that appears when the player first walks in there.
 # Header line "@event lockdown|powerfail|patch <seconds>": something that happens to the floor at that time (see Events.ps1).
 # Header line "@dark <x> <y>": the room that tile is in is dark - flashlight (L) and muzzle flashes are all the light there is.
 #
@@ -51,11 +52,17 @@ function Read-MapFile([string]$Path) {
     $darks = [System.Collections.Generic.List[object]]::new()
     $events = [System.Collections.Generic.List[object]]::new()
     $gates = [System.Collections.Generic.List[object]]::new()
+    $hints = [System.Collections.Generic.List[object]]::new()
     $inMap = $false
     foreach ($line in [System.IO.File]::ReadAllLines($Path)) {
         if ($line.StartsWith(';')) { continue }
         if ($inMap) { if ($line.Trim().Length -gt 0) { $rows.Add($line.TrimEnd()) }; continue }
         if ($line.StartsWith('@map')) { $inMap = $true; continue }
+        if ($line.StartsWith('@hint ')) {                           # @hint <x> <y> <width> <height> <text>: shown when the player first stands in there
+            $f = $line.Split(' ', 6, [System.StringSplitOptions]::RemoveEmptyEntries)
+            if ($f.Count -ne 6) { throw "Map '$Path': malformed line '$line'" }
+            $hints.Add(@{ X = [int]$f[1]; Y = [int]$f[2]; W = [int]$f[3]; H = [int]$f[4]; Text = $f[5].Trim() }); continue
+        }
         if ($line.StartsWith('@horde ')) {                          # @horde <x> <y>: a tile the waves of the arena come from
             $f = $line.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
             if ($f.Count -ne 3) { throw "Map '$Path': malformed line '$line'" }
@@ -85,7 +92,7 @@ function Read-MapFile([string]$Path) {
     if ($rows.Count -eq 0) { throw "Map '$Path' has no @map block." }
     $w = $rows[0].Length / 2
     foreach ($r in $rows) { if ($r.Length -ne $w * 2) { throw "Map '$Path': every row must be $($w * 2) characters long (found: $($r.Length))." } }
-    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks; Events = $events; Gates = $gates }
+    @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks; Events = $events; Gates = $gates; Hints = $hints }
 }
 
 function Initialize-Level([string]$Path) {
@@ -191,6 +198,7 @@ function Initialize-Level([string]$Path) {
     $script:DarkArea = [bool[]]::new([Math]::Max(1, $area))      # rooms without light (Render.ps1, Test-Sight)
     foreach ($d in $map.Darks) { $at = $script:AreaOf[$d[1] * $w + $d[0]]; if ($at -ge 0) { $script:DarkArea[$at] = $true } }
     $script:Darkness = 0.0; $script:LightFlash = 0.0; $script:DarkTold = $false
+    $script:LevelHints = @($map.Hints); $script:HintText = ''      # what the floor has to say (Tutorial.ps1)
     $script:TerminalField = $null                                 # the auditor's way to the nearest terminal, made when first needed
     $script:HordeSpots = @($map.Gates)                            # where the arena's waves come from (Horde.ps1)
     $script:LevelEvents = @($map.Events)                          # what the floor has scheduled (Events.ps1)

@@ -220,6 +220,24 @@ And when it is over - test your restores. Somebody should.
 '@
         }
     }
+    # ---- the onboarding ----
+    tutorial = @{
+        Codes = @{ 'ONBOARD' = 'levers' }
+        Files = [ordered]@{
+            'welcome.txt' = @'
+WELCOME TO SHELLSTEIN - onboarding terminal
+The door to the west hangs on a lever that was never installed. Its override is ONBOARD:
+    Unlock-Door -Code ONBOARD
+Codes and tokens like this one are hidden in the files of every floor. They work once per floor.
+'@
+            'cheatsheet.txt' = @'
+Get-Enemy | Sort-Object Distance | Select-Object -First 1 | Stop-Enemy -WhatIf      what would it cost?
+Get-Door | Set-Door -Open $true                                                   who needs keys
+Get-Enemy -Kind turret | Set-Turret -Owner Me                                     the sentry gun changes sides
+Start-Job ; Get-Job ; Receive-Job                                                 a drone collects what lies around
+'@
+        }
+    }
     # ---- the treasury ----
     bonus = @{
         Codes = @{ 'FINDERSKEEPERS' = 'privilege' }
@@ -234,7 +252,7 @@ token                1      FINDERSKEEPERS
     }
 }
 
-function Get-StoryFloor { if ($script:BonusMap) { $script:StoryFiles.bonus } else { $script:StoryFiles[[int]$script:LevelIndex] } }
+function Get-StoryFloor { if ($script:TutorialMode) { $script:StoryFiles.tutorial } elseif ($script:BonusMap) { $script:StoryFiles.bonus } else { $script:StoryFiles[[int]$script:LevelIndex] } }
 
 # Carries out what a code or token does. Returns the line to print, or $null if the code means nothing here.
 function Invoke-StoryCode([string]$Code) {

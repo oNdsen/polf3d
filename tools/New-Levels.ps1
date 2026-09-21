@@ -24,6 +24,9 @@ function New-Grid([int]$Width, [int]$Height) {
     $script:darks = [System.Collections.Generic.List[string]]::new()
 }
 
+# An explanation that appears when the player first stands inside the rectangle (src/Tutorial.ps1).
+function Add-Hint([int]$X, [int]$Y, [int]$Width, [int]$Height, [string]$Text) { $script:darks.Add("@hint $X $Y $Width $Height $Text") }
+
 # A tile the waves of the arena come from (src/Horde.ps1).
 function Add-Gate([int]$X, [int]$Y) {
     if ($script:grid[$X, $Y] -ne '..') { throw "Gate $X,$Y is not on a free floor tile" }
@@ -155,7 +158,7 @@ function Save-Level([int]$Number, [string]$Name, [int]$Par, [string]$Ceiling, [s
         $lines.Add($sb.ToString())
     }
     $null = New-Item -ItemType Directory -Path $OutDir -Force
-    $file = Join-Path $OutDir $(if ($FilePrefix -eq 'arena') { 'arena.map' } else { "$FilePrefix$Number.map" })
+    $file = Join-Path $OutDir $(if ($FilePrefix -in 'arena', 'tutorial') { "$FilePrefix.map" } else { "$FilePrefix$Number.map" })
     [System.IO.File]::WriteAllLines($file, $lines)
     Write-Host ("floor {0}: {1,-22} {2}x{3}  -> {4}" -f $Number, $Name, $script:W, $script:H, $file)
 }
@@ -703,3 +706,39 @@ Add-Room 30 5 1 3 'MM' @(0, 1, '*l')                                            
 Add-Things @(29, 6, 'DL',  31, 6, 'MX')
 foreach ($g in @(15, 1), @(17, 1), @(15, 31), @(17, 31), @(1, 15), @(1, 17), @(31, 15), @(31, 17)) { Add-Gate $g[0] $g[1] }
 Save-Level 0 'The Arena' 0 '241C1C' '4E4444' 'MM' 'arena' -Look '@floortex flat_stone', '@ceiltex ceil_rock', '@fog 140808 15'
+
+# =====================================================================================================
+# THE ONBOARDING (N on the title screen).  Five rooms one way, five rooms back: every room explains one
+# thing (@hint) and has what it takes to try it. Rooms are 7 x 5, doors in the middle of the shared walls.
+# =====================================================================================================
+New-Grid 43 23
+foreach ($k in 0..4) { Add-Room (2 + 8 * $k) 6 7 5 'SS' }                                                          # the way there ...
+foreach ($k in 0..4) { Add-Room (2 + 8 * $k) 12 7 5 $(if ($k -eq 2) { 'GG' } elseif ($k -ge 3) { 'TT' } else { 'MM' }) }      # ... and back
+Add-Room 29 2 3 3 'SS' @(0, 0, '+3',  2, 0, '+4',  0, 2, '+a')                                                     # the secret above the key room
+Add-Room 4 18 3 3 'MM' @(1, 1, '*l')                                                                               # the lift
+Add-Things @(
+    9, 8, 'DD',   17, 8, 'DD',   25, 8, 'DD',   33, 8, 'DS',   37, 11, 'DG',   35, 11, '=S',   39, 11, '=S'
+    33, 14, 'D1', 37, 17, 'X1',  25, 14, 'DD',  17, 14, 'DD',  9, 14, 'DD',   5, 17, 'DL',    5, 21, 'MX',    30, 5, '?S'
+    3, 8, 'P>',   5, 6, '*l'
+    14, 8, 'ge',  11, 7, '+a',   12, 9, '+a',   13, 6, '*l'                                  # the range: he looks the other way
+    23, 8, 'ge',  19, 7, '+j',   21, 6, '*l',   20, 10, '*b',  22, 6, '*b'                   # sneaking and blades
+    27, 6, '+s',  28, 10, '*t',  26, 10, '*a',  32, 6, '*a'                                  # the silver key; the hollow wall is at the top
+    36, 6, '+h',  40, 6, '+a',   38, 8, '*h',   34, 10, '+q',  40, 10, '+g'                  # the powers (and a key, for those who insist)
+    36, 14, 'gn', 39, 15, 'gn',  40, 12, '*T',  34, 16, '+a',  40, 16, '+h'                  # the console room: two guards behind the window
+    26, 12, 'ce', 26, 16, 'te',  32, 13, '+v',  28, 14, 'gw',  29, 15, 'gw',  32, 16, '+a'  # security
+    24, 13, '+i', 19, 13, 'ye',  20, 15, 'ye',  22, 12, '*g',  19, 16, '*g'                  # the dark room
+    16, 13, '+b', 15, 15, '+k',  12, 12, '+h',  12, 16, '+a',  11, 12, '*x',  14, 16, '*x'   # loot
+    8, 12, '*p',  2, 12, '*p'
+)
+Add-Dark 21 14
+Add-Hint 2 6 7 5 'ONBOARDING. W A S D (or the arrow keys) move, the mouse turns (F2 switches mouse look), Shift runs. Space opens doors - start with the one to your right. Every room on this floor explains one thing.'
+Add-Hint 10 6 3 5 'A guard - and he has not noticed you. Whoever is unaware takes DOUBLE damage. Ctrl or the left mouse button fires, 1 to 9 and 0 pick the weapon. Gunfire is loud: everybody nearby hears it (the three bars at the bottom show your noise).'
+Add-Hint 18 6 3 5 'C sneaks: slow and silent - you can walk right up behind them. 1 is the knife, 9 the throwing knives lying here; both are silent. Take this one out without a sound. Silent kills in a row make them leave more behind.'
+Add-Hint 26 6 7 5 'The door ahead has a silver lock; the key lies in this room. And one wall here is hollow: walk up to the upper wall, a little right of its middle, and press Space. Hold M for the map, N switches the radar on and off.'
+Add-Hint 34 6 7 5 'THE POWERS cost privilege (the blue bar; it comes back). Z -WhatIf: time stops and you see everybody''s next two seconds. X -Confirm: slow motion. V -Verbose: see through walls. R Undo: the last five seconds never happened. The door down there has a gold lock: F -Force kicks it in. (There is a key in the corner, too - but where is the fun in that.)'
+Add-Hint 34 12 7 5 'THE CONSOLE is a real PowerShell. Press Space at the desk with the screen (T or Tab opens your own console anywhere). Try: ls, then cat welcome.txt - it has the code for the door to the west. Or simply: Get-Door | Set-Door -Open $true. Tab completes, Esc leaves. (The lever on the far wall opens it as well.)'
+Add-Hint 29 12 4 5 'SECURITY. While the camera sees you, the execution policy of the building (top left) heats up - at Unrestricted everybody comes running. The sentry gun fires until you make it yours: Get-Enemy -Kind turret | Set-Turret -Owner Me. The taser you just found (key 0) switches machines off for good, silently.'
+Add-Hint 22 12 3 5 'DARK. L is your flashlight: you see further - and so do they. Q puts down one of the mines lying here, Q again sets it off. Those are bugs: fix them with a bullet or a blade and they are gone, blow them up and you get two.'
+Add-Hint 10 12 7 5 'LOOT. Armour takes half of every hit until it is gone. A keycard opens one locked door for good. Officers carry keycards, elites armour, machines leave scrap that turns into privilege - and now and then there is a signed module for the rest of the floor.'
+Add-Hint 2 12 7 5 'That is all there is to know. Every floor ends with a lift - and with a test report. This lift takes you back to the title screen. Good luck in Shellstein.'
+Save-Level 0 'Onboarding' 0 '2A2E38' '5A6070' 'SS' 'tutorial' -Look '@floortex flat_stone', '@ceiltex ceil_plain', '@fog 101418 14'

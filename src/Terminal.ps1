@@ -157,7 +157,7 @@ function Show-TerminalFrame {
         $null = $sb.Append("$pad`e[38;2;160;180;208m$floor  SCORE $('{0:000000}' -f $p.Score)  LIVES $($p.Lives)   KILLS $($st.Kills)/$($st.KillTotal)  SECRETS $($st.Secrets)/$($st.SecretTotal)  TREASURE $($st.Treasures)/$($st.TreasureTotal)$(if ($script:ShowFps) { "   $([int]$script:Fps) fps" })`e[0m`e[K`n")
         $bossLine = ''
         foreach ($a in $script:Actors) { if ($a.Shootable -and $a.AttackMode -and $script:BossNames.ContainsKey($a.Kind)) { $bossLine = "$($script:BossNames[$a.Kind])  $(Get-TerminalBar ($a.HP / [double]$a.Def.HP[$script:Difficulty]) 20)"; break } }
-        $msg = if ($mode -eq 'paused') { 'PAUSE   Esc/P = resume   1-3 = save to slot   L = load   Q = main menu' } elseif ($mode -eq 'demo') { 'DEMO - press any key' }
+        $msg = if ($mode -eq 'paused') { 'PAUSE   Esc/P = resume   1-3 = save to slot   L = load   Q = main menu' } elseif ($mode -eq 'demo') { 'DEMO - press any key' } elseif ($script:HintText -and -not $script:Message) { $script:HintText }
                elseif ($script:Message -and $now -lt $script:MessageUntil) { $script:Message } elseif ($bossLine) { $bossLine } else { '' }
         $null = $sb.Append("$pad`e[38;2;255;232;96m$msg`e[0m`e[K`n")
         $cheats = @(if ($script:GodMode) { 'GOD' }; if ($script:InfiniteAmmo) { 'AMMO' }; if ($script:OneHitKill) { '1-HIT' }; if ($p.Sneaking) { 'SNEAKING' }; if ([int]$script:Stats.Policy -gt 0) { (Get-Policy).Name.ToUpper() }; if ($p.SudoTics -gt 0) { "SUDO $([Math]::Ceiling($p.SudoTics / 70))s" }) -join '  '

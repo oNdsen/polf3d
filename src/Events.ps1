@@ -50,6 +50,7 @@ function Invoke-LevelEvent([string]$Kind) {
 # Once a frame, with the world's tics.
 function Update-Events([double]$Tics) {
     $st = $script:Stats
+    Update-Hints $Tics
     if ($st.PowerOut -gt 0) { $st.PowerOut -= $Tics; if ($st.PowerOut -le 0 -and -not $script:Predicting) { Show-Message 'The power is back.' } }
     if (-not $script:LevelEvents.Count) { return }
     $done = [int]$st.EventsDone

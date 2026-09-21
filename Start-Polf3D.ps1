@@ -39,6 +39,8 @@
     Go straight into today's dungeon: one generated floor, the same for everybody today, one life, recorded as a demo.
 .PARAMETER Dungeon
     Play the dungeon generated from this number instead of today's.
+.PARAMETER Tutorial
+    Straight into the onboarding: a floor that explains every mechanism, one room at a time (N on the title screen).
 .PARAMETER Horde
     Straight into the arena: one life, wave after wave. -HordeNumber picks the waves (default: today's number).
 .PARAMETER VerifyDemo
@@ -94,6 +96,7 @@ param(
     [ValidateRange(1024, 65535)][int]$Port = 27500,
     [switch]$Daily,
     [ValidateRange(1, 99999999)][int]$Dungeon,
+    [switch]$Tutorial,
     [switch]$Horde,
     [ValidateRange(1, 99999999)][int]$HordeNumber,
     [string]$VerifyDemo,
@@ -195,7 +198,7 @@ function Initialize-Scaler {
 }
 
 Write-Step "POLF 3D $script:PolfVersion starting ..."
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
@@ -250,6 +253,7 @@ if ($SelfTest) {
 }
 
 if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.' }
+$script:AutoTutorial = [bool]$Tutorial
 $script:AutoHorde = if ($HordeNumber) { $HordeNumber } elseif ($Horde) { Get-DailySeed } else { 0 }
 $script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
 Write-Step 'ready.'

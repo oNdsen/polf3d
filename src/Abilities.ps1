@@ -237,7 +237,7 @@ function Update-Abilities([double]$Tics, [hashtable]$In) {
     if ($In.Ability -eq 6) { $p.Light = -not $p.Light; Start-Sfx 'lever'; Show-Message "Flashlight $(if ($p.Light) { 'ON - you see, and you are seen' } else { 'off' })" }      # travels with the powers, so demos record it
     elseif ($In.Ability -eq 7) { Invoke-MineKey }
     elseif ($In.Ability) { Invoke-Ability ([int]$In.Ability) }
-    Add-Privilege ($Tics / 45.0 * $(if ([int]$script:Stats.Policy -eq 0) { 1.3 } else { 1.0 }) * $(if (Test-Perk 'PSWindowsUpdate') { 1.5 } else { 1.0 }))      # Restricted: nobody watches the logs
+    Add-Privilege ($Tics / 45.0 * $(if ([int]$script:Stats.Policy -eq 0) { 1.3 } else { 1.0 }) * $(if (Test-Perk 'PSWindowsUpdate') { 1.5 } else { 1.0 }) * $(if ($script:TutorialMode) { 5.0 } else { 1.0 }))      # Restricted: nobody watches the logs
     if ($script:UndoFlash -gt 0) { $script:UndoFlash -= $Tics }
     if ($script:VerboseTics -gt 0) { $script:VerboseTics -= $Tics }
     if ($script:WhatIfTics -gt 0) {

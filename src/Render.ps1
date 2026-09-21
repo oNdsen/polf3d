@@ -390,6 +390,7 @@ function Show-Overlays {
     if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 19) 40 8 }
     # the building's execution policy: how nervous the floor is
     if (-not $script:NetClient) { $policy = Get-Policy; Write-HudBar '70101A2C' 2 2 46 7; Write-HudText $policy.Name 'Small' $policy.Color 2 2.4 46 7 }
+    Show-Hint                                                       # what the floor has to say about the room (@hint)
     # what the floor has scheduled: Patch Tuesday's countdown, a lockdown or a power failure about to happen
     $notice = Get-EventNotice
     if ($notice) { Write-HudBar '70101A2C' 2 10 72 7; Write-HudText $notice.Text 'Small' $notice.Color 2 10.4 72 7 }
@@ -491,7 +492,7 @@ function Show-Hud {
 
     # floor, score, lives
     Write-HudPanel '80101A2C' 4 ($y + 4) 70 33
-    Write-HudText $(if ($script:HordeSeed) { 'ARENA' } elseif ($script:DungeonSeed) { 'DUNGEON' } elseif ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }) 'Small' $(if ($script:BonusMap -or $script:DungeonSeed) { 'F0D040' } else { '40E0FF' }) 6 ($y + 5) 30 8
+    Write-HudText $(if ($script:TutorialMode) { 'ONBOARDING' } elseif ($script:HordeSeed) { 'ARENA' } elseif ($script:DungeonSeed) { 'DUNGEON' } elseif ($script:BonusMap) { 'BONUS' } else { "FLOOR $($script:LevelIndex + 1)" }) 'Small' $(if ($script:BonusMap -or $script:DungeonSeed) { 'F0D040' } else { '40E0FF' }) 6 ($y + 5) 30 8
     Write-HudText ('{0:000000}' -f $p.Score) 'Mid' 'FFFFFF' 4 ($y + 13) 70 12
     Write-HudText ([string]::new([char]0x2665, [Math]::Min(9, [Math]::Max(0, $p.Lives)))) 'Small' 'FF4060' 4 ($y + 26) 70 9
 
