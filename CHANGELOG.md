@@ -2,6 +2,23 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.2.0 - 2026-09-21
+
+**Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).
+
+All three points come from a first player's feedback – thank you.
+
+New:
+
+* **The onboarding** (`N` on the title screen, or `-Tutorial`): a floor of ten rooms, each explaining one mechanism and
+  offering what it takes to try it – from doors and sneaking to the powers, the console, sentry guns, darkness and
+  loot. The explaining is done by hints, which any map can use: `@hint <x> <y> <width> <height> <text>`.
+* **Tab completion in the console:** commands, aliases and parameters – and what only the game can know: the kinds of
+  enemies on the floor, the files of the terminal, the properties of whatever comes down the pipeline. Tab again takes
+  the next candidate. Tab therefore no longer closes the console; `Esc` does.
+* **The commands people type by instinct:** `Get-Door | Set-Door -Open $true` and `Get-Process | Stop-Process` now do
+  what one would guess.
+
 ## 1.1.1 - 2026-09-21
 
 **Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).

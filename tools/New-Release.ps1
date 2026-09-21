@@ -55,7 +55,7 @@ try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($zip)
     $files = @($archive.Entries | Where-Object { $_.Name }); $archive.Dispose()
-    foreach ($needed in 'polf3d/Start-Polf3D.ps1', 'polf3d/Play.cmd', 'polf3d/src/Game.ps1', 'polf3d/src/Scaler.cs', 'polf3d/maps/level1.map', 'polf3d/maps/arena.map', 'polf3d/demos/attract.json', 'polf3d/LICENSE') {
+    foreach ($needed in 'polf3d/Start-Polf3D.ps1', 'polf3d/Play.cmd', 'polf3d/src/Game.ps1', 'polf3d/src/Scaler.cs', 'polf3d/maps/level1.map', 'polf3d/maps/arena.map', 'polf3d/maps/tutorial.map', 'polf3d/demos/attract.json', 'polf3d/LICENSE') {
         if ($needed -notin $files.FullName) { throw "The ZIP lacks $needed." }
     }
     Write-Host ("POLF 3D {0}: {1}  -  {2} files, {3:0} KB  (commit {4})" -f $version, $zip, $files.Count, ((Get-Item -LiteralPath $zip).Length / 1KB), (git rev-parse --short HEAD))

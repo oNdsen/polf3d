@@ -110,7 +110,7 @@ function Import-Map([string]$File) {
     foreach ($line in [System.IO.File]::ReadAllLines($File)) {
         if ($inMap) { if ($line.Trim()) { $rows += $line.TrimEnd() }; continue }
         if ($line.StartsWith('@map')) { $inMap = $true }
-        elseif ($line -match '^@(spawn|dark|event|horde) ' -or $line.StartsWith(';')) { $script:ExtraLines += $line }      # kept as they are: a map may have several of each
+        elseif ($line -match '^@(spawn|dark|event|horde|hint) ' -or $line.StartsWith(';')) { $script:ExtraLines += $line }      # kept as they are: a map may have several of each
         elseif ($line.StartsWith('@')) { $p = $line.Substring(1).Split(' ', 2); $script:Header[$p[0].ToLower()] = "$($p[1])".Trim() }
     }
     if (-not $rows) { throw "No @map block in $File" }
