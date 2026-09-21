@@ -79,6 +79,18 @@ function Reset-ScreenEffects {
 
 # KeepPlayer: score and lives survive (after a death).  KeepKit: weapons, ammo and health survive
 # as well (riding the lift to the next floor). Keys never leave their floor.
+# While a floor is loaded nothing is drawn and no message is answered - long enough, on a slow machine, for Windows to
+# call the window "not responding". So: say what is going on, and let the window answer.
+function Show-LoadStep([string]$Text) {
+    if (-not $script:Form -or $script:Form.IsDisposed -or $script:TerminalMode -or -not $script:BackG) { return }
+    Show-Shade 'FF0A1020'
+    Write-HudBar '2C54C4' 0 0 320 3; Write-HudBar '2C54C4' 0 237 320 3
+    Write-HudText '>_' 'Huge' '2C54C4' 0 84 320 40
+    Write-HudText $Text 'Mid' 'FFFFFF' 0 128 320 12
+    Show-Back
+    [System.Windows.Forms.Application]::DoEvents()
+}
+
 function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:NetLive = $false; $script:NetClient = $false
     $script:MapFile = if ($script:HordeSeed) { Get-HordeMap } elseif ($script:DungeonMap) { $script:DungeonMap } elseif ($script:BonusMap) { $script:BonusMap } else { $script:MapFiles[$script:LevelIndex] }
@@ -86,6 +98,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:NextSeed = $null
     $script:Rng = [System.Random]::new($script:LevelSeed)
     $script:SecretExit = $false
+    Show-LoadStep $(if ($KeepKit) { 'the lift is on its way ...' } else { 'loading the floor ...' })
     Initialize-Level $script:MapFile
     if (-not $KeepPlayer) { New-Player }
     if (-not $KeepKit) { Reset-PlayerKit }
@@ -102,7 +115,7 @@ function Start-Level([bool]$KeepPlayer, [bool]$KeepKit) {
     $script:ShowWeapon = $true
     $script:HudDirty = $true
     if ($script:Net -and $script:Net.Connected) { Initialize-NetLevel $KeepPlayer $KeepKit }
-    elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Save-Game 'auto' }      # arriving by lift
+    elseif ($KeepKit -and -not $script:Playback -and -not $script:Recording) { Show-LoadStep 'saving ...'; Save-Game 'auto' }      # arriving by lift
     Start-RunTranscript
     Reset-RunStats
     Show-Message $(if ($script:BonusMap) { "Secret floor: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" })

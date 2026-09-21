@@ -476,6 +476,34 @@ function New-MusicTrack([int]$Track, [string]$Path) {
 
 function Get-MusicPath([int]$Track) { Join-Path $script:MusicDir ("track{0}-v{1}.wav" -f $Track, $script:MUSIC_VERSION) }
 
+# The whole soundtrack is composed in the background, in a runspace of its own, as soon as the game is up: a track
+# takes a second on a fast machine and several on a slow one, and a window that does not answer for five seconds while
+# the lift arrives is called "not responding" by Windows. The composer needs nothing but this file, so the runspace
+# dot-sources it; the styles are handed over because mods may have changed them. A track is written under another name
+# and renamed when it is complete - whoever wants it earlier simply composes it on the spot, as before.
+function Start-MusicComposer([int[]]$Tracks) {
+    if (-not $script:MusicEnabled -or -not $script:Mixer -or $script:Composer) { return }
+    $null = New-Item -ItemType Directory -Path $script:MusicDir -Force
+    $jobs = @(foreach ($t in $Tracks) { $path = Get-MusicPath $t; if (-not (Test-Path -LiteralPath $path)) { @{ Track = $t; Path = $path } } })
+    if (-not $jobs.Count) { return }
+    $ps = [powershell]::Create()
+    $null = $ps.AddScript({
+        param($File, $Styles, $Floors, $Jobs)
+        . $File
+        $script:MusicStyles = $Styles; $script:FloorStyles = $Floors
+        foreach ($job in $Jobs) {
+            try { if (-not (Test-Path -LiteralPath $job.Path)) { New-MusicTrack $job.Track "$($job.Path).part"; Move-Item -LiteralPath "$($job.Path).part" -Destination $job.Path -Force } } catch { }
+        }
+    }).AddArgument((Join-Path $PSScriptRoot 'Music.ps1')).AddArgument($script:MusicStyles).AddArgument($script:FloorStyles).AddArgument($jobs)
+    $script:Composer = @{ Shell = $ps; Handle = $ps.BeginInvoke() }
+}
+
+function Stop-MusicComposer {
+    if (-not $script:Composer) { return }
+    try { if (-not $script:Composer.Handle.IsCompleted) { $script:Composer.Shell.Stop() }; $script:Composer.Shell.Dispose() } catch { }
+    $script:Composer = $null
+}
+
 # Composes a track ahead of time, so that it starts without a pause when it is wanted.
 function Initialize-MusicTrack([int]$Track) {
     if (-not $script:MusicEnabled -or -not $script:Mixer) { return }
@@ -491,6 +519,7 @@ function Start-Music([int]$Track) {
             # tracks of an older version of the composer are of no use any more
             Get-ChildItem -LiteralPath $script:MusicDir -Filter 'track*.wav' -ErrorAction SilentlyContinue |
                 Where-Object Name -NotLike "*-v$($script:MUSIC_VERSION).wav" | Remove-Item -Force -ErrorAction SilentlyContinue
+            Show-LoadStep 'composing the music ...'               # the background composer has not got to this one yet
             New-MusicTrack $Track $path
         }
         if (-not $script:MusicIds.ContainsKey($Track)) { $script:MusicIds[$Track] = $script:Mixer::LoadWav([System.IO.File]::ReadAllBytes($path)) }

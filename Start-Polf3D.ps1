@@ -257,12 +257,15 @@ try {
     if ($HostGame) { Initialize-Network 'host' $(if ($HostGame -eq 'Coop') { 'coop' } else { 'duel' }) '' $Port $MaxPlayers $PlayerName; Write-Step "hosting a $HostGame game for up to $MaxPlayers players on port $Port" }
     elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port 4 $PlayerName; Write-Step "joining the game on ${JoinGame}:$Port" }
     if ($Terminal -or $TerminalKeys) { Initialize-Terminal ([bool]$TerminalKeys) } else { New-GameWindow }
+    # the soundtrack of the floors is composed in the background from now on, the floors first
+    Start-MusicComposer (@(1..$script:MapFiles.Count) + $script:MUSIC_BONUS + $script:MUSIC_ENDING + 0)
     Start-GameLoop
 }
 finally {
     if ($script:Mixer) { $script:Mixer::Close() }
     Stop-Terminal
     Stop-Network
+    Stop-MusicComposer
     Stop-Music
     if ($script:Form -and -not $script:Form.IsDisposed) { $script:Form.Close(); $script:Form.Dispose() }
     [System.Windows.Forms.Cursor]::Show()
