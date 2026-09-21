@@ -131,7 +131,7 @@ casting, map format, HUD, menus, music, network protocol, even the GIF at the to
 | `1`–`9`, `0` | weapons (see below) – `0` is the taser |
 | `Q` | put a mine down – and, pressed again, set off what lies out there |
 | `Z` `X` `V` `F` `R` | the powers: `-WhatIf`, `-Confirm`, `-Verbose`, `-Force`, Undo (see [below](#powershell-is-the-point)) |
-| `T`, `Tab` | the PowerShell console – or "use" a terminal or a server rack |
+| `T`, `Tab` | the PowerShell console (`Esc` leaves it, `Tab` completes in there) – or "use" a terminal or a server rack |
 | `G` `H` `B` `Y` | the four console hotkeys: whatever command line you put on them with `Set-Hotkey` |
 | `L` | flashlight (dark rooms) |
 | `M` (hold) / `N` | automap / radar minimap on and off |
@@ -303,8 +303,13 @@ Get-Enemy | Where-Object State -eq 'attacking' | Suspend-Enemy                  
 Get-Door  | Where-Object Lock -ne '-' | Open-Door                                # who needs keys
 Get-Door  | Sort-Object Distance | Select-Object -First 1 | Lock-Door            # jam the door behind you
 Get-Enemy -Kind turret | Set-Turret -Owner Me                                    # the sentry gun changes sides
+Get-Door | Set-Door -Open $true ;  Get-Process | Stop-Process                    # ... or the way you would have guessed
 Get-Trap | Disable-Trap ;  Get-Loot -Name key* ;  Get-Secret ;  Get-Player ;  Get-Help
 ```
+
+**Tab completes** – commands, aliases and parameters, but also what only the game can know: the kinds of enemies on
+this floor after `-Kind`, the files of the terminal after `cat`, and the properties of whatever comes down the pipeline
+(`Get-Door | ? Lo` + Tab gives `Lock`). Tab again takes the next candidate. `Tab` also opens the console, `Esc` leaves it.
 
 Logging on at one of the terminals or server racks in the levels ("use") opens the same console and grants 30
 privilege once. **Those terminals have files** – `Get-ChildItem`, `Get-Content mail-0412.eml` – and the files tell

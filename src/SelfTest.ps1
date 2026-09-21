@@ -557,6 +557,28 @@ function Invoke-SelfTest([string]$OutDir) {
     if (-not $stunned -or $noise -or $battery -gt 80 -or $turret.Shootable -or $armed -ne 1 -or $p.Mines -ne 1 -or $guard.Shootable) { throw 'weapon test failed.' }
     $script:GodMode = $keepGod
 
+    # ---- the console the way people type: Tab completes, Set-Door and Stop-Process do what one would guess ----
+    $script:LevelIndex = 0; $script:BonusMap = $null; Start-Level $false $false
+    Set-TestCamera 24.5 20.5 0; $script:P.Privilege = 100
+    if ($script:Con) { $script:Con.Runspace.Dispose() }; $script:Con = $null
+    Open-Console ([int]@($script:TerminalAt.Keys)[0])
+    $cases = [ordered]@{ 'Get-En' = 'Get-Enemy '; 'Get-Enemy | Sto' = 'Get-Enemy | Stop-Enemy'; 'Stop-Enemy -W' = 'Stop-Enemy -WhatIf '; 'Get-Door | Set-Door -O' = 'Get-Door | Set-Door -Open '
+        'Get-Door | Set-Door -Open ' = 'Get-Door | Set-Door -Open $true'; 'Get-Enemy | sort Dis' = 'Get-Enemy | sort Distance '; 'Get-Door | ? Lo' = 'Get-Door | ? Lock '
+        'cat mail' = 'cat mail-0412.eml '; 'Set-ExecutionPolicy Rem' = 'Set-ExecutionPolicy RemoteSigned '; 'Get-Enemy -Kind gu' = 'Get-Enemy -Kind guard ' }
+    $wrong = foreach ($case in $cases.GetEnumerator()) {
+        $script:Con.Input = $case.Key; $script:Con.Tab = $null; Complete-ConsoleInput
+        if ($script:Con.Input -ne $case.Value) { "'$($case.Key)' -> '$($script:Con.Input)' (expected '$($case.Value)')" }
+    }
+    $script:Con.Input = 'Get-'; $script:Con.Tab = $null; Complete-ConsoleInput; $first = $script:Con.Input; Complete-ConsoleInput; $second = $script:Con.Input
+    $script:Con.Input = ''; $script:Con.Tab = $null
+    $door = $script:Doors | Where-Object { $_.Lock -eq 0 -and $_.Action -eq 'closed' } | Select-Object -First 1
+    $index = [Array]::IndexOf($script:Doors.ToArray(), $door)
+    foreach ($line in "Set-Door -Id $index -Open `$true", 'Get-Process | Select-Object -First 1 | Stop-Process -WhatIf', 'Get-Door | Set-Door') { Invoke-ConsoleLine $line }
+    $text = ($script:Con.Lines | ForEach-Object { $_[0] }) -join "`n"; Close-Console
+    Write-Step "completion test: $($cases.Count) cases, wrong: $(@($wrong).Count); Tab twice on 'Get-': '$first' then '$second'; Set-Door opened door #${index}: $($door.Action)"
+    if (@($wrong).Count -or $first -eq $second -or $first -notlike 'Get-*' -or $door.Action -notin 'opening', 'open' -or $text -notmatch 'What if: Performing the operation "Stop-Enemy"' -or $text -notmatch 'say what you want') { throw "completion test failed:`n$($wrong -join "`n")`n$text" }
+    $script:Con.Runspace.Dispose(); $script:Con = $null
+
     # ---- cheats ----
     Start-Level $false $false
     $p = $script:P

@@ -24,6 +24,7 @@ READ          At a terminal or server rack:  Get-ChildItem (ls, dir)   Get-Conte
               What the files give away:      Unlock-Door -Code <number>      Use-Token <word>
 ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight seconds)
               Open-Door (8, locked ones 25)   Close-Door (5)   Lock-Door (15, jams it for twenty seconds)
+              ... or the way you would have guessed:  Get-Door | Set-Door -Open $true     Get-Process | Stop-Process
               Disable-Trap (10)     Set-Turret -Owner Me (25: a sentry gun changes sides)     Get-Enemy -Kind camera | Stop-Enemy
               Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
@@ -39,7 +40,9 @@ PIPE          Where-Object (?)  Sort-Object (sort)  Select-Object (select)  ForE
 TRY           Get-Enemy | Sort-Object Distance | Select-Object -First 1 | Stop-Enemy -WhatIf
               Get-Door | Where-Object Lock -ne '-' | Open-Door
               Get-Enemy | ? State -eq 'attacking' | Suspend-Enemy
-LEAVE         exit, Esc, T or Tab.   cls clears the screen.   Numbers in brackets: the price in privilege.
+KEYS          Tab completes commands, parameters, kinds, properties and file names (again: the next one).
+              Up/Down: history.   PgUp/PgDn: scroll.   exit or Esc leaves.   cls clears the screen.
+              Numbers in brackets: the price in privilege.
 '@
 
 function Initialize-Console {
@@ -87,7 +90,17 @@ function Initialize-Console {
         'Get-Content' = 'param([Parameter(Position = 0)][string]$Path = "*") if ($Path -eq $PROFILE) { if ($PolfProfile) { return $PolfProfile } else { return "`$PROFILE is empty. Define a function, then Save-Profile." } }; $hit = $PolfFiles | Where-Object Name -like $Path | Select-Object -First 1; if ($hit) { $PolfFileText[$hit.Name] } elseif ($PolfFiles) { throw "Cannot find path ''$Path'' because it does not exist." } else { throw "No file system here. Log on at a terminal first." }'
         'Unlock-Door' = 'param([Parameter(Position = 0)][string]$Code) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Code }'
         'Use-Token' = 'param([Parameter(Position = 0)][string]$Token) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Token }'
-        'Get-Process' = '$PolfEnemies | Select-Object Id, @{ n = "ProcessName"; e = { $_.Kind } }, @{ n = "WS(HP)"; e = { $_.Health } }, State'
+        'Get-Process' = '$PolfEnemies | Select-Object Type, Id, @{ n = "ProcessName"; e = { $_.Kind } }, @{ n = "WS(HP)"; e = { $_.Health } }, State'
+        # what people type by instinct: Get-Door | Set-Door -Open $true. It hands out the same requests as Open-Door & co.
+        'Set-Door' = @'
+[CmdletBinding()] param([Parameter(ValueFromPipeline)]$InputObject, [int[]]$Id, [Nullable[bool]]$Open, [Nullable[bool]]$Locked, [switch]$WhatIf)
+process {
+    if ($null -ne $InputObject -and $InputObject.Type -ne 'Door') { throw "Set-Door: that is no door (it is a $($InputObject.Type)). Try Get-Door | Set-Door -Open `$true" }
+    if ($null -eq $Open -and $null -eq $Locked) { throw 'Set-Door: say what you want - -Open $true, -Open $false or -Locked $true' }
+    $verb = if ($Locked) { 'Lock-Door' } elseif ($Open -eq $false) { 'Close-Door' } else { 'Open-Door' }
+    foreach ($i in @($Id) + @($InputObject.Id)) { if ($null -ne $i) { [pscustomobject]@{ PolfAction = $verb; Id = [int]$i; WhatIf = [bool]$WhatIf } } }
+}
+'@
     }
     # the acting cmdlets all look the same: ids in, requests out
     foreach ($act in @('Stop-Enemy', 'Enemy'), @('Suspend-Enemy', 'Enemy'), @('Open-Door', 'Door'), @('Close-Door', 'Door'), @('Lock-Door', 'Door'), @('Disable-Trap', 'Trap'), @('Set-Turret', 'Enemy')) {
@@ -104,7 +117,7 @@ process {
     foreach ($a in @('?', 'Where-Object'), @('where', 'Where-Object'), @('%', 'ForEach-Object'), @('foreach', 'ForEach-Object'), @('select', 'Select-Object'), @('sort', 'Sort-Object'),
         @('measure', 'Measure-Object'), @('group', 'Group-Object'), @('ft', 'Format-Table'), @('fl', 'Format-List'), @('gm', 'Get-Member'), @('echo', 'Write-Output'),
         @('help', 'Get-Help'), @('man', 'Get-Help'), @('gcm', 'Get-Command'), @('kill', 'Stop-Enemy'), @('spps', 'Stop-Enemy'), @('ps', 'Get-Process'), @('gps', 'Get-Process'),
-        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('icm', 'Invoke-Command'), @('sajb', 'Start-Job'), @('gjb', 'Get-Job'), @('rcjb', 'Receive-Job'), @('spjb', 'Stop-Job'), @('Remove-Job', 'Stop-Job'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
+        @('ls', 'Get-ChildItem'), @('dir', 'Get-ChildItem'), @('gci', 'Get-ChildItem'), @('cat', 'Get-Content'), @('type', 'Get-Content'), @('gc', 'Get-Content'), @('more', 'Get-Content'), @('sal', 'Set-Alias'), @('icm', 'Invoke-Command'), @('Stop-Process', 'Stop-Enemy'), @('Remove-Enemy', 'Stop-Enemy'), @('Suspend-Process', 'Suspend-Enemy'), @('sajb', 'Start-Job'), @('gjb', 'Get-Job'), @('rcjb', 'Receive-Job'), @('spjb', 'Stop-Job'), @('Remove-Job', 'Stop-Job'), @('clc', 'Clear-Content'), @('rm', 'Remove-Item'), @('del', 'Remove-Item'), @('iwr', 'Invoke-WebRequest'), @('curl', 'Invoke-WebRequest')) {
         $iss.Commands.Add([System.Management.Automation.Runspaces.SessionStateAliasEntry]::new($a[0], $a[1]))
     }
     $rs = [runspacefactory]::CreateRunspace($iss); $rs.Open()
@@ -112,8 +125,10 @@ process {
     $rs.SessionStateProxy.SetVariable('PolfCommands', @(@($functions.Keys) + @($cmdlets.Keys) | Sort-Object))
     $script:Con = @{
         Runspace = $rs; Lines = [System.Collections.Generic.List[object]]::new(); Input = ''; History = [System.Collections.Generic.List[string]]::new(); HistoryAt = 0
-        Scroll = 0; Opened = 0.0; Session = [ordered]@{}
+        Scroll = 0; Opened = 0.0; Session = [ordered]@{}; Tab = $null
+        Commands = @(@($functions.Keys) + @($cmdlets.Keys) | Sort-Object); Aliases = @{}
     }
+    foreach ($entry in $iss.Commands) { if ($entry -is [System.Management.Automation.Runspaces.SessionStateAliasEntry]) { $script:Con.Aliases[$entry.Name] = $entry.Definition } }
     $script:CharQueue = [System.Collections.Generic.Queue[char]]::new()
     $rs.SessionStateProxy.SetVariable('PROFILE', 'saves\profile.ps1')
     Import-ConsoleProfile
@@ -437,6 +452,74 @@ function Close-Console {
     $script:P.UseHeld = $true; $script:P.FireHeld = $true
 }
 
+# ---- Tab completion ------------------------------------------------------------------------------
+# PowerShell's own completion engine finds nothing in a session state as empty as the sandbox's, so the console has
+# one of its own - which, in return, knows the game: the kinds of enemies on this floor, the files of this terminal,
+# the properties of whatever comes down the pipeline.
+$script:ConsoleParameters = @{
+    'Get-Enemy' = '-Kind'; 'Get-Loot' = '-Name'; 'Get-Content' = '-Path'; 'Unlock-Door' = '-Code'; 'Use-Token' = '-Token'
+    'Stop-Enemy' = '-Id', '-WhatIf'; 'Suspend-Enemy' = '-Id', '-WhatIf'; 'Open-Door' = '-Id', '-WhatIf'; 'Close-Door' = '-Id', '-WhatIf'
+    'Lock-Door' = '-Id', '-WhatIf'; 'Disable-Trap' = '-Id', '-WhatIf'; 'Set-Turret' = '-Id', '-Owner', '-WhatIf'
+    'Set-Door' = '-Id', '-Open', '-Locked', '-WhatIf'; 'Set-Hotkey' = '-Key', '-Command'; 'Set-ExecutionPolicy' = '-ExecutionPolicy'
+    'Where-Object' = '-Property', '-EQ', '-NE', '-GT', '-GE', '-LT', '-LE', '-Like', '-NotLike', '-Match', '-In', '-FilterScript'
+    'Sort-Object' = '-Property', '-Descending', '-Unique'; 'Select-Object' = '-First', '-Last', '-Skip', '-Property', '-ExpandProperty', '-Unique'
+    'Measure-Object' = '-Property', '-Sum', '-Average', '-Maximum', '-Minimum'; 'Group-Object' = '-Property', '-NoElement'
+    'Format-Table' = '-Property', '-AutoSize'; 'Format-List' = '-Property'; 'Get-Random' = '-Minimum', '-Maximum', '-Count'
+    'ForEach-Object' = '-Process', '-MemberName'; 'Set-Alias' = '-Name', '-Value'
+}
+$script:ConsoleProperties = @{
+    'Get-Enemy' = 'Id', 'Kind', 'Health', 'State', 'Distance', 'Bearing'; 'Get-Process' = 'Id', 'ProcessName', 'State'
+    'Get-Door' = 'Id', 'Lock', 'State', 'Distance', 'Bearing'; 'Get-Loot' = 'Id', 'Name', 'Distance', 'Bearing'
+    'Get-Trap' = 'Id', 'Kind', 'Disabled', 'Distance', 'Bearing'; 'Get-Job' = 'Id', 'Name', 'State', 'Carrying'
+    'Get-ChildItem' = 'Name', 'Length', 'Mode'; 'Get-Hotkey' = 'Id', 'Key', 'Command'; 'Get-Module' = 'Name', 'Description'
+}
+
+# The full name behind an alias of the sandbox (or the word itself).
+function Resolve-ConsoleCommand([string]$Word) {
+    if ($script:Con.Aliases.ContainsKey($Word)) { $script:Con.Aliases[$Word] } else { @($script:Con.Commands | Where-Object { $_ -eq $Word })[0] ?? $Word }
+}
+
+# What could stand where the input ends. Returns @{ Start = where the word begins; Matches = candidates }.
+function Get-ConsoleCompletion([string]$Text) {
+    $start = $Text.Length
+    while ($start -gt 0 -and $Text[$start - 1] -notin ' ', '|', ';', '(', '{', ',') { $start-- }
+    $word = $Text.Substring($start)
+    $segment = ($Text.Substring(0, $start) -split '[|;({]')[-1].Trim()              # this command of the pipeline, without the word
+    $upstream = ($Text.Substring(0, $start) -split '[;({]')[-1] -split '\|' | ForEach-Object { ($_.Trim() -split '\s+')[0] } | Where-Object { $_ }
+    $words = @($segment -split '\s+' | Where-Object { $_ })
+    $command = if ($words.Count) { Resolve-ConsoleCommand $words[0] } else { '' }
+    $previous = if ($words.Count) { $words[-1] } else { '' }
+    $pool = @()
+    if (-not $words.Count) { $pool = @($script:Con.Commands) + @($script:Con.Aliases.Keys) | Sort-Object -Unique }          # a command is wanted
+    elseif ($word.StartsWith('-')) { $pool = @($script:ConsoleParameters[$command]) }
+    elseif ($previous -eq '-Kind' -or ($command -eq 'Get-Enemy' -and $words.Count -eq 1)) { Update-ConsoleData; $pool = @($script:Con.Runspace.SessionStateProxy.GetVariable('PolfEnemies') | ForEach-Object Kind | Sort-Object -Unique) }
+    elseif ($previous -eq '-Owner') { $pool = @('Me') }
+    elseif ($previous -in '-Open', '-Locked') { $pool = '$true', '$false' }
+    elseif ($command -eq 'Set-ExecutionPolicy') { $pool = @($script:PolicyLevels | ForEach-Object Name) }
+    elseif ($command -in 'Get-Content', 'Clear-Content') { Update-ConsoleData; $pool = @($script:Con.Runspace.SessionStateProxy.GetVariable('PolfFiles') | ForEach-Object Name) + '$PROFILE' }
+    elseif ($command -eq 'Get-Loot') { Update-ConsoleData; $pool = @($script:Con.Runspace.SessionStateProxy.GetVariable('PolfLoot') | ForEach-Object Name | Sort-Object -Unique) }
+    elseif ($command -in 'Where-Object', 'Sort-Object', 'Select-Object', 'Group-Object', 'Measure-Object', 'Format-Table', 'Format-List', 'ForEach-Object') {
+        # a property of what comes down the pipe: look upstream for the Get- that started it
+        foreach ($up in @($upstream)) { $full = Resolve-ConsoleCommand $up; if ($script:ConsoleProperties.ContainsKey($full)) { $pool = @($script:ConsoleProperties[$full]) } }
+    }
+    @{ Start = $start; Matches = @($pool | Where-Object { $_ -and "$_" -like "$word*" }) }
+}
+
+# Tab: the first candidate; Tab again: the next one. Several candidates are listed once.
+function Complete-ConsoleInput {
+    $con = $script:Con
+    if (-not $con.Tab) {
+        $found = Get-ConsoleCompletion $con.Input
+        if (-not $found.Matches.Count) { Start-Sfx 'noway'; return }
+        $con.Tab = @{ Base = $con.Input.Substring(0, $found.Start); Matches = $found.Matches; Index = -1 }
+        if ($found.Matches.Count -gt 1) { Write-ConsoleLine ($found.Matches -join '   ') '7080A0' }
+    }
+    $tab = $con.Tab
+    $tab.Index = ($tab.Index + 1) % $tab.Matches.Count
+    $con.Input = $tab.Base + $tab.Matches[$tab.Index]
+    if ($tab.Matches.Count -eq 1 -and -not $con.Input.EndsWith(' ')) { $con.Input += ' '; $con.Tab = $null }      # nothing to choose: go on typing
+}
+
 # $Keys: the key codes pressed this frame. Characters come from the form's KeyPress event.
 function Update-Console([int[]]$Keys) {
     $con = $script:Con
@@ -444,9 +527,9 @@ function Update-Console([int[]]$Keys) {
     foreach ($k in $Keys) {
         switch ($k) {
             27 { Close-Console; return }                                                             # Esc
-            9  { if (-not $justOpened) { Close-Console; return } }                                  # Tab
+            9  { if (-not $justOpened) { Complete-ConsoleInput } }                                  # Tab: completion (it used to close the console)
             13 { $line = $con.Input; $con.Input = ''; $script:CharQueue.Clear(); Invoke-ConsoleLine $line; if ($script:Mode -ne 'console') { return } }
-            8  { if ($con.Input.Length) { $con.Input = $con.Input.Substring(0, $con.Input.Length - 1) } }
+            8  { if ($con.Input.Length) { $con.Input = $con.Input.Substring(0, $con.Input.Length - 1) }; $con.Tab = $null }
             38 { if ($con.HistoryAt -gt 0) { $con.HistoryAt--; $con.Input = $con.History[$con.HistoryAt] } }
             40 { if ($con.HistoryAt -lt $con.History.Count - 1) { $con.HistoryAt++; $con.Input = $con.History[$con.HistoryAt] } else { $con.HistoryAt = $con.History.Count; $con.Input = '' } }
             33 { $con.Scroll = [Math]::Min([Math]::Max(0, $con.Lines.Count - 5), $con.Scroll + 10) }                                # PgUp
@@ -456,7 +539,7 @@ function Update-Console([int[]]$Keys) {
     while ($script:CharQueue.Count) {
         $c = $script:CharQueue.Dequeue()
         if ($justOpened -or [int]$c -lt 32 -or [int]$c -eq 127) { continue }                          # the key that opened it, control characters
-        if ($con.Input.Length -lt 110) { $con.Input += $c }
+        if ($con.Input.Length -lt 110) { $con.Input += $c; $con.Tab = $null }
     }
 }
 
