@@ -1043,8 +1043,9 @@ function Invoke-SelfTest([string]$OutDir) {
         $states = "$($script:Net.Players[0].Ghost.State) / Anna at $([Math]::Round($script:Net.Players[1].Ghost.NX, 1)) with $($script:Net.Players[1].Health)"
         Send-NetTestLines $server 'O|1|kicked by the host'; Update-Network 1.0
         $lines = Read-NetTestLines $server
-        Write-Step "network test (guest): slot $($script:Net.Slot) at $spot, mode $($script:Net.Mode), seed $($script:LevelSeed), $enemies monsters left, health $health -> $($script:P.Health), ghosts: $states; '$hud'; after Anna left: $($script:Net.Players.Count) other player"
-        if (-not $script:NetClient -or $script:Net.Mode -ne 'duel' -or $script:Net.Slot -ne 2 -or $spot -ne '7.5,27.5' -or $script:LevelSeed -ne 4711 -or $enemies -ne 0 -or
+        $mapName = (Get-NetMapName 'bonus2.map') -eq 'bonus2.map' -and $(try { $null = Get-NetMapName '..\..\saves\settings.map'; $false } catch { $true })      # a map name from the host stays a name
+        Write-Step "network test (guest): slot $($script:Net.Slot) at $spot, mode $($script:Net.Mode), seed $($script:LevelSeed), $enemies monsters left, health $health -> $($script:P.Health), ghosts: $states; '$hud'; after Anna left: $($script:Net.Players.Count) other player; a path as map name is refused: $mapName"
+        if (-not $mapName -or -not $script:NetClient -or $script:Net.Mode -ne 'duel' -or $script:Net.Slot -ne 2 -or $spot -ne '7.5,27.5' -or $script:LevelSeed -ne 4711 -or $enemies -ne 0 -or
             -not $script:Net.ById[900] -or $script:P.Health -ge $health -or $script:Net.Players[0].Ghost.State -notlike 'peer0.d*' -or $states -notlike '*6.5 with 77' -or
             $hud -notlike 'FRAGS*Boss 2*you 1*' -or $script:Net.Players.Count -ne 1 -or $lines -notcontains 'V|2|Dora' -or $lines -notcontains 'R|7') { throw 'network test failed on the guest side.' }
         Send-NetTestLines $server 'N|kicked by the host'; Update-Network 1.0

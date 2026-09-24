@@ -301,6 +301,18 @@ function Update-Network([double]$Tics) {
 # ---------------------------------------------------------------------------------------------
 # Starting a floor together
 # ---------------------------------------------------------------------------------------------
+# The host names the bonus map a floor is played on. A name is all it may be - never a path into the guest's disk.
+function Get-NetMapName([string]$Name) {
+    if ($Name -notmatch '^[A-Za-z0-9_-]+\.map$') { throw "the host sent a map name that is no map name: '$Name'" }
+    $Name
+}
+
+# The host names the bonus map a floor is played on. A name is all it may be - never a path into the guest's disk.
+function Get-NetMapName([string]$Name) {
+    if ($Name -notmatch '^[A-Za-z0-9_-]+\.map$') { throw "the host sent a map name that is no map name: '$Name'" }
+    $Name
+}
+
 function Get-MapHash([string]$Path) {
     $text = (Get-Content -LiteralPath $Path -Raw) -replace "`r", ''
     [BitConverter]::ToString([System.Security.Cryptography.SHA1]::HashData([System.Text.Encoding]::UTF8.GetBytes($text))).Replace('-', '').Substring(0, 8)
@@ -814,7 +826,7 @@ function Invoke-NetMessage([string]$Line, [hashtable]$From) {
             if ([int]$f[2] -ge $script:MapFiles.Count) { throw "the host plays floor $([int]$f[2] + 1), which this copy of the game does not have" }
             $n.Serial = [int]$f[1]
             $script:LevelIndex = [int]$f[2]
-            $script:BonusMap = if ($f[3]) { Join-Path (Split-Path $script:MapFiles[$script:LevelIndex]) $f[3] } else { $null }
+            $script:BonusMap = if ($f[3]) { Join-Path (Split-Path $script:MapFiles[$script:LevelIndex]) (Get-NetMapName $f[3]) } else { $null }
             $script:Difficulty = [int]$f[4]; $script:NextSeed = [int]$f[5]
             $n.Slot = [int]$f[9]
             $n.Roster = @(foreach ($entry in $f[10].Split(',')) { $e = $entry.Split(':'); @{ Slot = [int]$e[0]; Name = $e[1]; X = [double]$e[2]; Y = [double]$e[3] } })
