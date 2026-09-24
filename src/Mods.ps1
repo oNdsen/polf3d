@@ -40,7 +40,49 @@ function Import-Mods([string]$Dir) {
 # The keys of a section of a mod - none at all if the mod has no such section.
 function Get-ModKeys($Section) { if ($Section -is [hashtable]) { @($Section.Keys) } else { @() } }
 
+function Copy-ModValue($Value) {
+    if ($Value -is [System.Collections.IDictionary]) {
+        $copy = if ($Value -is [System.Collections.Specialized.OrderedDictionary]) { [ordered]@{} } else { @{} }
+        foreach ($key in $Value.Keys) { $copy[$key] = Copy-ModValue $Value[$key] }
+        return $copy
+    }
+    if ($Value -is [array]) {
+        $copy = [object[]]::new($Value.Count)
+        for ($i = 0; $i -lt $Value.Count; $i++) { $copy[$i] = Copy-ModValue $Value[$i] }
+        return ,$copy
+    }
+    $Value
+}
+
+# Import into private copies of every table a mod may change. A malformed section can therefore
+# never leave the earlier, valid sections of that mod installed.
 function Import-Mod([hashtable]$Mod) {
+    $old = @{
+        EnemyDefs = $script:EnemyDefs; Palettes = $script:Palettes; ModKinds = $script:ModKinds
+        EnemyCodes = $script:EnemyCodes; ModReplace = $script:ModReplace; VoiceLines = $script:VoiceLines
+        Weapons = $script:Weapons; Difficulties = $script:Difficulties; MusicStyles = $script:MusicStyles
+        MusicVersion = $script:MUSIC_VERSION
+    }
+    $script:EnemyDefs = Copy-ModValue $old.EnemyDefs
+    $script:Palettes = Copy-ModValue $old.Palettes
+    $script:ModKinds = Copy-ModValue $old.ModKinds
+    $script:EnemyCodes = Copy-ModValue $old.EnemyCodes
+    $script:ModReplace = Copy-ModValue $old.ModReplace
+    $script:VoiceLines = Copy-ModValue $old.VoiceLines
+    $script:Weapons = Copy-ModValue $old.Weapons
+    $script:Difficulties = Copy-ModValue $old.Difficulties
+    $script:MusicStyles = Copy-ModValue $old.MusicStyles
+    try { Import-ModUnchecked $Mod }
+    catch {
+        $script:EnemyDefs = $old.EnemyDefs; $script:Palettes = $old.Palettes; $script:ModKinds = $old.ModKinds
+        $script:EnemyCodes = $old.EnemyCodes; $script:ModReplace = $old.ModReplace; $script:VoiceLines = $old.VoiceLines
+        $script:Weapons = $old.Weapons; $script:Difficulties = $old.Difficulties; $script:MusicStyles = $old.MusicStyles
+        $script:MUSIC_VERSION = $old.MusicVersion
+        throw
+    }
+}
+
+function Import-ModUnchecked([hashtable]$Mod) {
     $soldiers = 'guard', 'officer', 'elite', 'mutant', 'sniper', 'pilot'
     foreach ($kind in (Get-ModKeys $Mod.Enemies)) {
         $spec = $Mod.Enemies[$kind]
