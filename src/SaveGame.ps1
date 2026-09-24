@@ -30,6 +30,8 @@ function Get-SaveList {
 }
 
 function Save-Game([string]$Slot = 'quick') {
+    # only the campaign is saved: a game saved in the arena, the dungeon, the onboarding or a network game could never be loaded
+    if ($script:Net -or $script:DungeonSeed -or $script:HordeSeed -or $script:TutorialMode) { if ($Slot -ne 'auto') { Show-Message 'There is no saving here' }; return }
     Stop-WhatIf                                                   # its ghosts are no part of the world
     $seen = for ($i = 0; $i -lt $script:Vis.Length; $i++) { if ($script:Vis[$i] -gt 0) { $i } }
     $floor = if ($script:BonusMap) { "Bonus: $($script:LevelName)" } else { "Floor $($script:LevelIndex + 1): $($script:LevelName)" }

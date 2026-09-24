@@ -639,7 +639,7 @@ function Start-GameLoop {
                     if ($h -eq $vk.Esc -or $h -eq $vk.P) { Set-Mode 'play'; $script:HudDirty = $true }
                     elseif ($h -eq $vk.Q) { Set-Mode 'title' }
                     elseif ($h -eq $vk.O) { Open-Options }
-                    elseif ($script:Net -or $script:DungeonSeed) { }          # no saving or loading in a network game or in the dungeon
+                    elseif ($script:Net -or $script:DungeonSeed -or $script:HordeSeed -or $script:TutorialMode) { }      # no saving or loading in a network game, the dungeon, the arena or the onboarding
                     elseif ($h -ge 49 -and $h -le 51) { Save-Game "$($h - 48)" }
                     elseif ($h -eq $vk.L -and (Test-SaveGame)) { $script:LoadReturn = 'paused'; Set-Mode 'load' }
                     elseif ($h -eq $vk.F9) { if (Restore-Game) { Set-Mode 'play' } }

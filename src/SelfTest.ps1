@@ -464,6 +464,7 @@ function Invoke-SelfTest([string]$OutDir) {
     Remove-Item -LiteralPath (Get-HordePath) -ErrorAction SilentlyContinue
     $keepDifficulty = $script:Difficulty; $script:Difficulty = 1; $keepGod = $script:GodMode; $script:GodMode = $true
     $started = Start-Horde 4711
+    Save-Game '9'; $refused = -not (Test-Path -LiteralPath (Get-SavePath '9'))      # a save from the arena could never be loaded: there is none
     $same = ((Get-HordeWave 3) -join ',') -eq ((Get-HordeWave 3) -join ','); $sizes = (1, 5, 10 | ForEach-Object { "$(@(Get-HordeWave $_).Count)" }) -join '/'
     $fifth = @(Get-HordeWave 5)[0]; $tenth = @(Get-HordeWave 10)[0]
     for ($f = 0; $f -lt 400 -and @($script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert }).Count -lt 3; $f++) { Update-World 4.0 $idle }
@@ -475,8 +476,8 @@ function Invoke-SelfTest([string]$OutDir) {
     for ($f = 0; $f -lt 120 -and $script:Stats.Wave -eq $wave; $f++) { Update-World 4.0 $idle }
     $supplies = @($script:Items | Where-Object { -not $_.Removed }).Count - $items
     $script:P.Cheated = $false; $line = Save-HordeRun $false; $again = Save-HordeRun $false
-    Write-Step "horde test: waves of $sizes (the 5th leads with a $fifth, the 10th with a $tenth); wave $wave sent $arrived through the gates, clearing it brought wave $($script:Stats.Wave) and $supplies supplies; '$line'"
-    if (-not $started -or -not $same -or $fifth -ne 'boss' -or $tenth -ne 'uber' -or $wave -ne 1 -or $arrived -lt 3 -or $script:Stats.Wave -ne 2 -or $supplies -lt 3 -or $line -notmatch 'first run' -or $again -notmatch 'your best: 1 waves') { throw 'horde test failed.' }
+    Write-Step "horde test: waves of $sizes (the 5th leads with a $fifth, the 10th with a $tenth); wave $wave sent $arrived through the gates, clearing it brought wave $($script:Stats.Wave) and $supplies supplies; saving refused: $refused; '$line'"
+    if (-not $started -or -not $refused -or -not $same -or $fifth -ne 'boss' -or $tenth -ne 'uber' -or $wave -ne 1 -or $arrived -lt 3 -or $script:Stats.Wave -ne 2 -or $supplies -lt 3 -or $line -notmatch 'first run' -or $again -notmatch 'your best: 1 waves') { throw 'horde test failed.' }
     Stop-Horde; $script:Difficulty = $keepDifficulty; $script:GodMode = $keepGod; $script:LevelIndex = 0
     Remove-Item -LiteralPath (Get-HordePath) -ErrorAction SilentlyContinue
 
