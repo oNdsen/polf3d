@@ -1160,6 +1160,13 @@ function Invoke-SelfTest([string]$OutDir) {
 
     # ---- mods: the example must load, its newcomer must get states and sprites and turn up on the floor ----
     # (last of all the tests that play: a mod changes the game's tables for good)
+    $guardPoints = $script:EnemyDefs.guard.Points
+    $badModRejected = $false
+    try { Import-Mod @{ Enemies = @{ guard = @{ Points = 999999 } }; Palettes = @{ missing = @{ Uniform = 'FFFFFF' } } } }
+    catch { $badModRejected = $true }
+    if (-not $badModRejected -or $script:EnemyDefs.guard.Points -ne $guardPoints) { throw 'mod transaction test failed: a rejected mod changed the game tables.' }
+    Write-Step 'mod transaction test: a rejected mod leaves the game tables unchanged'
+
     Import-Mod (Import-PowerShellDataFile -LiteralPath (Join-Path $PSScriptRoot '../mods/examples/purple-interns.psd1'))
     Initialize-States
     foreach ($k in $script:ModKinds) { Add-SoldierSprites $k }
