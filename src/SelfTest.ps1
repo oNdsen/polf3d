@@ -1071,9 +1071,13 @@ function Invoke-SelfTest([string]$OutDir) {
     $tampered.End.Kills = [int]$tampered.End.Kills + 3            # "I killed three more, honest"
     $fake = Join-Path $OutDir 'dungeon-fake.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $fake
     $caught = -not (Test-DemoFile $fake)
-    Remove-Item -LiteralPath $proof, $fake -ErrorAction SilentlyContinue
-    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid; a doctored copy is rejected: $caught"
-    if (-not $valid -or -not $caught) { throw 'dungeon test failed.' }
+    $tampered.Game = '0.9.0'                                          # ... and one that an older game recorded is told apart from a doctored one
+    $stale = Join-Path $OutDir 'dungeon-stale.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $stale
+    $blamed = -not (Test-DemoFile $stale) -and $script:DemoVerdict -like '*recorded with POLF 3D 0.9.0, this is *'
+    $stamped = (Get-Content -LiteralPath $proof -Raw | ConvertFrom-Json -AsHashtable).Game -eq $script:PolfVersion
+    Remove-Item -LiteralPath $proof, $fake, $stale -ErrorAction SilentlyContinue
+    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid and names the version: $stamped; a doctored copy is rejected: $caught; an old version's copy is blamed on the version: $blamed"
+    if (-not $valid -or -not $caught -or -not $stamped -or -not $blamed) { throw 'dungeon test failed.' }
     Stop-Dungeon; $script:GodMode = $true; $script:Difficulty = 1; $script:PlayerDied = $false; $script:Playback = $null
 
     # ---- terminal mode: the frame buffer as half-block characters ----

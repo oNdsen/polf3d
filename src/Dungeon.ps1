@@ -237,7 +237,7 @@ function Save-DungeonRun([bool]$Completed) {
         $all = @{}
         if (Test-Path -LiteralPath $file) { try { $all = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json -AsHashtable } catch { $all = @{} } }
         $key = "$($script:DungeonSeed)|$($script:Difficulty)"
-        if (-not $all[$key] -or $seconds -lt [double]$all[$key].Seconds) { $all[$key] = @{ Seconds = $seconds; Kills = $script:Stats.Kills; Demo = $name; Cheated = [bool]$script:P.Cheated } }
+        if (-not $all[$key] -or $seconds -lt [double]$all[$key].Seconds) { $all[$key] = @{ Seconds = $seconds; Kills = $script:Stats.Kills; Demo = $name; Cheated = [bool]$script:P.Cheated; Game = $script:PolfVersion } }
         $all | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $file -Encoding utf8
     }
     $name
@@ -258,7 +258,13 @@ function Test-DemoFile([string]$Path) {
     while ($null -ne ($frame = Get-DemoFrame)) { Update-View; Update-World $frame.Tics $frame.In; $frames++; if ($script:PlayerDied -or $script:LevelDone) { break } }
     $sync = Test-DemoInSync
     $seconds = $script:Stats.Tics / $script:TICRATE
-    Write-Step ("{0}: {1} on '{2}', difficulty {3}, {4} frames - {5} after {6} with {7} kills" -f $(if ($sync) { 'VALID' } else { 'NOT VALID (the playback ends somewhere else than the recording did)' }),
+    # out of sync: say whether it is the file or the game that has changed - a demo only stays valid for the version that recorded it
+    $recorded = $script:Playback.Game
+    $script:DemoVerdict = if ($sync) { 'VALID' }
+        elseif ($recorded -and $recorded -ne $script:PolfVersion) { "NOT VALID (recorded with POLF 3D $recorded, this is $script:PolfVersion: the game has changed since, and the playback ends somewhere else)" }
+        elseif (-not $recorded) { 'NOT VALID (the playback ends somewhere else than the recording did; the demo is from before 1.2.1 and does not say which version recorded it)' }
+        else { 'NOT VALID (the playback ends somewhere else than the recording did)' }
+    Write-Step ("{0}: {1} on '{2}', difficulty {3}, {4} frames - {5} after {6} with {7} kills" -f $script:DemoVerdict,
         (Split-Path $Path -Leaf), $script:LevelName, ($script:Difficulty + 1), $frames, $(if ($script:LevelDone) { 'reached the lift' } elseif ($script:PlayerDied) { 'died' } else { 'stopped' }), (Format-Time $seconds -Tenths), $script:Stats.Kills)
     Stop-Dungeon
     $sync

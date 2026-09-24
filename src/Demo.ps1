@@ -33,7 +33,7 @@ function Stop-DemoRecording([string]$Path) {
     if (-not $rec -or $rec.Frames.Count -eq 0) { return }
     if (-not $Path) { $Path = Join-Path $script:SaveDir ("demo-{0:yyyyMMdd-HHmmss}.json" -f (Get-Date)) }
     $demo = [ordered]@{
-        Version = 1; Map = Split-Path $script:MapFile -Leaf; Difficulty = $script:Difficulty; Seed = $rec.Seed
+        Version = 1; Game = $script:PolfVersion; Map = Split-Path $script:MapFile -Leaf; Difficulty = $script:Difficulty; Seed = $rec.Seed
         Mods = @($script:Mods)                                                    # they change the rules
         Dungeon = $script:DungeonSeed; ColumnStep = $script:ColumnStep           # a dungeon is rebuilt from its number; the ray count decides who is seen
         Completed = [bool]$script:LevelDone; Seconds = [Math]::Round($script:Stats.Tics / $script:TICRATE, 2)
@@ -66,7 +66,7 @@ function Start-DemoPlayback([string]$Path) {
         $script:NextSeed = [int]$demo.Seed
         Start-Level $false $false
         Update-View
-        $script:Playback = @{ Frames = $demo.Frames; Index = 0; End = $demo.End }
+        $script:Playback = @{ Frames = $demo.Frames; Index = 0; End = $demo.End; Game = [string]$demo.Game }      # Game: the version that recorded it (demos before 1.2.1 do not say)
         return $true
     }
     catch { Show-Message "Demo: $($_.Exception.Message)"; return $false }
