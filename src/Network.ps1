@@ -360,7 +360,7 @@ function Add-NetPlayer([int]$Slot, [string]$Name, [double]$X, [double]$Y) {
     $g.Area = $script:AreaOf[$g.TY * $w + $g.TX]
     $g.Shootable = $true; $g.Active = $true
     $script:Actors.Add($g)
-    $pl = @{ Slot = $Slot; Name = $Name; Ghost = $g; Health = 100; Proxy = $null; Noise = $false; Step = 0.0
+    $pl = @{ Slot = $Slot; Name = $Name; Ghost = $g; Health = 100; Proxy = $null; Noise = $false; Step = 0.0; FragReported = $false
         Anim = @{ Fire = 0.0; Pain = 0.0; Walk = 0.0; Still = 99.0; Dead = $false; Die = 0.0 } }
     if ($n.Role -eq 'host') {
         # a stand-in for $script:P while the enemies deal with him
@@ -609,14 +609,37 @@ function Update-NetGhosts([double]$Tics) {
     }
 }
 
+# Keep untrusted network numbers away from array indexes and the game simulation.
+function Test-NetFinite([double]$Value) { -not [double]::IsNaN($Value) -and -not [double]::IsInfinity($Value) }
+
+function Test-NetPoint([double]$X, [double]$Y) {
+    (Test-NetFinite $X) -and (Test-NetFinite $Y) -and $X -ge 0 -and $Y -ge 0 -and $X -lt $script:MapW -and $Y -lt $script:MapH
+}
+
+function Test-NetGuestHit([hashtable]$Player, [Actor]$Target, [int]$Damage, [string]$Source) {
+    if (-not $Player.Proxy -or -not $Target -or -not $Target.Shootable -or $Target.Kind -eq 'peer' -or $Damage -le 0) { return $false }
+    $caps = @{ bullet = 63; knife = 15; beam = 123; blast = 405; flame = 21; taser = 50 }
+    if (-not $caps.ContainsKey($Source) -or $Damage -gt $caps[$Source]) { return $false }
+    $px = $Player.Proxy
+    if (-not (Test-NetPoint $px.X $px.Y) -or -not (Test-NetPoint $Target.X $Target.Y)) { return $false }
+    $distance = [Math]::Sqrt(($px.X - $Target.X) * ($px.X - $Target.X) + ($px.Y - $Target.Y) * ($px.Y - $Target.Y))
+    if (($Source -eq 'knife' -and $distance -gt 1.6) -or ($Source -eq 'taser' -and $distance -gt 2.7) -or ($Source -eq 'flame' -and $distance -gt 3.7)) { return $false }
+    Test-LineToPlayer $px.X $px.Y $Target.X $Target.Y
+}
+
 # A player's state has arrived (on the host from that guest, on a guest from the host for anybody).
 function Set-NetPlayerState([int]$Slot, [string[]]$f) {
     $n = $script:Net; $pl = $n.Players[$Slot]
-    if (-not $pl) { return }
+    if (-not $pl -or $f.Count -lt 9) { return $false }
+    $x = [double]$f[2]; $y = [double]$f[3]; $angle = [double]$f[4]
+    $flags = [int]$f[5]; $health = [int]$f[6]; $step = [double]$f[7]
+    if (-not (Test-NetPoint $x $y) -or -not (Test-NetFinite $angle) -or -not (Test-NetFinite $step) -or
+        $flags -lt 0 -or ($flags -band (-bnot 31)) -ne 0 -or $health -lt 0 -or $health -gt 100 -or [Math]::Abs($step) -gt 1000000) { return $false }
+    $angle = (($angle % 360.0) + 360.0) % 360.0
+    $area = $script:AreaOf[[int][Math]::Floor($y) * $script:MapW + [int][Math]::Floor($x)]
     $g = $pl.Ghost; $an = $pl.Anim
-    $g.NX = [double]$f[2]; $g.NY = [double]$f[3]
-    $g.Dir = [int][Math]::Round([double]$f[4] / 45.0) % 8
-    $flags = [int]$f[5]; $health = [int]$f[6]
+    $g.NX = $x; $g.NY = $y
+    $g.Dir = [int][Math]::Round($angle / 45.0) % 8
     $dead = [bool]($flags -band 8)
     if ($dead -and -not $an.Dead) {
         $an.Dead = $true; $an.Die = 0.0
@@ -627,19 +650,22 @@ function Set-NetPlayerState([int]$Slot, [string[]]$f) {
     elseif (-not $dead -and $an.Dead) {
         $an.Dead = $false; $g.Shootable = $true; $g.Corpse = $false; $g.State = "peer$Slot.stand"
         $g.X = $g.NX; $g.Y = $g.NY
+        $pl.FragReported = $false
     }
     if ($health -lt $pl.Health -and -not $dead) { $an.Pain = 8.0 }
     $pl.Health = $health
     if ($pl.Proxy) {
         $px = $pl.Proxy
-        $px.X = $g.NX; $px.Y = $g.NY; $px.Angle = [double]$f[4]; $px.Health = $health
+        $px.X = $g.NX; $px.Y = $g.NY; $px.Angle = $angle; $px.Health = $health
         $px.Running = [bool]($flags -band 1); $px.Sneaking = [bool]($flags -band 2)
         $px.SudoTics = if ($flags -band 16) { 1.0 } else { 0.0 }
         if ($flags -band 4) { $pl.Noise = $true }
-        $pl.Step = [double]$f[7]
-        $area = [int]$f[8]
+        $pl.Step = $step
         if ($area -ge 0 -and $area -ne $px.Area) { $px.Area = $area; Update-AreaByPlayer }
     }
+    # Relays contain normalized values and a host-derived area, not the guest's original fields.
+    $f[2] = "$x"; $f[3] = "$y"; $f[4] = "$angle"; $f[5] = "$flags"; $f[6] = "$health"; $f[7] = "$step"; $f[8] = "$area"
+    $true
 }
 
 # Host, once per frame: did any guest make a noise that the enemies should hear?
@@ -878,32 +904,56 @@ function Invoke-NetGuestMessage([string[]]$f, [hashtable]$From) {
     # everything else refers to the floor in play: worthless before he has loaded it, or after it is over
     if (-not $script:NetLive -or -not $From.Ready -or -not $n.Players[$slot]) { return }
     switch -CaseSensitive ($f[0]) {
-        'M' { $f[1] = "$slot"; Set-NetPlayerState $slot $f; Send-NetExcept $slot ($f -join '|') }
+        'M' { $f[1] = "$slot"; if (Set-NetPlayerState $slot $f) { Send-NetExcept $slot ($f -join '|') } }
         'D' {
-            $target = Get-NetActor ([int]$f[1])
-            if ($target -and $target.Shootable -and $target.Kind -ne 'peer') { Invoke-InPeerContext $slot { Invoke-ActorDamage $target ([int]$f[2]) $f[3] } }
+            if ($f.Count -lt 4) { break }
+            $target = Get-NetActor ([int]$f[1]); $damage = [int]$f[2]; $source = $f[3]
+            if (Test-NetGuestHit $n.Players[$slot] $target $damage $source) { Invoke-InPeerContext $slot { Invoke-ActorDamage $target $damage $source } }
         }
         'K' {
             # he has hit another player
-            if ($n.Mode -ne 'duel') { break }
-            $victim = [int]$f[1]; $damage = [Math]::Max(0, [Math]::Min(500, [int]$f[2]))
+            if ($n.Mode -ne 'duel' -or $f.Count -lt 3) { break }
+            $victim = [int]$f[1]; $damage = [int]$f[2]
+            if ($damage -le 0 -or $damage -gt 810 -or $victim -eq $slot -or ($victim -ne 0 -and -not $n.Players[$victim])) { break }
+            $attacker = $n.Players[$slot].Proxy
+            $victimGhost = if ($victim -eq 0) { $null } else { $n.Players[$victim].Ghost }
+            $vx = if ($victim -eq 0) { $script:P.X } else { $victimGhost.X }; $vy = if ($victim -eq 0) { $script:P.Y } else { $victimGhost.Y }
+            if (-not (Test-NetPoint $attacker.X $attacker.Y) -or -not (Test-LineToPlayer $attacker.X $attacker.Y $vx $vy)) { break }
             if ($victim -eq 0) { Invoke-PlayerDamage $damage $n.Players[$slot].Ghost }
-            elseif ($victim -ne $slot -and $n.Players[$victim]) { Send-NetTo (Get-NetGuest $victim) "H|$damage|P$slot" }
+            else { Send-NetTo (Get-NetGuest $victim) "H|$damage|P$slot" }
         }
-        'F' { Add-NetFrag ([int]$f[1]) $slot }
-        'U' { Invoke-InPeerContext $slot { Invoke-UseAt ([int]$f[1]) ([int]$f[2]) ([int]$f[3]) ([int]$f[4]) } }
+        'F' {
+            $player = $n.Players[$slot]
+            if ($n.Mode -ne 'duel' -or $f.Count -lt 2 -or $player.FragReported) { break }
+            $killer = [int]$f[1]
+            if ($killer -eq $slot -or -not $n.Names.ContainsKey($killer)) { break }
+            $player.FragReported = $true; Add-NetFrag $killer $slot
+        }
+        'U' {
+            if ($f.Count -lt 5) { break }
+            $tx = [int]$f[1]; $ty = [int]$f[2]; $dx = [int]$f[3]; $dy = [int]$f[4]; $px = $n.Players[$slot].Proxy
+            if ([Math]::Abs($dx) + [Math]::Abs($dy) -ne 1 -or $tx -lt 0 -or $ty -lt 0 -or $tx -ge $script:MapW -or $ty -ge $script:MapH -or
+                [Math]::Abs(($tx - $dx) - [Math]::Floor($px.X)) + [Math]::Abs(($ty - $dy) - [Math]::Floor($px.Y)) -gt 1) { break }
+            Invoke-InPeerContext $slot { Invoke-UseAt $tx $ty $dx $dy }
+        }
         'P' {
-            if ($f[1] -notin 'procket', 'tknife') { break }
-            $px = $n.Players[$slot].Proxy; $px.X = [double]$f[2]; $px.Y = [double]$f[3]; $px.Angle = [double]$f[4]
+            if ($f.Count -lt 5 -or $f[1] -notin 'procket', 'tknife') { break }
+            $px = $n.Players[$slot].Proxy; $x = [double]$f[2]; $y = [double]$f[3]; $angle = [double]$f[4]
+            if (-not (Test-NetPoint $x $y) -or -not (Test-NetFinite $angle) -or [Math]::Abs($x - $px.X) -gt 1.0 -or [Math]::Abs($y - $px.Y) -gt 1.0) { break }
+            $px.X = $x; $px.Y = $y; $px.Angle = (($angle % 360.0) + 360.0) % 360.0
             $before = $script:NewActors.Count
             Invoke-InPeerContext $slot { Add-PlayerProjectile $f[1] }
             if ($script:NewActors.Count -gt $before) { $script:NewActors[$script:NewActors.Count - 1].PeerSlot = $slot }
         }
         'I' {
             $i = [int]$f[1]
-            if ($i -ge 0 -and $i -lt $script:Items.Count -and -not $script:Items[$i].Removed) { Register-NetPickup $i $false; Send-NetExcept $slot "I|$i" }
+            if ($i -ge 0 -and $i -lt $script:Items.Count -and -not $script:Items[$i].Removed) {
+                $item = $script:Items[$i]; $px = $n.Players[$slot].Proxy
+                if ([Math]::Abs($px.X - ($item.X + 0.5)) -lt 0.6 -and [Math]::Abs($px.Y - ($item.Y + 0.5)) -lt 0.6) { Register-NetPickup $i $false; Send-NetExcept $slot "I|$i" }
+            }
         }
         'Q' {
+            if ($f.Count -lt 3 -or -not $script:NetLoud.Contains($f[2])) { break }
             $script:NetScope = 'remote'
             try { Start-Sfx $f[2] $n.Players[$slot].Ghost.X $n.Players[$slot].Ghost.Y } finally { $script:NetScope = 'local' }
             if ($script:NetLoud.Contains($f[2]) -and $f[2] -notin 'pain', 'player_die', 'teleport') { $n.Players[$slot].Anim.Fire = 8.0 }
