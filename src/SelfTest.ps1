@@ -841,6 +841,15 @@ function Invoke-SelfTest([string]$OutDir) {
     Show-PlayFrame; Save-BackBuffer (Join-Path $OutDir 'view-12-after-load.png')
     Write-Step 'savegame round trip ok'
 
+    $stateBeforeBadLoad = "$($script:LevelIndex);$($script:P.X);$($script:P.Y);$($script:Actors.Count)"
+    $badSave = Get-Content -LiteralPath (Get-SavePath) -Raw | ConvertFrom-Json -AsHashtable
+    $badSave.Actors[0].TX = -1
+    $badSave | ConvertTo-Json -Depth 6 -Compress | Set-Content -LiteralPath (Get-SavePath) -Encoding utf8
+    $badLoad = Restore-Game
+    $stateAfterBadLoad = "$($script:LevelIndex);$($script:P.X);$($script:P.Y);$($script:Actors.Count)"
+    if ($badLoad -or $stateBeforeBadLoad -ne $stateAfterBadLoad) { throw 'save validation test failed: a malformed save changed the running game.' }
+    Write-Step 'save validation test: a malformed save is rejected before changing the running game'
+
     # ---- every floor: load, look around, let the world run for a while ----
     $script:StatesSeen = @()
     $floors = @(for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { , @($i, $null) })
