@@ -8,8 +8,8 @@ selftest/
 saves/
 bin/
 
-# analysis and design notes stay local
-docs/
+# analysis and design notes stay local (docs/ is the website, served by GitHub Pages)
+notes/
 
 # local tool settings
 .claude/
