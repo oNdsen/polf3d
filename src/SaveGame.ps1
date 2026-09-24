@@ -59,6 +59,66 @@ function Save-Game([string]$Slot = 'quick') {
     catch { Show-Message "Saving failed: $($_.Exception.Message)" }
 }
 
+function Assert-SaveState([hashtable]$State, [string]$MapPath) {
+    if (-not $State -or [int]$State.Version -ne 1) { throw "unsupported or missing save version '$($State.Version)'" }
+    $difficulty = [int]$State.Difficulty
+    if ($difficulty -lt 0 -or $difficulty -ge $script:Difficulties.Count) { throw "invalid difficulty '$difficulty'" }
+    foreach ($name in 'Player', 'Stats', 'PushWall') {
+        if ($State[$name] -isnot [System.Collections.IDictionary]) { throw "save section '$name' is missing or invalid" }
+    }
+
+    $map = Read-MapFile $MapPath
+    $cells = $map.W * $map.H
+    if (@($State.Tiles).Count -ne $cells -or @($State.PushTex).Count -ne $cells) { throw "tile data does not match the saved map ($($map.W)x$($map.H))" }
+    foreach ($tile in @($State.Tiles) + @($State.PushTex)) { $null = [int]$tile }
+    foreach ($seen in @($State.Seen)) {
+        $index = [int]$seen
+        if ($index -lt 0 -or $index -ge $cells) { throw "seen tile index '$index' is outside the map" }
+    }
+
+    $doorCount = 0
+    foreach ($row in $map.Rows) {
+        for ($x = 0; $x -lt $map.W; $x++) {
+            $code = $row.Substring($x * 2, 2)
+            if ($code[0] -ceq 'D' -and ($script:DoorCodes.ContainsKey($code[1]) -or [char]::IsDigit($code[1]))) { $doorCount++ }
+        }
+    }
+    if (@($State.Doors).Count -ne $doorCount) { throw "door data does not match the saved map (expected $doorCount)" }
+    foreach ($door in @($State.Doors)) {
+        if ($door -isnot [System.Collections.IDictionary] -or $door.Action -notin 'closed', 'opening', 'open', 'closing') { throw 'invalid door data' }
+        $open = [double]$door.Open; $timer = [double]$door.Timer
+        if ([double]::IsNaN($open) -or [double]::IsInfinity($open) -or $open -lt 0 -or $open -gt 1 -or
+            [double]::IsNaN($timer) -or [double]::IsInfinity($timer) -or $timer -lt 0) { throw 'invalid door position or timer' }
+    }
+
+    foreach ($phase in @($State.Traps)) {
+        $value = [double]$phase
+        if ([double]::IsNaN($value) -or [double]::IsInfinity($value)) { throw 'invalid trap phase' }
+    }
+
+    foreach ($item in @($State.Items)) {
+        if ($item -isnot [System.Collections.IDictionary]) { throw 'invalid item data' }
+        $x = [int]$item.X; $y = [int]$item.Y
+        if ($x -lt 0 -or $x -ge $map.W -or $y -lt 0 -or $y -ge $map.H -or -not $item.Item) { throw "invalid item '$($item.Item)' at $x,$y" }
+    }
+
+    foreach ($actor in @($State.Actors)) {
+        if ($actor -isnot [System.Collections.IDictionary]) { throw 'invalid actor data' }
+        foreach ($name in $script:ActorSaveProps) { if (-not $actor.Contains($name)) { throw "actor is missing '$name'" } }
+        if (-not $script:EnemyDefs.ContainsKey([string]$actor.Kind) -and -not $script:MiscDefs.ContainsKey([string]$actor.Kind)) { throw "unknown actor kind '$($actor.Kind)'" }
+        if (-not $script:States.ContainsKey([string]$actor.State)) { throw "unknown actor state '$($actor.State)'" }
+        $probe = [Actor]::new()
+        foreach ($name in $script:ActorSaveProps) { $probe.$name = $actor[$name] }
+        $x = [double]$actor.X; $y = [double]$actor.Y; $tx = [int]$actor.TX; $ty = [int]$actor.TY
+        if ([double]::IsNaN($x) -or [double]::IsInfinity($x) -or [double]::IsNaN($y) -or [double]::IsInfinity($y) -or
+            $tx -lt 0 -or $tx -ge $map.W -or $ty -lt 0 -or $ty -ge $map.H) { throw "actor '$($actor.Kind)' is outside the map" }
+    }
+
+    $px = [double]$State.Player.X; $py = [double]$State.Player.Y
+    if ([double]::IsNaN($px) -or [double]::IsInfinity($px) -or [double]::IsNaN($py) -or [double]::IsInfinity($py) -or
+        $px -lt 0 -or $px -ge $map.W -or $py -lt 0 -or $py -ge $map.H) { throw 'player position is outside the map' }
+}
+
 # Returns $true if a saved game is now running.
 function Restore-Game([string]$Slot = 'quick') {
     if (-not (Test-Path -LiteralPath (Get-SavePath $Slot))) { Show-Message 'No saved game found'; return $false }
@@ -71,12 +131,14 @@ function Restore-Game([string]$Slot = 'quick') {
             if (Test-Path -LiteralPath $bonus) { $index = [Math]::Min([int]$Matches[1], $script:MapFiles.Count) - 1 } else { $bonus = $null }
         }
         if ($index -lt 0) { throw "the saved game's map '$($state.Map)' is missing" }
+        $mapPath = if ($bonus) { $bonus } else { $script:MapFiles[$index] }
+        Assert-SaveState $state $mapPath
         $script:BonusMap = $bonus
 
         $script:Difficulty = [int]$state.Difficulty
         $script:LevelIndex = $index
         $script:LevelStartScore = [int]$state.LevelStartScore
-        $script:MapFile = if ($bonus) { $bonus } else { $script:MapFiles[$index] }
+        $script:MapFile = $mapPath
         $script:SecretExit = $false
         Initialize-Level $script:MapFile
         $w = $script:MapW
