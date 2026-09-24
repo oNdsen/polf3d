@@ -9,4 +9,9 @@ if errorlevel 1 (
     exit /b 1
 )
 pwsh -NoProfile -ExecutionPolicy Bypass -File "%~dp0Start-Polf3D.ps1" %*
-if errorlevel 1 pause
+if errorlevel 1 (
+    echo.
+    echo If PowerShell said that running scripts is disabled on this system, an execution policy set by your organisation
+    echo ^(Group Policy^) forbids it, and Play.cmd cannot lift that. Otherwise the message above says what went wrong.
+    pause
+)

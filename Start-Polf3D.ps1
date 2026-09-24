@@ -131,6 +131,21 @@ $script:PolfVersion = '1.2.0'          # the one place the version is written do
 if ($Version) { "POLF 3D $script:PolfVersion"; return }
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'POLF 3D needs Windows (Windows Forms / GDI+).' }
+if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
+    # an application control policy (AppLocker, WDAC) or a lockdown policy puts PowerShell into a restricted language mode, and
+    # Add-Type is one of the things it takes away - better to say so here than to fail inside the first C# helper
+    throw "POLF 3D needs PowerShell's full language mode, and this session runs in $($ExecutionContext.SessionState.LanguageMode) - usually an application control policy (AppLocker, WDAC) or a lockdown policy set by your organisation. The game builds its four small C# helpers with Add-Type, which that mode forbids, so it cannot run on this machine as it is configured."
+}
+if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
+    # an application control policy (AppLocker, WDAC) or a lockdown policy puts PowerShell into a restricted language mode, and
+    # Add-Type is one of the things it takes away - better to say so here than to fail inside the first C# helper
+    throw "POLF 3D needs PowerShell's full language mode, and this session runs in $($ExecutionContext.SessionState.LanguageMode) - usually an application control policy (AppLocker, WDAC) or a lockdown policy set by your organisation. The game builds its four small C# helpers with Add-Type, which that mode forbids, so it cannot run on this machine as it is configured."
+}
+if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
+    # an application control policy (AppLocker, WDAC) or a lockdown policy puts PowerShell into a restricted language mode, and
+    # Add-Type is one of the things it takes away - better to say so here than to fail inside the first C# helper
+    throw "POLF 3D needs PowerShell's full language mode, and this session runs in $($ExecutionContext.SessionState.LanguageMode) - usually an application control policy (AppLocker, WDAC) or a lockdown policy set by your organisation. The game builds its four small C# helpers with Add-Type, which that mode forbids, so it cannot run on this machine as it is configured."
+}
 
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 

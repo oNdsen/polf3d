@@ -33,8 +33,11 @@ cd polf3d
 Requirements: **Windows** and **PowerShell 7.2+** (`winget install Microsoft.PowerShell`). Nothing else – no modules,
 no asset files, no installation. Windows marks scripts that come out of a downloaded ZIP as "from the internet", and
 PowerShell may then refuse them; `Play.cmd` starts the game with `-ExecutionPolicy Bypass` for that one process and
-changes nothing on the machine (`Get-ChildItem -Recurse | Unblock-File` is the other way). What changed from release
-to release is in the [changelog](CHANGELOG.md).
+changes nothing on the machine (`Get-ChildItem -Recurse | Unblock-File` is the other way). On a machine managed by an
+organisation two things can still stop it, and the game says which: an execution policy set by Group Policy, which
+`Play.cmd` cannot lift, and an application control policy (AppLocker, WDAC) that puts PowerShell into constrained
+language mode, where the C# helpers cannot be built. What changed from release to release is in the
+[changelog](CHANGELOG.md).
 On first start the four small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Mixer.cs](src/Mixer.cs),
 [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs)) are compiled once into `bin/` - every later start
 just loads the DLLs, until a source file changes; the music and the enemies' spoken lines are
