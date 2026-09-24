@@ -90,8 +90,10 @@ function Read-MapFile([string]$Path) {
         }
     }
     if ($rows.Count -eq 0) { throw "Map '$Path' has no @map block." }
-    $w = $rows[0].Length / 2
-    foreach ($r in $rows) { if ($r.Length -ne $w * 2) { throw "Map '$Path': every row must be $($w * 2) characters long (found: $($r.Length))." } }
+    $rowLength = $rows[0].Length
+    if ($rowLength % 2 -ne 0) { throw "Map '$Path': every row must contain two-character tiles (found an odd row length: $rowLength)." }
+    $w = [int]($rowLength / 2)
+    foreach ($r in $rows) { if ($r.Length -ne $rowLength) { throw "Map '$Path': every row must be $rowLength characters long (found: $($r.Length))." } }
     @{ Meta = $meta; Rows = $rows; W = [int]$w; H = $rows.Count; Spawns = $spawns; Darks = $darks; Events = $events; Gates = $gates; Hints = $hints }
 }
 

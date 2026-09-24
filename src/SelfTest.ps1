@@ -58,6 +58,13 @@ function Send-NetTestLines([System.Net.Sockets.TcpClient]$Tcp, [string[]]$Lines)
 function Invoke-SelfTest([string]$OutDir) {
     $null = New-Item -ItemType Directory -Path $OutDir -Force
     $script:SaveDir = Join-Path $OutDir 'saves'
+
+    $oddMap = Join-Path $OutDir 'odd-width.map'
+    Set-Content -LiteralPath $oddMap -Value "@map`n....X" -Encoding utf8
+    $rejected = $false
+    try { $null = Read-MapFile $oddMap } catch { $rejected = $_.Exception.Message -like '*two-character tiles*' }
+    if (-not $rejected) { throw 'map parser test: an odd-width row was accepted.' }
+    Write-Step 'map parser test: odd-width rows are rejected'
     $script:GodMode = $true
     $script:KeyDown = [bool[]]::new(256)
     $script:KeyHit = [System.Collections.Generic.Queue[int]]::new()
