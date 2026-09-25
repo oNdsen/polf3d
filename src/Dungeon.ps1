@@ -262,7 +262,7 @@ function Test-DemoFile([string]$Path) {
     $recorded = $script:Playback.Game
     $script:DemoVerdict = if ($sync) { 'VALID' }
         elseif ($recorded -and $recorded -ne $script:PolfVersion) { "NOT VALID (recorded with POLF 3D $recorded, this is $script:PolfVersion: the game has changed since, and the playback ends somewhere else)" }
-        elseif (-not $recorded) { 'NOT VALID (the playback ends somewhere else than the recording did; the demo is from before 1.2.1 and does not say which version recorded it)' }
+        elseif (-not $recorded) { 'NOT VALID (the playback ends somewhere else than the recording did; the demo is from before 1.3.0 and does not say which version recorded it)' }
         else { 'NOT VALID (the playback ends somewhere else than the recording did)' }
     Write-Step ("{0}: {1} on '{2}', difficulty {3}, {4} frames - {5} after {6} with {7} kills" -f $script:DemoVerdict,
         (Split-Path $Path -Leaf), $script:LevelName, ($script:Difficulty + 1), $frames, $(if ($script:LevelDone) { 'reached the lift' } elseif ($script:PlayerDied) { 'died' } else { 'stopped' }), (Format-Time $seconds -Tenths), $script:Stats.Kills)

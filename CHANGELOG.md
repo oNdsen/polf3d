@@ -2,6 +2,38 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.3.0 - 2026-09-25
+
+**Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).
+This is the last version you have to fetch by hand: from now on the game updates itself.
+
+New:
+
+* **The game updates itself.** Once a day the title screen asks GitHub for a newer release – one request, in the
+  background, and the options menu or `-NoUpdateCheck` turns it off. When there is one, a line on the title screen says
+  so, `U` shows what is new, and Enter downloads `polf3d.zip`, checks its SHA256 against the release notes, keeps the
+  files it replaces in `polf3d-backup-<version>.zip` next to the game, installs and restarts. Saved games, settings and
+  your own mods stay. `./Start-Polf3D.ps1 -Update` does the same from the command line, and `Update-Module polf3d`
+  asks the console.
+* **`Play.cmd`** is now a launcher that is gone the moment the game runs, so that an update may replace it too. Should
+  the game not start, PowerShell keeps the window and the reason on the screen.
+* The keys of the title menu stand in brackets: `[Enter]`, `[G]`, `[U]` ...
+* The story of the project, and what it is really about: [HOW-IT-WAS-BUILT.md](HOW-IT-WAS-BUILT.md).
+
+Fixed – the first three by Ben Richards ([@The-Running-Dev](https://github.com/The-Running-Dev)), thank you:
+
+* A map row with an odd number of characters is rejected instead of silently losing its last one.
+* A mod whose later section is malformed no longer leaves its earlier sections half installed.
+* A saved game is checked in full before a single thing of the running game is replaced: a damaged or foreign file is
+  refused and the game goes on.
+* The pause menu let you save in the arena and in the onboarding; such a game could never be loaded. There is no
+  saving there now.
+* Demos and dungeon records name the version that made them. A demo from an older version is reported as such –
+  "recorded with POLF 3D 1.2.0, this is 1.3.0" – instead of as doctored.
+* A machine managed by an organisation gets a plain answer: the start script checks PowerShell's language mode
+  (AppLocker, WDAC) and says what that means, and `Play.cmd` explains an execution policy set by Group Policy.
+* A guest takes the host's bonus map as a name, never as a path.
+
 ## 1.2.0 - 2026-09-21
 
 **Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).

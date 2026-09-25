@@ -66,7 +66,7 @@ function Start-DemoPlayback([string]$Path) {
         $script:NextSeed = [int]$demo.Seed
         Start-Level $false $false
         Update-View
-        $script:Playback = @{ Frames = $demo.Frames; Index = 0; End = $demo.End; Game = [string]$demo.Game }      # Game: the version that recorded it (demos before 1.2.1 do not say)
+        $script:Playback = @{ Frames = $demo.Frames; Index = 0; End = $demo.End; Game = [string]$demo.Game }      # Game: the version that recorded it (demos before 1.3.0 do not say)
         return $true
     }
     catch { Show-Message "Demo: $($_.Exception.Message)"; return $false }

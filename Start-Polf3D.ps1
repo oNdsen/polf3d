@@ -129,7 +129,7 @@ param(
 )
 
 Set-StrictMode -Off
-$script:PolfVersion = '1.2.0'          # the one place the version is written down: title screen, -Version and tools/New-Release.ps1 read it
+$script:PolfVersion = '1.3.0'          # the one place the version is written down: title screen, -Version and tools/New-Release.ps1 read it
 if ($Version) { "POLF 3D $script:PolfVersion"; return }
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'POLF 3D needs Windows (Windows Forms / GDI+).' }
