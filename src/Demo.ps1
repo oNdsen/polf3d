@@ -94,11 +94,22 @@ function Test-DemoInSync {
 
 # ---------------------------------------------------------------------------------------------
 # The demo bot: hunts the nearest enemy along the shortest path, opens doors, shoots what it
-# sees. Not a great player - but good enough for thirty seconds of attract mode.
+# sees. Not a great player - but good enough for thirty seconds of attract mode. It is meant to
+# look like somebody playing, not like an aimbot: it stays with the enemy it is fighting instead
+# of darting between targets, turns with some inertia, steers for the far end of a corridor
+# rather than the next tile, fires in bursts and takes a breath after a kill.
 # ---------------------------------------------------------------------------------------------
+$script:BotPath = $null            # the way to whatever the bot is after, as tile indexes
+$script:BotFoe = $null             # the enemy it is fighting
+$script:BotTurn = 0.0              # how fast it is turning right now (degrees per frame)
+$script:BotHold = 0                # frames of standing still after a kill
+$script:BotReact = 0               # frames until it has noticed a new enemy
+
+function Reset-Bot { $script:BotPath = $null; $script:BotFoe = $null; $script:BotTurn = 0.0; $script:BotHold = 0; $script:BotReact = 0 }
+
 # One flood fill from the player finds the NEAREST REACHABLE enemy (or clip, or first aid kit when needed)
-# and returns the first tile of the way there - or $null if nothing can be reached.
-function Find-BotStep([int]$FromX, [int]$FromY) {
+# and returns the way there as tile indexes, the first step first - or nothing if nothing can be reached.
+function Find-BotPath([int]$FromX, [int]$FromY) {
     $w = $script:MapW; $n = $w * $script:MapH
     $goals = [bool[]]::new($n)
     foreach ($a in $script:Actors) { if ($a.Shootable -and -not $a.Def.Inert) { $goals[[int][Math]::Floor($a.Y) * $w + [int][Math]::Floor($a.X)] = $true } }
@@ -119,8 +130,9 @@ function Find-BotStep([int]$FromX, [int]$FromY) {
     while ($queue.Count) {
         $c = $queue.Dequeue()
         if ($goals[$c] -and $c -ne $start) {
-            while ($prev[$c] -ne $start) { $c = $prev[$c] }        # walk back to the step after the start
-            return $c
+            $path = [System.Collections.Generic.List[int]]::new()
+            while ($c -ne $start) { $path.Insert(0, $c); $c = $prev[$c] }        # walk back to the start
+            return $path.ToArray()                                  # unrolled into the caller's @( ): one tile per element
         }
         foreach ($d in -1, 1, (-$w), $w) {
             $nb = $c + $d
@@ -138,33 +150,76 @@ function Find-BotStep([int]$FromX, [int]$FromY) {
     $null
 }
 
+# The point $Distance tiles along the bot's way (through the tile centres), or the end of the way.
+function Get-BotPathPoint([double]$Distance) {
+    $w = $script:MapW; $fx = $script:P.X; $fy = $script:P.Y
+    foreach ($c in $script:BotPath) {
+        $cx = $c % $w + 0.5; $cy = [Math]::Floor($c / $w) + 0.5
+        $leg = [Math]::Sqrt(($cx - $fx) * ($cx - $fx) + ($cy - $fy) * ($cy - $fy))
+        if ($leg -ge $Distance) { $k = $Distance / $leg; return @(($fx + ($cx - $fx) * $k), ($fy + ($cy - $fy) * $k)) }      # (the comma binds tighter than the arithmetic)
+        $Distance -= $leg; $fx = $cx; $fy = $cy
+    }
+    @($fx, $fy)
+}
+
 function Get-BotInput([int]$Frame) {
-    $p = $script:P
+    $p = $script:P; $w = $script:MapW
     $in = @{ Forward = 0; Strafe = 0; Turn = 0; MouseTurn = 0.0; Run = $false; Sneak = $false; Fire = $false; Use = $false; Weapon = -1 }
     $ptx = [int][Math]::Floor($p.X); $pty = [int][Math]::Floor($p.Y)
 
-    # something to shoot at right now?
-    $foe = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and $_.Visible -and (Test-LineToPlayer $_.X $_.Y) } | Sort-Object Depth | Select-Object -First 1
-    if ($foe) { $tx = $foe.X; $ty = $foe.Y }
+    # the enemy it is fighting: stay with him as long as he stands and can be seen - no darting between targets
+    $foe = $script:BotFoe
+    if ($foe -and -not ($foe.Shootable -and $foe.Visible -and (Test-LineToPlayer $foe.X $foe.Y))) {
+        if (-not $foe.Shootable) { $script:BotHold = 14 }          # he is down: a breath before moving on
+        $foe = $null
+    }
+    if (-not $foe -and $Frame % 4 -eq 0) {                        # a look around for the next one, a few times a second
+        $foe = $script:Actors | Where-Object { $_.Shootable -and -not $_.Def.Inert -and $_.Visible -and (Test-LineToPlayer $_.X $_.Y) } | Sort-Object Depth | Select-Object -First 1
+        if ($foe) { $script:BotReact = 6 }                        # a sixth of a second before the aim swings over
+    }
+    $script:BotFoe = $foe
+    if ($script:BotHold -gt 0) { $script:BotHold--; $script:BotTurn *= 0.8; $in.MouseTurn = - $script:BotTurn; return $in }
+
+    if ($foe) {
+        # the aim is human: it drifts a little around the target, and a new target takes a moment to react to
+        $tx = $foe.X; $ty = $foe.Y
+        $wobble = 2.0 * [Math]::Sin($Frame * 0.23) + 1.2 * [Math]::Sin($Frame * 0.071)
+    }
     else {
-        if ($Frame % 12 -eq 0) { $script:BotStep = Find-BotStep $ptx $pty }      # re-plan three times a second
-        if ($null -eq $script:BotStep) { $in.Turn = 1; return $in }
-        $tx = $script:BotStep % $script:MapW + 0.5; $ty = [Math]::Floor($script:BotStep / $script:MapW) + 0.5
+        $wobble = 0.3 * [Math]::Sin($Frame * 0.11)                 # a walking view is never quite still
+        $here = $pty * $w + $ptx
+        if ($Frame % 18 -eq 0 -or -not $script:BotPath) { $script:BotPath = @(Find-BotPath $ptx $pty) }      # re-plan twice a second
+        while ($script:BotPath.Count -and $script:BotPath[0] -eq $here) { $script:BotPath = @($script:BotPath | Select-Object -Skip 1) }
+        if (-not $script:BotPath.Count) { $script:BotTurn = [Math]::Min(1.5, $script:BotTurn + 0.1); $in.MouseTurn = - $script:BotTurn; return $in }      # nothing to go for: look around, slowly
+        # the feet follow the way closely, the eyes look further along it: the view stays down the corridor while
+        # the body rounds the corner, sidestepping if it has to - the way anybody walks through a building
+        $near = Get-BotPathPoint 0.9; $far = Get-BotPathPoint 2.8
+        $tx = $far[0]; $ty = $far[1]; $move = $near
     }
 
     # a rocket on its way? step aside (this way, then that way)
     foreach ($a in $script:Actors) { if ($a.Kind -eq 'rocket' -and $a.State -eq 'rocket.fly' -and $a.Visible) { $in.Strafe = if ([int]($Frame / 50) % 2) { 1 } else { -1 }; $in.Run = $true; break } }
 
-    $want = [Math]::Atan2(- ($ty - $p.Y), $tx - $p.X) * 180.0 / [Math]::PI
+    # turning with inertia: faster the further there is to go, easing in and out, and at rest once it is close
+    $want = [Math]::Atan2(- ($ty - $p.Y), $tx - $p.X) * 180.0 / [Math]::PI + $wobble
     $diff = (($want - $p.Angle + 540.0) % 360.0) - 180.0
-    $in.MouseTurn = - [Math]::Max(-7.0, [Math]::Min(7.0, $diff))
+    $goal = if ([Math]::Abs($diff) -lt 0.8) { 0.0 } else { [Math]::Max(-4.5, [Math]::Min(4.5, $diff * 0.2)) }
+    if ($script:BotReact -gt 0) { $script:BotReact--; $goal = $script:BotTurn * 0.8 }      # not seen him yet
+    $script:BotTurn += [Math]::Max(-0.6, [Math]::Min(0.6, $goal - $script:BotTurn))
+    $in.MouseTurn = - $script:BotTurn
     if ($foe) {
-        $in.Fire = [Math]::Abs($diff) -lt 6 -and ($Frame % 14 -lt 7)
-        if ($foe.Depth -gt 4 -and [Math]::Abs($diff) -lt 20) { $in.Forward = 1 }
+        $in.Fire = [Math]::Abs($diff) -lt 9 -and ($Frame % 20 -lt 9)      # bursts, with a pause between them
+        if ($foe.Depth -gt 5 -and [Math]::Abs($diff) -lt 25) { $in.Forward = 1 }
     }
-    elseif ([Math]::Abs($diff) -lt 30) {
-        $in.Forward = 1
-        $t = $script:Tiles[$script:BotStep]
+    else {
+        # walk towards the near point whatever the view is doing: forward and sideways in the right mix
+        $mx = $move[0] - $p.X; $my = $move[1] - $p.Y; $len = [Math]::Sqrt($mx * $mx + $my * $my)
+        if ($len -gt 0.05) {
+            $rad = $p.Angle * [Math]::PI / 180.0; $fx = [Math]::Cos($rad); $fy = - [Math]::Sin($rad)
+            $forward = ($mx * $fx + $my * $fy) / $len; $strafe = ($mx * $fy * -1 + $my * $fx) / $len
+            if ($forward -gt -0.3) { $in.Forward = [Math]::Round($forward, 2); $in.Strafe = [Math]::Round($strafe, 2) }      # the way is behind: turn first
+        }
+        $t = $script:Tiles[$script:BotPath[0]]
         if ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'closed') { $in.Use = $Frame % 10 -lt 2 }
     }
     $in
@@ -178,7 +233,7 @@ function Export-AttractDemo([string]$Path, [int]$Seconds = 40, [int]$Attempts = 
     for ($try = 1; $try -le $Attempts; $try++) {
         $script:GodMode = $false; $script:LevelIndex = 0; $script:Difficulty = 1
         Start-DemoRecording
-        $script:BotStep = $null
+        Reset-Bot
         $frames = $Seconds * 35
         for ($f = 0; $f -lt $frames -and -not $script:PlayerDied -and -not $script:LevelDone; $f++) {
             Update-View                                            # the bot sees what the renderer marks visible

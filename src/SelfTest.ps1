@@ -1063,7 +1063,7 @@ function Invoke-SelfTest([string]$OutDir) {
     }
     $script:GodMode = $false; $script:Difficulty = 0
     $null = Start-Dungeon 20260918
-    $script:BotStep = $null
+    Reset-Bot
     for ($f = 0; $f -lt 700 -and -not $script:PlayerDied -and -not $script:LevelDone; $f++) { Update-View; $in = Get-BotInput $f; Add-DemoFrame 2.0 $in; Update-World 2.0 $in }
     $kills = $script:Stats.Kills
     $proof = Join-Path $script:SaveDir (Save-DungeonRun $false)
@@ -1581,7 +1581,7 @@ function Invoke-BalanceTest([int]$Floor, [int]$Runs = 6, [int]$Seconds = 120) {
             $script:GodMode = $false; $script:Difficulty = $d; $script:LevelIndex = $Floor - 1; $script:BonusMap = $null
             $script:NextSeed = 1000 + $run
             Start-Level $false $false
-            $script:BotStep = $null
+            Reset-Bot
             # nobody arrives on a later floor with just a pistol: a modest kit of what the floors before offer
             $p = $script:P
             if ($Floor -ge 2) { $p.Owned[2] = $true; $p.Weapon = 2; $p.ChosenWeapon = 2; $p.Ammo = 40 }
@@ -1604,7 +1604,7 @@ function Invoke-BalanceTest([int]$Floor, [int]$Runs = 6, [int]$Seconds = 120) {
         foreach ($spot in $bosses) {
             $won = 0; $left = 0; $time = 0.0
             for ($run = 0; $run -lt $Runs; $run++) {
-                $script:GodMode = $false; $script:NextSeed = 2000 + $run; Start-Level $false $false; $script:BotStep = $null
+                $script:GodMode = $false; $script:NextSeed = 2000 + $run; Start-Level $false $false; Reset-Bot
                 $boss = $script:Actors | Where-Object { "$($_.TX),$($_.TY)" -eq $spot -and $_.Kind -in 'boss', 'uber', 'bsod' } | Select-Object -First 1
                 $kind = $boss.Kind
                 # everybody else stays out of it
