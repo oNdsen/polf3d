@@ -302,12 +302,12 @@ function Show-TitleScreen {
     }
     $y = 119.0
     foreach ($row in $rows) {
-        if ($row[0]) { Write-HudLine $row[0] 'Small' 'FFE860' 16 $y; Write-HudLine $row[1] 'Small' $row[2] 38 $y } else { Write-HudLine $row[1] 'Small' $row[2] 16 $y }
+        if ($row[0]) { Write-HudLine "[$($row[0])]" 'Small' 'FFE860' 16 $y; Write-HudLine $row[1] 'Small' $row[2] 40 $y } else { Write-HudLine $row[1] 'Small' $row[2] 16 $y }
         $y += 7.4                                                  # six rows when there are saved games: they have to end above the controls
     }
     $x = 16.0                                                     # the small print: three keys on one line
     foreach ($pair in @('O', 'options'), @('T', "speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })"), @('Esc', 'quit')) {
-        Write-HudLine $pair[0] 'Small' 'FFE860' $x $y; $x += $pair[0].Length * 2.5 + 5
+        Write-HudLine "[$($pair[0])]" 'Small' 'FFE860' $x $y; $x += ($pair[0].Length + 2) * 2.5 + 5
         Write-HudLine $pair[1] 'Small' 'C0C8D8' $x $y; $x += $pair[1].Length * 2.5 + 12
     }
 
@@ -343,6 +343,8 @@ function Show-TitleScreen {
         $x += $width + ($column | ForEach-Object { $_[1].Length } | Measure-Object -Maximum).Maximum * 2.5 + 12
     }
     Write-HudLine 'Game pad (XInput): sticks move and turn, RT fire, LT run, A use, B sneak, LB/RB weapon.   Everything else: O' 'Small' '7080A0' 16 215
+    $notice = Get-UpdateNotice                                    # top right, under the version: the news, and the key that opens it
+    if ($notice) { Write-HudBar '2C54C4' 202 14 114 9; Write-HudLine '[U]' 'Small' 'FFE860' 205 15; Write-HudLine $notice 'Small' 'FFFFFF' 216 15 }
     Write-HudLine "$($script:MapFiles.Count) floors - everything you see and hear is generated at start-up" 'Small' '506080' 16 226
     Write-HudText "POLF 3D  $($script:Copyright)" 'Small' '506080' 160 226 148 8
 }
@@ -539,9 +541,11 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.N -and -not $script:Net) { if (Start-Tutorial) { Set-Mode 'play' } }             # N: new here? the onboarding
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.O) { Open-Options }
+                    elseif ($h -eq $vk.U -and $script:NewRelease) { Set-Mode 'update' }
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
                 if ($script:Mode -eq 'title') {
+                    Update-UpdateCheck
                     Show-TitleScreen
                     # nobody home? after a while the attract demo starts
                     if ($script:ModeTics -gt 70 * 14 -and -not $script:Net -and (Test-Path -LiteralPath $script:AttractDemo)) {
@@ -685,6 +689,15 @@ function Start-GameLoop {
                 }
             }
 
+            'update' {
+                # what the new version brings; Enter installs it, and the game starts over
+                foreach ($h in $hits) {
+                    if ($h -eq $vk.Enter) { Invoke-UpdateInstall; break }
+                    if ($h -eq $vk.Esc) { Set-Mode 'title'; break }
+                }
+                if ($script:Mode -eq 'update') { Show-UpdateScreen }
+            }
+
             'load' {
                 # pick a saved game by number; Esc goes back to where the menu was opened
                 foreach ($h in $hits) {
@@ -697,7 +710,7 @@ function Start-GameLoop {
                     Write-HudText 'LOAD GAME' 'Big' 'FFFFFF' 0 20 320 24
                     $y = 60
                     for ($i = 0; $i -lt $script:SaveList.Count; $i++) { Write-HudText "$($i + 1)   $($script:SaveList[$i].Text)" 'Small' 'C0C8D8' 0 $y 320 9; $y += 12 }
-                    Write-HudText 'press the number of a saved game     Esc = back' 'Small' 'FFE860' 0 200 320 10
+                    Write-HudText 'press the number of a saved game     [Esc] back' 'Small' 'FFE860' 0 200 320 10
                 }
             }
 

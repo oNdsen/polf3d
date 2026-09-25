@@ -24,6 +24,7 @@ $script:OptionHelp = @{
     MiniMap = 'the radar in the corner: walls you have seen, alerted enemies (N)'
     Fps = 'frames per second in the corner (F3)'
     FlatFloors = 'plain floors and ceilings are faster on a slow machine'
+    UpdateCheck = 'once a day the title screen asks GitHub for a newer version - one request, nothing else'
     Forward = 'walk forward (arrow up always works too)'
     Back = 'walk backwards (arrow down always works too)'
     StrafeLeft = 'step to the left without turning'
@@ -53,7 +54,7 @@ $script:OptionHelp = @{
 # keys that mean something in every mode and must not be given away
 $script:BindReserved = 48, 13, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 123, 49, 50, 51, 52, 53, 54, 55, 56, 57
 
-$script:Settings = @{ Mouse = 0.12; Sfx = 0.7; Music = 0.45; MiniMap = $true; Fps = $false; FlatFloors = $false; Scale = 3 }
+$script:Settings = @{ Mouse = 0.12; Sfx = 0.7; Music = 0.45; MiniMap = $true; Fps = $false; FlatFloors = $false; Scale = 3; UpdateCheck = $true }
 $script:Bind = @{}
 foreach ($k in $script:BindDefaults.Keys) { $script:Bind[$k] = $script:BindDefaults[$k] }
 $script:Options = @{ Row = 0; Return = 'title'; Waiting = $false }
@@ -109,6 +110,7 @@ function Get-OptionRows {
     $rows.Add(@{ Kind = 'toggle'; Key = 'Fps'; Text = ('{0,-22} {1}' -f 'Frames per second', $(if ($s.Fps) { 'shown' } else { 'hidden' })) })
     $rows.Add(@{ Kind = 'toggle'; Key = 'FlatFloors'; Text = ('{0,-22} {1}' -f 'Floors and ceilings', $(if ($s.FlatFloors) { 'plain (faster)' } else { 'textured' })) })
     $rows.Add(@{ Kind = 'slider'; Key = 'Scale'; Step = 1; Min = 2; Max = 5; Text = ('{0,-22} {1} x 320x240   (from the next start)' -f 'Window size', $s.Scale) })
+    $rows.Add(@{ Kind = 'toggle'; Key = 'UpdateCheck'; Text = ('{0,-22} {1}' -f 'Check for updates', $(if ($s.UpdateCheck) { 'once a day' } else { 'never' })) })
     foreach ($k in $script:BindDefaults.Keys) { $rows.Add(@{ Kind = 'key'; Key = $k; Text = ('{0,-22} {1}' -f "Key: $($script:BindLabels[$k])", (Get-KeyName $script:Bind[$k])) }) }
     $rows.Add(@{ Kind = 'action'; Key = 'Reset'; Text = 'Reset everything to the defaults' })
     $rows

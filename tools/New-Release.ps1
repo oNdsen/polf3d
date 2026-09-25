@@ -14,7 +14,8 @@
     that is out, make a new release - the download badge of the README adds them all up.
 
     The version is read from Start-Polf3D.ps1 ($script:PolfVersion), the release notes are that version's section
-    of CHANGELOG.md. -Publish needs the GitHub CLI (gh), a clean working copy and a pushed main branch.
+    of CHANGELOG.md plus the SHA256 of the ZIP, which the game's updater (src/Update.ps1) checks a download against.
+    -Publish needs the GitHub CLI (gh), a clean working copy and a pushed main branch.
 .PARAMETER Publish
     Tag the commit as v<version>, push the tag and create the GitHub release with the ZIP attached.
 .EXAMPLE
@@ -58,11 +59,12 @@ try {
     foreach ($needed in 'polf3d/Start-Polf3D.ps1', 'polf3d/Play.cmd', 'polf3d/src/Game.ps1', 'polf3d/src/Scaler.cs', 'polf3d/maps/level1.map', 'polf3d/maps/arena.map', 'polf3d/maps/tutorial.map', 'polf3d/demos/attract.json', 'polf3d/LICENSE') {
         if ($needed -notin $files.FullName) { throw "The ZIP lacks $needed." }
     }
-    Write-Host ("POLF 3D {0}: {1}  -  {2} files, {3:0} KB  (commit {4})" -f $version, $zip, $files.Count, ((Get-Item -LiteralPath $zip).Length / 1KB), (git rev-parse --short HEAD))
+    $sha = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+    Write-Host ("POLF 3D {0}: {1}  -  {2} files, {3:0} KB, SHA256 {4}  (commit {5})" -f $version, $zip, $files.Count, ((Get-Item -LiteralPath $zip).Length / 1KB), $sha, (git rev-parse --short HEAD))
 
     if ($Publish) {
         $notesFile = Join-Path $outDir 'notes.md'
-        Set-Content -LiteralPath $notesFile -Value $notes -Encoding utf8
+        Set-Content -LiteralPath $notesFile -Value "$notes`n`nSHA256 of polf3d.zip: ``$sha``" -Encoding utf8
         git tag -a $tag -m "POLF 3D $version"
         git push origin $tag
         gh release create $tag $zip --title "POLF 3D $version" --notes-file $notesFile

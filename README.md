@@ -37,7 +37,11 @@ changes nothing on the machine (`Get-ChildItem -Recurse | Unblock-File` is the o
 organisation two things can still stop it, and the game says which: an execution policy set by Group Policy, which
 `Play.cmd` cannot lift, and an application control policy (AppLocker, WDAC) that puts PowerShell into constrained
 language mode, where the C# helpers cannot be built. What changed from release to release is in the
-[changelog](CHANGELOG.md).
+[changelog](CHANGELOG.md) - and **the game updates itself**: once a day the title screen asks GitHub for a newer
+release (one request, and the options menu or `-NoUpdateCheck` turns it off), a line says when there is one, `U` shows
+what is new, and Enter downloads `polf3d.zip`, checks its SHA256 against the release notes, keeps the old files in
+`polf3d-backup-<version>.zip` next to the game, installs and restarts. Saved games, settings and your own mods stay.
+`./Start-Polf3D.ps1 -Update` does the same from the command line.
 On first start the four small C# files ([src/Scaler.cs](src/Scaler.cs), [src/Mixer.cs](src/Mixer.cs),
 [src/Gamepad.cs](src/Gamepad.cs), [src/Terminal.cs](src/Terminal.cs)) are compiled once into `bin/` - every later start
 just loads the DLLs, until a source file changes; the music and the enemies' spoken lines are
@@ -558,6 +562,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -VerifyDemo <file>   # is this demo genuine, and how long did the run take?
 ./Start-Polf3D.ps1 -Terminal       # no window: play in the terminal (-TerminalKeys over SSH)
 ./Start-Polf3D.ps1 -Version        # which version is this?
+./Start-Polf3D.ps1 -Update         # fetch and install the latest release (-NoUpdateCheck: never ask GitHub)
 ```
 
 `Get-Help ./Start-Polf3D.ps1 -Full` lists everything.

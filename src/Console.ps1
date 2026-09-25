@@ -28,7 +28,7 @@ ACT           Stop-Enemy (10 + half his health)     Suspend-Enemy (12, eight sec
               Disable-Trap (10)     Set-Turret -Owner Me (25: a sentry gun changes sides)     Get-Enemy -Kind camera | Stop-Enemy
               Get-ExecutionPolicy     Set-ExecutionPolicy Restricted (15 for every step down)
               Every one of them takes -Id or objects from the pipeline, and -WhatIf tells you the price first.
-MODULES       Get-Module shows what you have installed between the floors.
+MODULES       Get-Module shows what you have installed between the floors.   Update-Module polf3d: is there a newer game?
 REMOTE        Invoke-Command sets off the mines you have put down (so does the mine key)
 JOBS          Start-Job (30): a drone collects what lies around in the rooms open to you - six things or thirty seconds
               Get-Job shows how it is doing, Receive-Job drops its load at your feet, Stop-Job calls it back
@@ -86,6 +86,7 @@ function Initialize-Console {
         'Wait-Job' = '"Wait-Job: there is no time to wait down here. Get-Job tells you how far it is."'
         'Set-ExecutionPolicy' = 'param([Parameter(Position = 0)][string]$ExecutionPolicy, [string]$Scope, [switch]$Force) [pscustomobject]@{ PolfAction = "Set-Policy"; Id = 0; WhatIf = $false; Value = $ExecutionPolicy }'
         'Save-Profile' = '[pscustomobject]@{ PolfAction = "Save-Profile"; Id = 0; WhatIf = $false }'
+        'Update-Module' = 'param([Parameter(Position = 0)][string]$Name) [pscustomobject]@{ PolfAction = "Update-Game"; Id = 0; WhatIf = $false; Value = $Name }'
         'Clear-Content' = 'param([Parameter(Position = 0)][string]$Path) if ($Path -eq $PROFILE) { [pscustomobject]@{ PolfAction = "Clear-Profile"; Id = 0; WhatIf = $false } } else { throw "Clear-Content: the only thing that can be cleared from here is `$PROFILE." }'
         'Get-Content' = 'param([Parameter(Position = 0)][string]$Path = "*") if ($Path -eq $PROFILE) { if ($PolfProfile) { return $PolfProfile } else { return "`$PROFILE is empty. Define a function, then Save-Profile." } }; $hit = $PolfFiles | Where-Object Name -like $Path | Select-Object -First 1; if ($hit) { $PolfFileText[$hit.Name] } elseif ($PolfFiles) { throw "Cannot find path ''$Path'' because it does not exist." } else { throw "No file system here. Log on at a terminal first." }'
         'Unlock-Door' = 'param([Parameter(Position = 0)][string]$Code) [pscustomobject]@{ PolfAction = "Use-Code"; Id = 0; WhatIf = $false; Value = $Code }'
@@ -334,6 +335,15 @@ function Invoke-ConsoleAction($Action) {
         Write-ConsoleLine "Hotkey $id - the $(Get-KeyName $script:Bind["Macro$id"]) key - $(if ("$($Action.Value)".Trim()) { "runs: $("$($Action.Value)".Trim())" } else { 'is empty again' }).  Save-Profile keeps it." '60FF80'
         return $true
     }
+    if ($name -eq 'Update-Game') {
+        # the game itself: is there a newer one? Installing is the title screen's job - a floor in progress would be lost
+        $answer = if ($script:NewRelease) { "POLF 3D $($script:NewRelease.Version) is out - the title screen shows what is new and installs it (U)." }
+            elseif ($script:UpdateState -eq 'current') { "POLF 3D $script:PolfVersion is the newest there is." }
+            elseif ($script:UpdateCheckOff -or -not $script:Settings.UpdateCheck) { 'The game has not looked: update checks are off (options menu, or -NoUpdateCheck).' }
+            else { 'The game has not heard back from GitHub yet. Ask again in a moment.' }
+        Write-ConsoleLine $answer '60FF80'
+        return $true
+    }
     if ($name -eq 'Save-Profile') {
         try { $count = Export-ConsoleProfile; Write-ConsoleLine "Saved $count definition(s) of this session to `$PROFILE (saves/profile.ps1)." '60FF80' } catch { Write-ConsoleLine "Save-Profile: $($_.Exception.Message)" 'F14C4C' }
         return $true
@@ -460,7 +470,7 @@ $script:ConsoleParameters = @{
     'Get-Enemy' = '-Kind'; 'Get-Loot' = '-Name'; 'Get-Content' = '-Path'; 'Unlock-Door' = '-Code'; 'Use-Token' = '-Token'
     'Stop-Enemy' = '-Id', '-WhatIf'; 'Suspend-Enemy' = '-Id', '-WhatIf'; 'Open-Door' = '-Id', '-WhatIf'; 'Close-Door' = '-Id', '-WhatIf'
     'Lock-Door' = '-Id', '-WhatIf'; 'Disable-Trap' = '-Id', '-WhatIf'; 'Set-Turret' = '-Id', '-Owner', '-WhatIf'
-    'Set-Door' = '-Id', '-Open', '-Locked', '-WhatIf'; 'Set-Hotkey' = '-Key', '-Command'; 'Set-ExecutionPolicy' = '-ExecutionPolicy'
+    'Set-Door' = '-Id', '-Open', '-Locked', '-WhatIf'; 'Set-Hotkey' = '-Key', '-Command'; 'Set-ExecutionPolicy' = '-ExecutionPolicy'; 'Update-Module' = '-Name'
     'Where-Object' = '-Property', '-EQ', '-NE', '-GT', '-GE', '-LT', '-LE', '-Like', '-NotLike', '-Match', '-In', '-FilterScript'
     'Sort-Object' = '-Property', '-Descending', '-Unique'; 'Select-Object' = '-First', '-Last', '-Skip', '-Property', '-ExpandProperty', '-Unique'
     'Measure-Object' = '-Property', '-Sum', '-Average', '-Maximum', '-Minimum'; 'Group-Object' = '-Property', '-NoElement'

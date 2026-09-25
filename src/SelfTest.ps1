@@ -253,7 +253,7 @@ function Invoke-SelfTest([string]$OutDir) {
     Remove-Item -LiteralPath (Get-SettingsPath) -ErrorAction SilentlyContinue
     Open-Options
     $script:Options.Row = 0; Update-Options @($script:VK.Right, $script:VK.Right)                    # mouse sensitivity up twice
-    $script:Options.Row = 7; Update-Options @($script:VK.Enter); Update-Options @(65)                # "forward" becomes A - which was "strafe left"
+    $script:Options.Row = 8; Update-Options @($script:VK.Enter); Update-Options @(65)                # row 8 is "forward" (after seven settings): it becomes A - which was "strafe left"
     Show-Options; Save-BackBuffer (Join-Path $OutDir 'screen-options.png')
     Update-Options @($script:VK.Esc)
     $script:Bind.Forward = 1; $script:Settings.Mouse = 9
@@ -1184,6 +1184,46 @@ function Invoke-SelfTest([string]$OutDir) {
     Write-Step "mod test: $($interns.Count) interns with $($interns[0].HP) health next to $($guards.Count) guards; the pistol is now called '$($script:Weapons[1].Name)'"
     if (-not $interns.Count -or -not $guards.Count -or $interns[0].HP -ne 12 -or $script:Weapons[1].Name -ne 'Service pistol' -or -not $script:States['intern.chase1']) { throw 'mod test failed.' }
     $script:Difficulty = 1
+
+    # ---- the updater: a release made of files, a newer version, the download checked, backed up, installed - and what is refused ----
+    $rel = Join-Path $OutDir 'update'; Remove-Item -LiteralPath $rel -Recurse -Force -ErrorAction SilentlyContinue
+    $null = New-Item -ItemType Directory -Path (Join-Path $rel 'new/polf3d/src'), (Join-Path $rel 'old/src') -Force
+    $newVersion = '9.9.9'
+    $newStart = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../Start-Polf3D.ps1') -Raw) -replace "PolfVersion = '\d+\.\d+\.\d+'", "PolfVersion = '$newVersion'"
+    Set-Content -LiteralPath (Join-Path $rel 'new/polf3d/Start-Polf3D.ps1') -Value $newStart -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $rel 'new/polf3d/src/Newcomer.ps1') -Value '# a file the old version did not have' -Encoding utf8
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../Play.cmd') -Destination (Join-Path $rel 'new/polf3d/Play.cmd')
+    Compress-Archive -Path (Join-Path $rel 'new/polf3d') -DestinationPath (Join-Path $rel 'polf3d.zip') -Force
+    $sha = (Get-FileHash -LiteralPath (Join-Path $rel 'polf3d.zip') -Algorithm SHA256).Hash.ToLowerInvariant()
+    $release = @{ tag_name = "v$newVersion"; html_url = 'https://example.invalid/release'; body = "**Download polf3d.zip below.**`n`nNew:`n`n- a **newcomer** file, see [the notes](https://example.invalid)`n`nSHA256 of polf3d.zip: ``$sha``"
+        assets = @(@{ name = 'polf3d.zip'; browser_download_url = (Join-Path $rel 'polf3d.zip'); download_count = 1 }) }
+    $release | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $rel 'latest.json') -Encoding utf8
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../Start-Polf3D.ps1'), (Join-Path $PSScriptRoot '../Play.cmd') -Destination (Join-Path $rel 'old')
+    $keepSource = $script:UpdateSource; $keepCheck = $script:Settings.UpdateCheck; $keepNoCheck = $script:UpdateCheckOff
+    $script:UpdateSource = Join-Path $rel 'latest.json'; $script:Settings.UpdateCheck = $true; $script:UpdateCheckOff = $false
+    $script:NewRelease = $null; $script:UpdateState = ''; Remove-Item -LiteralPath (Get-UpdateStampPath) -ErrorAction SilentlyContinue
+    for ($i = 0; $i -lt 200 -and $script:UpdateState -eq ''; $i++) { Update-UpdateCheck; Start-Sleep -Milliseconds 50 }
+    $found = $script:UpdateState -eq 'available' -and "$($script:NewRelease.Version)" -eq $newVersion -and $script:NewRelease.Sha -eq $sha
+    $notes = @(Get-UpdateNotes); $plain = ($notes -join '|') -notmatch '\*\*|SHA256|https://' -and $notes -contains '- a newcomer file, see the notes'
+    $stamped = Test-Path -LiteralPath (Get-UpdateStampPath)
+    $script:NewRelease = $null; $script:UpdateState = ''; Update-UpdateCheck                              # asked again the same day: the stamp answers, no runspace
+    $remembered = $script:UpdateState -eq 'available' -and -not $script:UpdateCheck
+    $olderRelease = $release.Clone(); $olderRelease.tag_name = 'v0.1.0'
+    $older = $null -eq (ConvertTo-UpdateInfo ($olderRelease | ConvertTo-Json -Depth 4))                # an older release is no update
+    Show-TitleScreen; Save-BackBuffer (Join-Path $OutDir 'screen-title-update.png')                  # the title screen with the news
+    Show-UpdateScreen; Save-BackBuffer (Join-Path $OutDir 'screen-update.png')
+    $old = Join-Path $rel 'old'
+    $installed = Install-Update $script:NewRelease $old { param($Text) Write-Step "    update: $Text" }
+    $newFile = (Get-Content -LiteralPath (Join-Path $old 'Start-Polf3D.ps1') -Raw) -match "PolfVersion = '9\.9\.9'" -and (Test-Path -LiteralPath (Join-Path $old 'src/Newcomer.ps1'))
+    $backup = Join-Path $old "polf3d-backup-$script:PolfVersion.zip"
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($backup); $kept = @($archive.Entries.FullName); $archive.Dispose()
+    $backedUp = $kept -contains 'Start-Polf3D.ps1' -and $kept -contains 'Play.cmd' -and $kept -notcontains 'src/Newcomer.ps1'
+    $damaged = $script:NewRelease.Clone(); $damaged.Sha = '0' * 64
+    $refused = try { $null = Install-Update $damaged $old; $false } catch { $_.Exception.Message -like '*SHA256*' }
+    $script:UpdateSource = $keepSource; $script:Settings.UpdateCheck = $keepCheck; $script:UpdateCheckOff = $keepNoCheck; $script:NewRelease = $null; $script:UpdateState = ''
+    Write-Step "update test: a release of $newVersion is found: $found, its notes read plain: $plain, the answer is kept: $stamped and reused: $remembered; an older release is none: $older; installed: $installed with the new file: $newFile, the old files backed up: $backedUp; a damaged download is refused: $refused"
+    if (-not ($found -and $plain -and $stamped -and $remembered -and $older -and $installed -and $newFile -and $backedUp -and $refused)) { throw 'update test failed.' }
 
     # ---- title screen ----
     $script:HighScores = @()

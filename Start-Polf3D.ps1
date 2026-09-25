@@ -120,6 +120,8 @@ param(
     [switch]$AllWeapons,
     [switch]$SelfTest,
     [switch]$Version,
+    [switch]$Update,                                     # fetch and install the latest release, then return
+    [switch]$NoUpdateCheck,                              # the title screen does not ask GitHub whether there is a newer version
     [Parameter(DontShow)][string]$RecordAttractDemo,     # maintenance: let the bot play floor 1 and save the demo to this file
     [Parameter(DontShow)][int]$BalanceTest = 0,          # maintenance: let the bot play this floor on every difficulty and print how it fared (negative: only the boss duels)
     [Parameter(DontShow)][string]$Screenshots,           # maintenance: stage and save the README pictures into this folder
@@ -213,7 +215,7 @@ function Initialize-Scaler {
 }
 
 Write-Step "POLF 3D $script:PolfVersion starting ..."
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Game', 'SelfTest') {
+foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Update', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
@@ -231,6 +233,8 @@ if (-not $headless) {
     if (-not $PSBoundParameters.ContainsKey('Scale')) { $Scale = [int]$script:Settings.Scale }
     if ($FlatFloors) { $script:Settings.FlatFloors = $true }
 }
+$script:UpdateCheckOff = [bool]$NoUpdateCheck -or $headless
+if ($Update) { Invoke-Update; return }
 Write-Step 'loading the C# helpers ...';       Initialize-Scaler
 if (-not $headless) { Update-Settings }
 Write-Step 'building state tables ...';        Initialize-States
@@ -281,6 +285,7 @@ try {
     Start-GameLoop
 }
 finally {
+    Stop-UpdateCheck
     if ($script:Mixer) { $script:Mixer::Close() }
     Stop-Terminal
     Stop-Network
