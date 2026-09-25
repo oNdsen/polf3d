@@ -310,7 +310,7 @@ function Add-WallArt([string]$Name) {
                 foreach ($p in @(6, 6), @(34, 6), @(6, 34), @(34, 34)) {
                     Add-Box '1F5A63' $p[0] $p[1] 24 24; Add-Box '347E89' ($p[0] + 2) ($p[1] + 2) 20 20; Add-Box '4A9AA6' ($p[0] + 2) ($p[1] + 2) 20 1
                 }
-                Add-Box '101010' 54 28 5 10; Add-Box 'C0C0C0' 55 29 3 8
+                Add-Box '101010' 5 28 5 10; Add-Box 'C0C0C0' 6 29 3 8                # the handle sits on the edge that opens: column 0 of the leaf is the free edge (Render.ps1 anchors the texture there)
                 if ($Name -eq 'door_gold')   { Add-Box 'E8C020' 24 24 16 16; Add-Box '6A5408' 30 28 4 5; Add-Box '6A5408' 31 32 2 5 }
                 if ($Name -eq 'door_silver') { Add-Box 'C8D0D8' 24 24 16 16; Add-Box '50585F' 30 28 4 5; Add-Box '50585F' 31 32 2 5 }
             }
