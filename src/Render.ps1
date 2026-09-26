@@ -421,8 +421,9 @@ function Show-Overlays {
     }
     if ($script:ShowFps) { Write-HudText ("{0:0} fps" -f $script:Fps) 'Small' '80FF80' 2 2 40 8 }
     if ($script:Message -and $script:Clock.Elapsed.TotalSeconds -lt $script:MessageUntil) {
-        Write-HudText $script:Message 'Mid' '000000' 0.6 6.6 320 10
-        Write-HudText $script:Message 'Mid' 'FFE860' 0 6 320 10
+        # centred between the corner labels and the radar, and a long one wraps instead of running under the radar
+        Write-HudText $script:Message 'Mid' '000000' 54.6 5.6 212 22
+        Write-HudText $script:Message 'Mid' 'FFE860' 54 5 212 22
     }
 }
 
