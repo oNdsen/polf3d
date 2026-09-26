@@ -147,7 +147,7 @@ function Find-BotPath([int]$FromX, [int]$FromY) {
             if ($ok) { $prev[$nb] = $c; $queue.Enqueue($nb) }
         }
     }
-    $null
+    @()                                                      # nothing reachable: an empty way (a $null would be one step of nothing)
 }
 
 # The point $Distance tiles along the bot's way (through the tile centres), or the end of the way.
