@@ -1221,9 +1221,18 @@ function Invoke-SelfTest([string]$OutDir) {
     $backedUp = $kept -contains 'Start-Polf3D.ps1' -and $kept -contains 'Play.cmd' -and $kept -notcontains 'src/Newcomer.ps1'
     $damaged = $script:NewRelease.Clone(); $damaged.Sha = '0' * 64
     $refused = try { $null = Install-Update $damaged $old; $false } catch { $_.Exception.Message -like '*SHA256*' }
+    # a copy that fails half way is undone: a file that cannot be written stops the install, and what was already replaced goes back
+    $old2 = Join-Path $rel 'old2'; $null = New-Item -ItemType Directory -Path (Join-Path $old2 'src') -Force
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../Start-Polf3D.ps1'), (Join-Path $PSScriptRoot '../Play.cmd') -Destination $old2
+    Set-Content -LiteralPath (Join-Path $old2 'src/Newcomer.ps1') -Value '# the old one' -Encoding utf8
+    $lock = [System.IO.File]::Open((Join-Path $old2 'src/Newcomer.ps1'), 'Open', 'Read', 'Read')      # readable for the backup, not writable for the install
+    $rolledBack = try { $null = Install-Update $script:NewRelease $old2; $false } catch { $_.Exception.Message -like '*the old files are back*' }
+    $lock.Dispose()
+    $restored = (Get-Content -LiteralPath (Join-Path $old2 'Start-Polf3D.ps1') -Raw) -match "PolfVersion = '$([regex]::Escape($script:PolfVersion))'" -and (Get-Content -LiteralPath (Join-Path $old2 'src/Newcomer.ps1') -Raw) -like '*the old one*'
+    $sameStart = (@(ConvertTo-StartArguments ([ordered]@{ Scale = 4; Terminal = [switch]$true; NoSound = [switch]$false; PlayerName = 'Big Boss'; Update = [switch]$true })) -join ' ') -eq '-Scale 4 -Terminal -PlayerName Big Boss'
     $script:UpdateSource = $keepSource; $script:Settings.UpdateCheck = $keepCheck; $script:UpdateCheckOff = $keepNoCheck; $script:NewRelease = $null; $script:UpdateState = ''
-    Write-Step "update test: a release of $newVersion is found: $found, its notes read plain: $plain, the answer is kept: $stamped and reused: $remembered; an older release is none: $older; installed: $installed with the new file: $newFile, the old files backed up: $backedUp; a damaged download is refused: $refused"
-    if (-not ($found -and $plain -and $stamped -and $remembered -and $older -and $installed -and $newFile -and $backedUp -and $refused)) { throw 'update test failed.' }
+    Write-Step "update test: a release of $newVersion is found: $found, its notes read plain: $plain, the answer is kept: $stamped and reused: $remembered; an older release is none: $older; installed: $installed with the new file: $newFile, the old files backed up: $backedUp; a damaged download is refused: $refused; a copy that fails half way is undone: $rolledBack with the old files back: $restored; the start line survives a restart: $sameStart"
+    if (-not ($found -and $plain -and $stamped -and $remembered -and $older -and $installed -and $newFile -and $backedUp -and $refused -and $rolledBack -and $restored -and $sameStart)) { throw 'update test failed.' }
 
     # ---- title screen ----
     $script:HighScores = @()

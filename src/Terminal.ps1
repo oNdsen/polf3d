@@ -88,6 +88,7 @@ function Get-TerminalScreen([string]$Mode) {
             $lines.Add('')
             if ($script:Net) { $lines.Add("$c   $(Get-NetStatus)$r") }
             if (-not $script:Net) { $lines.Add("$c   G = today's dungeon #$(Get-DailySeed)$r") }
+            if (Get-UpdateNotice) { $lines.Add("$y   U = $(Get-UpdateNotice)$r") }
             $lines.Add("$y   $(if ($script:HasSaves -and -not $script:Net) { 'L = load a saved game     ' })T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     O = options     Esc = quit$r"); $lines.Add('')
             $lines.Add("$d   W/S move   A/D strafe   arrows turn   Shift run   C sneak   Ctrl or J fire   Space/E use   1-9 weapon$r")
             $lines.Add("$d   Z -WhatIf  X -Confirm  V -Verbose  F -Force  R Undo   T console   P pause   F4 music   F5/F9 save/load$r"); $lines.Add('')
@@ -99,6 +100,11 @@ function Get-TerminalScreen([string]$Mode) {
             $lines.Add("$w   LOAD GAME$r"); $lines.Add('')
             for ($i = 0; $i -lt $script:SaveList.Count; $i++) { $lines.Add("   $($i + 1)   $($script:SaveList[$i].Text)") }
             $lines.Add(''); $lines.Add("$y   press the number of a saved game     Esc = back$r")
+        }
+        'update' {
+            $lines.Add("$w   NEW UPDATE AVAILABLE$r"); $lines.Add("$c   v$($script:NewRelease.Version)   -   you have v$script:PolfVersion   -   what is new:$r"); $lines.Add('')
+            foreach ($row in (Get-UpdateNotes 100 30)) { $lines.Add("   $row") }
+            $lines.Add(''); $lines.Add("$y   Enter = download, install and restart the game     Esc = back$r"); $lines.Add("$d   saved games, settings and your own mods stay as they are$r")
         }
         'ending' { foreach ($row in (Get-EndingScreen)) { $lines.Add($row) } }
         'options' { foreach ($row in (Get-OptionLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $(if ($row.Count -gt 3 -and $row[3]) { "$($row[0])".PadRight(48) + $row[3] } else { $row[0] })$r") } }

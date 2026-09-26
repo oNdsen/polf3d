@@ -166,33 +166,86 @@ function Install-Update([hashtable]$Info, [string]$Root, [scriptblock]$Report = 
         if (-not (Test-Path -LiteralPath $start)) { throw 'the ZIP holds no game (no Start-Polf3D.ps1 in it)' }
         if ((Get-Content -LiteralPath $start -Raw) -notmatch "\`$script:PolfVersion = '$([regex]::Escape("$($Info.Version)"))'") { throw "the ZIP is not version $($Info.Version)" }
         & $Report 'keeping a copy of the old files ...'
-        Save-UpdateBackup $Root $new (Join-Path $Root "polf3d-backup-$script:PolfVersion.zip")
+        $backup = Join-Path $Root "polf3d-backup-$script:PolfVersion.zip"
+        Save-UpdateBackup $Root $new $backup
         & $Report 'installing ...'
-        foreach ($file in Get-ChildItem -LiteralPath $new -File -Recurse) {
-            $relative = $file.FullName.Substring($new.Length).TrimStart('\', '/')
-            $target = Join-Path $Root $relative
-            $null = New-Item -ItemType Directory -Path (Split-Path $target) -Force
-            Copy-Item -LiteralPath $file.FullName -Destination $target -Force
+        $installing = $true
+        try {
+            foreach ($file in Get-ChildItem -LiteralPath $new -File -Recurse) {
+                $relative = $file.FullName.Substring($new.Length).TrimStart('\', '/')
+                $target = Join-Path $Root $relative
+                $null = New-Item -ItemType Directory -Path (Split-Path $target) -Force
+                Copy-Item -LiteralPath $file.FullName -Destination $target -Force
+            }
+        }
+        catch {
+            # half way through is the one state the game must not be left in: the old files go back
+            & $Report 'that failed - putting the old files back ...'
+            $back = Restore-UpdateBackup $backup $Root
+            throw "$($_.Exception.Message) - the old files are back ($back of them; the copy is $(Split-Path $backup -Leaf))"
         }
         $true
     }
     finally { Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
-# The game starts itself again, the way it was started: Play.cmd if there is one, plain pwsh otherwise.
+# The files of a backup, back where they were - one by one, so that a file that cannot be written does not stop the
+# rest. Returns how many went back.
+function Restore-UpdateBackup([string]$Path, [string]$Root) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($Path); $count = 0
+    try {
+        foreach ($entry in $archive.Entries) {
+            if (-not $entry.Name) { continue }
+            $target = Join-Path $Root $entry.FullName.Replace('/', '\')
+            try { [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $true); $count++ } catch { }
+        }
+    }
+    finally { $archive.Dispose() }
+    $count
+}
+
+# The command line the game was started with, so that it can start itself the same way: every parameter that was
+# given, as it was given. -Update and -Version do not come along (they would only run once more).
+function ConvertTo-StartArguments([System.Collections.IDictionary]$Bound) {
+    $arguments = [System.Collections.Generic.List[string]]::new()
+    foreach ($name in $Bound.Keys) {
+        if ($name -in 'Update', 'Version') { continue }
+        $value = $Bound[$name]
+        if ($value -is [switch] -or $value -is [bool]) { if ($value) { $arguments.Add("-$name") }; continue }
+        $arguments.Add("-$name"); $arguments.Add("$value")
+    }
+    $arguments.ToArray()
+}
+
+# The game starts itself again, the way it was started: Play.cmd if there is one, plain pwsh otherwise - and with
+# the same parameters as the first time.
 function Restart-Game([string]$Root) {
     $play = Join-Path $Root 'Play.cmd'
-    if (Test-Path -LiteralPath $play) { Start-Process -FilePath 'cmd.exe' -ArgumentList '/c', "`"$play`"" -WorkingDirectory $Root }
-    else { Start-Process -FilePath 'pwsh' -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$(Join-Path $Root 'Start-Polf3D.ps1')`"" -WorkingDirectory $Root }
+    $arguments = @($script:StartArguments)
+    if (Test-Path -LiteralPath $play) {
+        $quoted = @($arguments | ForEach-Object { if ($_ -match '\s') { "'$_'" } else { $_ } })      # Play.cmd hands them to a PowerShell command line
+        Start-Process -FilePath 'cmd.exe' -ArgumentList (@('/c', "`"$play`"") + $quoted) -WorkingDirectory $Root
+    }
+    else {
+        $quoted = @($arguments | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } })
+        Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$(Join-Path $Root 'Start-Polf3D.ps1')`"") + $quoted) -WorkingDirectory $Root
+    }
     $script:Running = $false
+}
+
+# What the update is doing right now: the loading screen in the window, a line at the bottom of the terminal.
+function Write-UpdateProgress([string]$Text) {
+    if (-not $script:TerminalMode) { Show-LoadStep $Text; return }
+    try { [Console]::SetCursorPosition(0, [Console]::WindowHeight - 1); [Console]::Write($Text.PadRight([Console]::WindowWidth - 1)) } catch { }
 }
 
 # Enter on the update screen: install, then start over. Says what went wrong if it did.
 function Invoke-UpdateInstall {
     $root = Split-Path $PSScriptRoot
     try {
-        $null = Install-Update $script:NewRelease $root { param($Text) Show-LoadStep $Text }
-        Show-LoadStep "POLF 3D $($script:NewRelease.Version) is installed - starting it ..."
+        $null = Install-Update $script:NewRelease $root { param($Text) Write-UpdateProgress $Text }
+        Write-UpdateProgress "POLF 3D $($script:NewRelease.Version) is installed - starting it ..."
         Start-Sleep -Milliseconds 800
         Restart-Game $root
     }

@@ -131,6 +131,7 @@ param(
 Set-StrictMode -Off
 $script:PolfVersion = '1.3.0'          # the one place the version is written down: title screen, -Version and tools/New-Release.ps1 read it
 if ($Version) { "POLF 3D $script:PolfVersion"; return }
+$script:StartArguments = @()      # filled once the modules are loaded: what to start the game with again after an update
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'POLF 3D needs Windows (Windows Forms / GDI+).' }
 if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
@@ -234,6 +235,7 @@ if (-not $headless) {
     if ($FlatFloors) { $script:Settings.FlatFloors = $true }
 }
 $script:UpdateCheckOff = [bool]$NoUpdateCheck -or $headless
+$script:StartArguments = @(ConvertTo-StartArguments $PSBoundParameters)
 if ($Update) { Invoke-Update; return }
 Write-Step 'loading the C# helpers ...';       Initialize-Scaler
 if (-not $headless) { Update-Settings }
