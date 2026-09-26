@@ -1562,7 +1562,6 @@ function Export-Banner([string]$Path) {
     $g.FillRectangle((Get-Brush 'FF40E0FF'), ($px + 386), ($py + 12), 16, 29)
 
     $g.DrawString('A 90s-style ray casting shooter - written in PowerShell.', $small, (Get-Brush 'FFE8ECF4'), ($px - 3), ($py + 78))
-    $g.DrawString('a real PowerShell console   -WhatIf / -Confirm / -Force as powers   a daily dungeon   4-player co-op', $small, (Get-Brush 'FF8FB0FF'), ($px - 3), ($py + 108))
     $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, 0, $W, 8); $g.FillRectangle((Get-Brush 'FF2C54C4'), 0, ($H - 8), $W, 8)
 
     $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
