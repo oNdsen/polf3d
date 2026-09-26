@@ -990,7 +990,13 @@ function Invoke-SelfTest([string]$OutDir) {
         $door = $script:Doors | Where-Object { $_.Lock -eq 0 } | Select-Object -First 1
         $health = $script:P.Health
         Send-NetTestLines $bob 'R|1'
-        Send-NetTestLines $anna 'R|1', "M|9|$($victim.X + 1)|$($victim.Y)|180|4|100|0|$($victim.Area)", "D|$($victim.NetId)|500|bullet", "U|$($door.X)|$($door.Y)|1|0"
+        $oldX = $script:Net.Players[1].Proxy.X; $oldHP = $victim.HP
+        Send-NetTestLines $anna 'R|1', "M|9|-1|$($victim.Y)|180|4|100|0|$($victim.Area)", "D|$($victim.NetId)|406|blast"
+        Update-Network 1.0
+        if ($script:Net.Players[1].Proxy.X -ne $oldX -or $victim.HP -ne $oldHP) { throw 'network test failed: the host accepted invalid guest state or damage.' }
+        if ($door.Vertical) { $useX = $door.X - 0.5; $useY = $door.Y + 0.5; $useDX = 1; $useDY = 0 }
+        else { $useX = $door.X + 0.5; $useY = $door.Y - 0.5; $useDX = 0; $useDY = 1 }
+        Send-NetTestLines $anna "M|9|$($victim.X)|$($victim.Y)|180|4|100|0|$($victim.Area)", "D|$($victim.NetId)|405|blast", "M|9|$useX|$useY|180|4|100|0|0", "U|$($door.X)|$($door.Y)|$useDX|$useDY"
         Update-Network 1.0
         # a look at the partners: two tiles away, walking past
         Set-TestCamera ($victim.X + 3) $victim.Y 180
@@ -1000,7 +1006,7 @@ function Invoke-SelfTest([string]$OutDir) {
         for ($i = 0; $i -lt 6; $i++) { Update-World 2.0 $idle; Update-Network 2.0 }
         $lines = Read-NetTestLines $anna; $heard = Read-NetTestLines $bob
         $snap = @($lines | Where-Object { $_ -like "Z|*" -and $_ -like "*$($victim.NetId),$($victim.Kind).die*" }).Count
-        $relayed = @($heard | Where-Object { $_ -like "M|1|$($victim.X + 1)|*" }).Count
+        $relayed = @($heard | Where-Object { $_ -like "M|1|$($victim.X)|*" }).Count
         Write-Step "network test (host): guests '$names', a fourth was told '$full'; Anna at $($script:Net.Players[1].Proxy.X),$($script:Net.Players[1].Proxy.Y) killed the $($victim.Kind): $(-not $victim.Shootable); door $($door.Action); Bob heard of her $relayed time(s); $snap snapshots show the death"
         if ($victim.Shootable -or $door.Action -eq 'closed' -or -not $snap -or -not $relayed -or $lines -notcontains "S|$($victim.Def.Points)" -or $lines -notcontains 'H|10|0' -or
             $heard -contains 'H|10|0' -or $script:P.Health -ne $health -or @($lines | Where-Object { $_ -like 'M|0|*' }).Count -eq 0) { throw 'network test failed on the host side.' }
