@@ -14,6 +14,8 @@
 @spawn 4 24 5 hv
 @spawn 4 8 28 s>
 @spawn 4 45 16 kv
+@spawn 3 31 11 ov
+@spawn 3 20 17 ev
 @event lockdown 110
 @event patch 480
 @event powerfail 560
@@ -28,16 +30,16 @@ WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW+q....!W......ev........uv......ev......DL..*l..
 WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWt+4....WW..............ts................WW......MMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWtWWWWWW*f+a..*T................*T..+o*fWWMMMMMMMMWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 WWWWWWWWWWWt+4....+4WWWWWWWWWWWWWWWWWWWWWWWWWWWtWWWWWWDGWWWtWWWWWWWWWWWtWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-WWWWWWWWWWWW........WWWWWWWWWWWWWWWW+h..............+z..+o..............+hWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
+WWWWWWWWWWWW........WWWWWWWWWWWWWWWW+h..............+z+b+o..............+hWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
 WWWWWWWWWWWW+a....+qWWWWWWWWWWWWWWWW......................................WtWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-WWWWWWWWWWWWWW?wWtWWWWWWWWWWWtWWWWWW..........ov......bv......ov..........WWTTTTTTTTTTTTTeTTTTTTTTTTTtTTWWWWWWWW
+WWWWWWWWWWWWWW?wWtWWWWWWWWWWWtWWWWWW..........ov......bv..................WWTTTTTTTTTTTTTeTTTTTTTTTTTtTTWWWWWWWW
 WWWWWWWt*p..................+3*pWWWW............*h..........*h............WWTT..*m..*m..+o+o..*m..*m..TtWWWWWWWW
 WWWWWWWW........................WtWW......................................WWTT........................TTWWWWWWWW
 WWWWWWWW..........+s......av....WWWt+a........*t*t*t*t*t*t*t*t*t........+aWWTT............ov..........TTTTTtTTWW
 WWWWWWWW........*t*t*t..........WWWW......................................WWTT....kv............kv....TT+z+zTtWW
 WWWWWWWW+a......................WWWW......................................WtTT+a........sv............?T....TTWW
-WWWWWWWW......ov........ov......WWWW....ev............hv............ev....WWTe........................TT+u+hTTWW
-WWWWWWWt............hv..........WWWW*T............gv......gv............*TWWTT........n^..ts..........TeTTTTTTWW
+WWWWWWWW......ov........ov......WWWW..................hv............ov....WWTe........................TT+u+hTTWW
+WWWWWWWt............hv..........WWWW*T............gv....................*TWWTT........n^..ts..........TeTTTTTTWW
 WWWWWWWW..g>................e<..WtWW..................+b..................WWTT....e>............e<....TTWWWWWWWW
 WWWWWWWW+2....................+aWWWt+a..................................+aWWTT+a....................+hTTWWWWWWWW
 WWWWWWWWWWWWWtWWWWDDWWWWWpWWWWWWWWWWWtWWWsWWWWWWWtWWWWDSWWWWWtWWWWWWWsWWWtWWWWWWWWWWWpWWWWDDWWWWWtWWWWWWWWWWWWWW
