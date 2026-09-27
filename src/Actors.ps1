@@ -155,7 +155,7 @@ function Step-Actor([Actor]$a) {
         if ($b -eq 2) {
             if (-not $a.Def.Doors) { return $false }
             $door = $script:BlockDoor
-            if ($script:Doors[$door].Lock -eq 4 -and -not $script:Doors[$door].Unlocked) { return $false }      # lever doors are shut for everybody
+            if ($script:Doors[$door].Lock -in 1, 2, 4 -and -not $script:Doors[$door].Unlocked) { return $false }      # a locked door is locked for them too: the key is yours to find
             Open-Door $door
         }
     }
@@ -659,6 +659,7 @@ function Invoke-ThinkPlayerProjectile([Actor]$a, [double]$Tics) {
         $idx = [int][Math]::Floor($a.Y) * $w + [int][Math]::Floor($a.X)
         $t = $script:Tiles[$idx]
         $open = ($t -eq 0 -and -not $script:StaticBlock[$idx]) -or ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL -and $script:Doors[$t - $script:TILE_DOOR_BASE].Action -eq 'open')
+        if (-not $open -and $a.Kind -eq 'tknife' -and $script:IsWindow[$idx]) { $open = $true }      # a knife goes through the bars of a window, a rocket does not
         $victim = $null
         foreach ($o in $script:Actors) {
             if ($o.Shootable -and [Math]::Abs($o.X - $a.X) -lt 0.45 -and [Math]::Abs($o.Y - $a.Y) -lt 0.45) { $victim = $o; break }
