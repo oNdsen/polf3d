@@ -371,6 +371,7 @@ function Show-TitleScreen {
         $x += $width + ($column | ForEach-Object { $_[1].Length } | Measure-Object -Maximum).Maximum * 2.5 + 12
     }
     Write-HudLine 'Game pad (XInput): sticks move and turn, RT fire, LT run, A use, B sneak, LB/RB weapon.   Everything else: O' 'Small' '7080A0' 16 215
+    Show-MuteSign 262 26                                          # top right, under the version and the update notice
     $notice = Get-UpdateNotice                                    # top right, under the version: the news, and the key that opens it
     if ($notice) { Write-HudBar '2C54C4' 202 14 114 9; Write-HudLine '[U]' 'Small' 'FFE860' 205 15; Write-HudLine $notice 'Small' 'FFFFFF' 216 15 }
     Write-HudLine "$($script:MapFiles.Count) floors - everything you see and hear is generated at start-up" 'Small' '506080' 16 226

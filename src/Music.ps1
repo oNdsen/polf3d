@@ -531,8 +531,10 @@ function Start-Music([int]$Track) {
         $script:MusicTrack = $Track
     }
     catch {
-        Write-Warning "Music disabled: $($_.Exception.Message)"
-        $script:MusicEnabled = $false
+        # the console is hidden when Play.cmd starts the game: the reason has to show in the game, and the next track gets its chance
+        Write-Warning "Music: $($_.Exception.Message)"
+        $script:MusicTrack = -1
+        if (Get-Command Show-Message -ErrorAction SilentlyContinue) { Show-Message "No music: $($_.Exception.Message)" }
     }
 }
 

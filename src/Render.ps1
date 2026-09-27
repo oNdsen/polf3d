@@ -315,6 +315,18 @@ function Write-HudLine([string]$Text, [string]$Font, [string]$Color, [double]$X,
     $script:BackG.DrawString($Text, $script:Fonts[$Font], (Get-Brush $Color), [single]($X * $script:Scale), [single]($Y * $script:Scale))
 }
 
+# A crossed-out speaker when the music is off (F4, or the options) or the sound is: so that a silent game is a choice
+# one can see, not a fault one has to guess at. Nothing is drawn while everything plays.
+function Show-MuteSign([double]$X, [double]$Y) {
+    $music = -not $script:MusicEnabled -or ($script:Settings -and [double]$script:Settings.Music -le 0)
+    $sfx = -not $script:SfxEnabled -or ($script:Settings -and [double]$script:Settings.Sfx -le 0)
+    if (-not $music -and -not $sfx) { return }
+    Write-HudBar '70101A2C' ($X - 1) ($Y - 1) 56 9
+    Write-HudBar 'C0C8D8' $X ($Y + 2) 2 3; Write-HudBar 'C0C8D8' ($X + 2) ($Y + 1) 1 5; Write-HudBar 'C0C8D8' ($X + 3) $Y 1.5 7      # the speaker
+    for ($i = 0; $i -lt 3; $i++) { Write-HudBar 'FF4030' ($X + 6 + $i) ($Y + 2 + $i) 1 1; Write-HudBar 'FF4030' ($X + 6 + $i) ($Y + 4 - $i) 1 1 }      # and the cross beside it
+    Write-HudLine $(if ($music -and $sfx) { 'MUTED' } elseif ($music) { 'MUSIC OFF' } else { 'SOUND OFF' }) 'Small' 'FF8070' ($X + 11) ($Y - 0.2)
+}
+
 function Write-HudBar([string]$Color, [double]$X, [double]$Y, [double]$W, [double]$H) {
     $s = $script:Scale
     $script:BackG.FillRectangle((Get-Brush $Color), [single]($X * $s), [single]($Y * $s), [single]($W * $s), [single]($H * $s))
@@ -393,6 +405,7 @@ function Show-Overlays {
         Write-HudBar $(if (-not $lit) { '60101A2C' } elseif ($i -eq 3) { 'FF4030' } elseif ($i -eq 2) { 'FFC040' } else { '60FF80' }) (2 + $i * 4) ($noiseY + 8 - $i * 2) 3 (2 + $i * 2)
     }
     if ($script:P.Sneaking) { Write-HudLine 'SNEAKING' 'Small' '60FF80' 19 ($noiseY + 2) }
+    Show-MuteSign 3 ($noiseY + 13)
     # the building's execution policy: how nervous the floor is
     if (-not $script:NetClient) { $policy = Get-Policy; Write-HudBar '70101A2C' 2 2 46 7; Write-HudText $policy.Name 'Small' $policy.Color 2 2.4 46 7 }
     Show-Hint                                                       # what the floor has to say about the room (@hint)
