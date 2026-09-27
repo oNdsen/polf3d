@@ -657,6 +657,9 @@ A few details for the curious:
   over the clip, and LZW – by encoding every frame as a GIF of its own, and then does what Windows cannot: it cuts the
   frame out of each of those files and writes them one after the other, with a loop block in front and a delay
   before each.
+* **The weapon in your hands** is a little model of boxes, in metres from the eye, that a camera projects onto its
+  sprite the way the ray caster projects the world: the far end runs towards the vanishing point, the top shows as a
+  narrow lit trapezoid, round parts get a cylinder's shading, and the recoil is the model moving back and up.
 * **Approved verbs:** every function, including every internal helper, uses a verb from `Get-Verb`;
   [tools/Test-Verbs.ps1](tools/Test-Verbs.ps1) checks that via the AST.
 

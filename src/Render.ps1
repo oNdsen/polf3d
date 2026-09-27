@@ -336,9 +336,9 @@ function Show-Overlays {
     $g = $script:BackG; $sc = $script:Scale
     if ($script:BeamFlash -gt 0) {
         # the pipeline beam: converges from the muzzle to the vanishing point
-        $cx = 160 * $sc; $cy = ($viewH / 2) * $sc; $by = ($viewH - 44) * $sc
+        $cx = 160 * $sc; $cy = ($viewH / 2) * $sc; $by = ($viewH - 76) * $sc                # from just above the muzzle, which the projected gun holds a third of the way up
         $a = [int][Math]::Min(230, $script:BeamFlash * 26)
-        foreach ($beam in @(11, '40E0FF'), @(4, 'FFFFFF')) {
+        foreach ($beam in @(6, '40E0FF'), @(2, 'FFFFFF')) {
             $pts = [System.Drawing.PointF[]]@(
                 [System.Drawing.PointF]::new($cx - $beam[0] * $sc, $by), [System.Drawing.PointF]::new($cx + $beam[0] * $sc, $by),
                 [System.Drawing.PointF]::new($cx + 1, $cy), [System.Drawing.PointF]::new($cx - 1, $cy))

@@ -759,76 +759,230 @@ function Add-ThingSprites {
 }
 
 # ---- the player's weapons (drawn bottom-centre, scaled to the full view height) -----------------
+# Every weapon is a little model of boxes, in metres from the eye: x to the right, y downwards, z forward
+# along the line of sight. A camera projects the boxes onto the sprite the way the ray caster projects the
+# world, so a gun that points at the horizon looks like one: its far end runs towards the vanishing point in
+# the middle of the screen, its length shrinks to almost nothing, its top shows as a narrow lit trapezoid,
+# and the muzzle sits just above the receiver. Faces are lit from the top left: top bright, rear plain,
+# left side dim, right side dark; round parts get a cylinder's shading across their top.
+
+$script:WeaponFocal = 62.0          # pixels per metre at one metre, on the 64-pixel sprite: a little longer than the game's own lens, so the gun fills the hand
+$script:WeaponVanish = 32.0         # the vanishing point: the middle of the view, where the crosshair is
+
+# A colour, lighter (>1) or darker (<1) by a factor - as a Color, or as 'RRGGBB'.
+function Get-Shade([string]$C, [double]$F) {
+    $r = [Math]::Min(255, [int]([Convert]::ToInt32($C.Substring(0, 2), 16) * $F)); $g = [Math]::Min(255, [int]([Convert]::ToInt32($C.Substring(2, 2), 16) * $F)); $b = [Math]::Min(255, [int]([Convert]::ToInt32($C.Substring(4, 2), 16) * $F))
+    [System.Drawing.Color]::FromArgb(255, $r, $g, $b)
+}
+function Get-ShadeHex([string]$C, [double]$F) { $col = Get-Shade $C $F; '{0:X2}{1:X2}{2:X2}' -f $col.R, $col.G, $col.B }      # (not $c: that is $C to PowerShell)
+
+# The shading across a cylinder, as a strip of 64 pixels: dark at the left edge, a bright band a third of the way
+# in, the body colour past the middle, deep shadow at the right edge. One strip per colour, kept.
+$script:ShadeStrips = @{}
+function Get-ShadeStrip([string]$C) {
+    if ($script:ShadeStrips.ContainsKey($C)) { return $script:ShadeStrips[$C] }
+    $bmp = [System.Drawing.Bitmap]::new(64, 1, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $brush = [System.Drawing.Drawing2D.LinearGradientBrush]::new([System.Drawing.Point]::new(0, 0), [System.Drawing.Point]::new(64, 0), [System.Drawing.Color]::Black, [System.Drawing.Color]::Black)
+    $blend = [System.Drawing.Drawing2D.ColorBlend]::new(6)
+    $blend.Colors = @((Get-Shade $C 0.3), (Get-Shade $C 0.8), (Get-Shade $C 1.45), (Get-Shade $C 1.1), (Get-Shade $C 0.6), (Get-Shade $C 0.25))
+    $blend.Positions = [single[]]@(0.0, 0.18, 0.36, 0.62, 0.86, 1.0)
+    $brush.InterpolationColors = $blend
+    $g.FillRectangle($brush, 0, 0, 64, 1); $brush.Dispose(); $g.Dispose()
+    $script:ShadeStrips[$C] = $bmp
+    $bmp
+}
+function Add-CylinderRow([string]$C, [int]$X, [int]$Y, [int]$W) {
+    if ($W -lt 1) { return }
+    $script:GFX.DrawImage((Get-ShadeStrip $C), [System.Drawing.Rectangle]::new($X, $Y, $W, 1), 0, 0, 64, 1, [System.Drawing.GraphicsUnit]::Pixel)
+}
+
+# A point of the model on the sprite.
+function ConvertTo-WeaponPixel([double]$X, [double]$Y, [double]$Z) {
+    @([int][Math]::Round($script:WeaponVanish + $script:WeaponFocal * $X / $Z), [int][Math]::Round($script:WeaponVanish + $script:WeaponFocal * $Y / $Z))
+}
+
+# A box from ($X0,$Y0,$Z0) to ($X1,$Y1,$Z1), drawn back to front: far face, top, the side that shows, near face.
+# $Round makes it a cylinder seen along its length (shaded top, rounded ends); $Open gives it a dark mouth at the far end;
+# $Detail leaves out the outline, for small parts that would drown in it; $Band draws only the top, for a ring around something.
+function Add-WeaponBox([string]$C, [double]$X0, [double]$X1, [double]$Y0, [double]$Y1, [double]$Z0, [double]$Z1, [switch]$Round, [switch]$Open, [switch]$Detail, [switch]$Band) {
+    $n0 = ConvertTo-WeaponPixel $X0 $Y0 $Z0; $n1 = ConvertTo-WeaponPixel $X1 $Y0 $Z0; $n2 = ConvertTo-WeaponPixel $X1 $Y1 $Z0; $n3 = ConvertTo-WeaponPixel $X0 $Y1 $Z0      # near face corners
+    $f0 = ConvertTo-WeaponPixel $X0 $Y0 $Z1; $f1 = ConvertTo-WeaponPixel $X1 $Y0 $Z1; $f2 = ConvertTo-WeaponPixel $X1 $Y1 $Z1; $f3 = ConvertTo-WeaponPixel $X0 $Y1 $Z1      # far face corners
+    $top = (Get-ShadeHex $C 1.3); $rear = (Get-ShadeHex $C 0.95); $left = (Get-ShadeHex $C 0.7); $right = (Get-ShadeHex $C 0.45); $ink = (Get-ShadeHex $C 0.2)
+    # the far end: a dark opening if it is a barrel, the far face otherwise
+    if ($Band) { }
+    elseif ($Open) { Add-Oval '8A9098' ($f0[0] - 1) ($f0[1] - 1) ($f1[0] - $f0[0] + 2) ($f3[1] - $f0[1] + 2); Add-Oval '060708' $f0[0] $f0[1] ([Math]::Max(1, $f1[0] - $f0[0])) ([Math]::Max(1, $f3[1] - $f0[1])) }
+    elseif ($Round) { Add-Oval $rear $f0[0] $f0[1] ([Math]::Max(1, $f1[0] - $f0[0])) ([Math]::Max(1, $f3[1] - $f0[1])) }
+    # the top, seen from above: a trapezoid from the near edge to the far edge - outlined, and shaded across if round
+    if (-not $Detail) { Add-Poly $ink @(($n0[0] - 1), ($n0[1] + 1), ($n1[0] + 1), ($n1[1] + 1), ($f1[0] + 1), ($f1[1] - 1), ($f0[0] - 1), ($f0[1] - 1)) }
+    if ($Round -and $n0[1] -gt $f0[1]) {
+        for ($row = $f0[1]; $row -le $n0[1]; $row++) {
+            $t = ($row - $f0[1]) / [double]($n0[1] - $f0[1])
+            $xl = [int][Math]::Round($f0[0] + ($n0[0] - $f0[0]) * $t); $xr = [int][Math]::Round($f1[0] + ($n1[0] - $f1[0]) * $t)
+            Add-CylinderRow $C $xl $row ($xr - $xl)
+        }
+    }
+    else { Add-Poly $top @($n0[0], $n0[1], $n1[0], $n1[1], $f1[0], $f1[1], $f0[0], $f0[1]) }
+    # the sides: the one that faces the middle of the screen shows
+    if ($X0 -gt 0) { Add-Poly $left @($n0[0], $n0[1], $f0[0], $f0[1], $f3[0], $f3[1], $n3[0], $n3[1]) }
+    if ($X1 -lt 0) { Add-Poly $right @($n1[0], $n1[1], $f1[0], $f1[1], $f2[0], $f2[1], $n2[0], $n2[1]) }
+    # the near face, towards us
+    if ($Band) { }
+    elseif ($Round) {
+        if (-not $Detail) { Add-Oval $ink ($n0[0] - 1) ($n0[1] - 1) ($n1[0] - $n0[0] + 2) ($n3[1] - $n0[1] + 2) }
+        $path = [System.Drawing.Drawing2D.GraphicsPath]::new(); $path.AddEllipse($n0[0], $n0[1], [Math]::Max(1, $n1[0] - $n0[0]), [Math]::Max(1, $n3[1] - $n0[1]))
+        $brush = [System.Drawing.Drawing2D.PathGradientBrush]::new($path); $brush.CenterPoint = [System.Drawing.PointF]::new($n0[0] + ($n1[0] - $n0[0]) * 0.35, $n0[1] + ($n3[1] - $n0[1]) * 0.3)
+        $brush.CenterColor = Get-Shade $C 1.15; $brush.SurroundColors = @((Get-Shade $C 0.35)); $script:GFX.FillPath($brush, $path); $brush.Dispose(); $path.Dispose()
+    }
+    else {
+        if (-not $Detail) { Add-Box $ink ($n0[0] - 1) ($n0[1] - 1) ($n1[0] - $n0[0] + 2) ($n3[1] - $n0[1] + 2) }
+        Add-Box $rear $n0[0] $n0[1] ([Math]::Max(1, $n1[0] - $n0[0])) ([Math]::Max(1, $n3[1] - $n0[1]))
+        Add-Box $top $n0[0] $n0[1] ([Math]::Max(1, $n1[0] - $n0[0])) 1
+    }
+}
+
+# A flat face anywhere in space: four points (x, y, z) in a row, projected and filled. For blades and the like.
+function Add-WeaponQuad([string]$C, [double[]]$P) {
+    $pts = [int[]]::new(8)
+    for ($i = 0; $i -lt 4; $i++) { $q = ConvertTo-WeaponPixel $P[3 * $i] $P[3 * $i + 1] $P[3 * $i + 2]; $pts[2 * $i] = $q[0]; $pts[2 * $i + 1] = $q[1] }
+    Add-Poly $C $pts
+}
+
+# A ring around a barrel: a short round box a little wider than the barrel, at $Z.
+function Add-WeaponRing([string]$C, [double]$Xc, [double]$Yc, [double]$R, [double]$Z, [double]$Length = 0.015) { Add-WeaponBox $C ($Xc - $R) ($Xc + $R) ($Yc - $R) ($Yc + $R) $Z ($Z + $Length) -Round -Detail -Band }
+
+# The flash of a shot at a point of the model: rings of fire and a star.
+function Add-WeaponFlash([string[]]$Cs, [double]$X, [double]$Y, [double]$Z, [int]$R) {
+    $p = ConvertTo-WeaponPixel $X $Y $Z; $px = $p[0]; $py = $p[1]
+    $R = [Math]::Min($R, [int]([Math]::Min([Math]::Min($px, 63 - $px), [Math]::Min($py, 63 - $py)) / 2))                       # inside the sprite, or it would be cut off
+    Add-Poly $Cs[0] @($px, ($py - 2 * $R), ($px + [int]($R * 0.4)), ($py - [int]($R * 0.5)), ($px + 2 * $R), $py, ($px + [int]($R * 0.4)), ($py + [int]($R * 0.5)), $px, ($py + 2 * $R), ($px - [int]($R * 0.4)), ($py + [int]($R * 0.5)), ($px - 2 * $R), $py, ($px - [int]($R * 0.4)), ($py - [int]($R * 0.5)))
+    Add-Oval $Cs[0] ($px - $R) ($py - $R) (2 * $R) (2 * $R)
+    $r2 = [int]($R * 0.65); Add-Oval $Cs[1] ($px - $r2) ($py - $r2) (2 * $r2) (2 * $r2)
+    $r3 = [Math]::Max(2, [int]($R * 0.32)); Add-Oval $Cs[2] ($px - $r3) ($py - $r3) (2 * $r3) (2 * $r3)
+}
+
 function Add-WeaponArt([string]$Key, [int]$Frame) {
-    $dy = (0, -2, -5, -3, -1)[$Frame]
+    $kick = (0, 0.01, 0.03, 0.02, 0.005)[$Frame]                   # the recoil: the gun comes back and up a little
     $flash = ($Frame -eq 2) -or ($Key -eq 'chaingun' -and $Frame -eq 3)
+    $gun = '5A626A'; $dark = '3A4048'; $steel = '8A9098'; $wood = '7A5030'; $black = '1A1D20'
+    # the gun is held below the eye, its axis at $h, its rear at $z; far things are drawn first (painter's order)
+    $h = 0.125 - $kick * 0.5; $z = 0.27 - $kick
     switch ($Key) {
         'knife' {
-            $t = (0, 4, 12, 8, 3)[$Frame]
-            Add-Poly 'D8DCE0' @((36 - $t), (30 - $t), (40 - $t), (28 - $t), (42), (50), (36), (52))
-            Add-Poly 'F8F8F8' @((36 - $t), (30 - $t), (38 - $t), (29 - $t), (39), (51), (36), (52))
-            Add-Box '3A2A1A' 34 (50 - [int]($t / 3)) 10 5
-            Add-Poly 'E0A878' @(32, 64, 46, 64, 46, (53 - [int]($t / 3)), 33, (54 - [int]($t / 3)))
+            $t = (0, 0.03, 0.09, 0.06, 0.02)[$Frame]                # the thrust: forward and up
+            $bx = 0.03; $by = $h + 0.01 - $t * 0.3; $bz = $z + 0.06 + $t                                           # where the blade leaves the guard
+            Add-WeaponBox '3A2A1A' ($bx - 0.012) ($bx + 0.012) ($by + 0.005) ($by + 0.11) ($bz - 0.05) ($bz - 0.02) -Round      # the handle, below the guard
+            foreach ($rz in 0.045, 0.033) { Add-WeaponRing '2A1A0A' $bx ($by + 0.06) 0.013 ($bz - $rz) 0.004 }    # its rings
+            Add-WeaponBox $steel ($bx - 0.03) ($bx + 0.03) ($by - 0.004) ($by + 0.006) ($bz - 0.02) ($bz)          # the guard
+            # the blade: its flat side towards us, tapering to the point, forward and a little up
+            Add-WeaponQuad 'C8D0D8' @(($bx - 0.016), $by, $bz, ($bx + 0.016), $by, $bz, ($bx + 0.004), ($by - 0.07), ($bz + 0.3), ($bx - 0.004), ($by - 0.07), ($bz + 0.3))
+            Add-WeaponQuad 'F4F6F8' @(($bx - 0.016), $by, $bz, ($bx - 0.006), $by, $bz, ($bx - 0.004), ($by - 0.07), ($bz + 0.3), ($bx - 0.006), ($by - 0.068), ($bz + 0.29))      # the edge in the light
+            Add-WeaponQuad '6A727A' @(($bx - 0.002), ($by - 0.002), ($bz + 0.02), ($bx + 0.004), ($by - 0.002), ($bz + 0.02), ($bx + 0.002), ($by - 0.05), ($bz + 0.22), ($bx - 0.001), ($by - 0.05), ($bz + 0.22))      # the fuller
         }
         'pistol' {
-            if ($flash) { Add-Oval 'FF9020' 23 (20 + $dy) 18 18; Add-Oval 'FFE060' 26 (23 + $dy) 12 12; Add-Oval 'FFFFFF' 29 (26 + $dy) 6 6 }
-            Add-Box '303438' 28 (36 + $dy) 8 16; Add-Box '50565C' 28 (36 + $dy) 2 16; Add-Box '181818' 30 (34 + $dy) 4 3
-            Add-Box '202020' 27 (50 + $dy) 10 4
-            Add-Poly 'E0A878' @(24, 64, 40, 64, 40, (52 + $dy), 25, (53 + $dy)); Add-Box 'C89060' 26 (56 + $dy) 12 1
+            Add-WeaponBox $wood -0.014 0.014 ($h + 0.032) ($h + 0.13) ($z + 0.02) ($z + 0.05)                   # the grip
+            Add-WeaponBox $black -0.012 0.012 ($h + 0.04) ($h + 0.052) ($z + 0.05) ($z + 0.1) -Detail                   # the trigger guard
+            Add-WeaponBox $dark -0.008 0.008 ($h - 0.004) ($h + 0.012) ($z + 0.22) ($z + 0.28) -Round -Open      # the barrel end
+            Add-WeaponBox $gun -0.02 0.02 $h ($h + 0.035) $z ($z + 0.22)                                          # the slide
+            Add-WeaponBox $black -0.018 0.018 ($h + 0.035) ($h + 0.05) ($z + 0.03) ($z + 0.2)                    # the frame under it
+            foreach ($sz in 0.02, 0.035, 0.05) { Add-WeaponBox $black -0.019 0.019 ($h - 0.001) ($h + 0.002) ($z + $sz) ($z + $sz + 0.005) -Detail }      # slide serrations
+            Add-WeaponBox $black 0.004 0.017 ($h - 0.001) ($h + 0.003) ($z + 0.09) ($z + 0.14) -Detail                   # the ejection port
+            Add-WeaponBox $steel -0.003 0.003 ($h - 0.012) $h ($z + 0.2) ($z + 0.215) -Detail                             # the front sight
+            Add-WeaponBox $steel -0.012 0.012 ($h - 0.008) $h $z ($z + 0.012) -Detail                                     # the rear sight
+            Add-WeaponBox $black -0.002 0.002 ($h - 0.007) ($h - 0.001) $z ($z + 0.012) -Detail                           # its notch
+            Add-WeaponBox $dark -0.005 0.005 ($h - 0.002) ($h + 0.012) ($z - 0.012) $z -Detail                            # the hammer
+            if ($flash) { Add-WeaponFlash @('FF8020', 'FFD040', 'FFFFFF') 0 ($h - 0.006) ($z + 0.31) 6 }
         }
         'mgun' {
-            if ($flash) { Add-Oval 'FF9020' 21 (12 + $dy) 22 22; Add-Oval 'FFE060' 25 (16 + $dy) 14 14; Add-Oval 'FFFFFF' 29 (20 + $dy) 6 6 }
-            Add-Box '202428' 30 (24 + $dy) 4 14; Add-Box '3A4046' 26 (36 + $dy) 12 20; Add-Box '5A626A' 26 (36 + $dy) 2 20
-            Add-Box '181818' 29 (30 + $dy) 6 3; Add-Box '4A3018' 24 (54 + $dy) 16 10
-            Add-Poly 'E0A878' @(38, 64, 50, 64, 46, (52 + $dy), 38, (50 + $dy))
-        }
-        'pipeline' {
-            if ($flash) { Add-Oval '2090C0' 18 (2 + $dy) 28 28; Add-Oval '80F0FF' 23 (7 + $dy) 18 18; Add-Oval 'FFFFFF' 28 (12 + $dy) 8 8 }
-            Add-Box '203040' 29 (18 + $dy) 6 30; Add-Box '35506A' 29 (18 + $dy) 2 30
-            foreach ($ry in 22, 30, 38) { Add-Box $(if ($flash) { 'FFFFFF' } else { '40E0FF' }) 26 ($ry + $dy) 12 2 }
-            Add-Box '2A3A4A' 23 (46 + $dy) 18 18; Add-Box '40E0FF' 26 (50 + $dy) 12 2; Add-Box '182430' 27 (54 + $dy) 10 6
-            Add-Poly 'E0A878' @(10, 64, 24, 64, 24, (54 + $dy), 14, (56 + $dy)); Add-Poly 'E0A878' @(40, 64, 54, 64, 50, (56 + $dy), 40, (54 + $dy))
-        }
-        'forcegun' {
-            if ($flash) { Add-Oval '20A040' 6 (0 + $dy) 52 44; Add-Oval 'A0FFB0' 14 (6 + $dy) 36 32; Add-Oval 'FFFFFF' 24 (14 + $dy) 16 16 }
-            Add-Box '50585F' 14 (38 + $dy) 5 20; Add-Box '50585F' 45 (38 + $dy) 5 20
-            Add-Box '2A2A30' 19 (34 + $dy) 26 28; Add-Box '44444C' 19 (34 + $dy) 3 28
-            Add-Oval '101418' 20 (24 + $dy) 24 16
-            Add-Oval $(if ($Frame -eq 1) { 'C0FFC8' } else { '40FF60' }) 25 (27 + $dy) 14 10
-            Add-Box '30C050' 23 (46 + $dy) 18 2; Add-Box '30C050' 23 (51 + $dy) 18 2
-            Add-Poly 'E0A878' @(6, 64, 20, 64, 20, (56 + $dy), 10, (58 + $dy)); Add-Poly 'E0A878' @(44, 64, 58, 64, 54, (58 + $dy), 44, (56 + $dy))
-        }
-        'launcher' {
-            if ($flash) { Add-Oval 'FF7010' 14 (4 + $dy) 36 30; Add-Oval 'FFD040' 21 (10 + $dy) 22 18; Add-Oval 'FFFFFF' 27 (14 + $dy) 10 10 }
-            Add-Box '3A4A32' 22 (26 + $dy) 20 34; Add-Box '55683F' 22 (26 + $dy) 3 34; Add-Oval '101410' 23 (20 + $dy) 18 12; Add-Oval '2A3424' 26 (22 + $dy) 12 8
-            Add-Box 'E0C020' 22 (44 + $dy) 20 2; Add-Box '20281A' 28 (52 + $dy) 8 10
-            Add-Poly 'E0A878' @(8, 64, 22, 64, 22, (54 + $dy), 12, (56 + $dy)); Add-Poly 'E0A878' @(42, 64, 56, 64, 52, (56 + $dy), 42, (54 + $dy))
-        }
-        'flamer' {
-            if ($Frame -in 2, 3) { Add-Oval 'FF5010' 16 (0 + $dy) 32 30; Add-Oval 'FF9020' 20 (6 + $dy) 24 22; Add-Oval 'FFE060' 26 (12 + $dy) 12 12 }
-            Add-Box '404850' 29 (24 + $dy) 6 22; Add-Box '606A74' 29 (24 + $dy) 2 22; Add-Box 'FF9020' 30 (21 + $dy) 4 3
-            Add-Box '8A2A1A' 22 (44 + $dy) 20 18; Add-Box 'B03A24' 22 (44 + $dy) 3 18; Add-Box 'E0C020' 22 (52 + $dy) 20 2
-            Add-Poly 'E0A878' @(8, 64, 22, 64, 22, (56 + $dy), 12, (58 + $dy)); Add-Poly 'E0A878' @(42, 64, 56, 64, 52, (58 + $dy), 42, (56 + $dy))
-        }
-        'taser' {
-            Add-Box '20262C' 25 (30 + $dy) 14 24; Add-Box '3A4450' 25 (30 + $dy) 3 24; Add-Box 'E0C020' 25 (40 + $dy) 14 3
-            Add-Box '101418' 26 (25 + $dy) 3 6; Add-Box '101418' 35 (25 + $dy) 3 6
-            if ($flash) { Add-Poly '40E0FF' @(27, (25 + $dy), 30, (14 + $dy), 32, (20 + $dy), 35, (10 + $dy), 37, (25 + $dy), 33, (17 + $dy), 31, (23 + $dy)); Add-Oval 'FFFFFF' 29 (15 + $dy) 6 6 }
-            Add-Poly 'E0A878' @(12, 64, 27, 64, 27, (50 + $dy), 16, (54 + $dy)); Add-Poly 'E0A878' @(37, 64, 52, 64, 48, (54 + $dy), 37, (50 + $dy))
-        }
-        'tknife' {
-            $t = (0, -6, 14, 6, 0)[$Frame]
-            if ($Frame -ne 2 -and $Frame -ne 3) { Add-Poly 'D8DCE0' @(30, (30 - $t), 34, (30 - $t), 33, (48 - $t), 31, (48 - $t)); Add-Box '3A2A1A' 30 (48 - $t) 4 7 }
-            Add-Poly 'E0A878' @(26, 64, 40, 64, 40, (54 - [int]($t / 2)), 27, (55 - [int]($t / 2)))
+            Add-WeaponBox $wood -0.012 0.012 ($h + 0.045) ($h + 0.14) ($z + 0.02) ($z + 0.05)                   # the grip
+            Add-WeaponBox $black -0.03 -0.012 ($h + 0.045) ($h + 0.2) ($z + 0.14) ($z + 0.2)                     # the magazine, hanging down on the left
+            Add-WeaponBox $gun -0.012 0.012 ($h - 0.002) ($h + 0.02) ($z + 0.3) ($z + 0.62) -Round -Open          # the barrel jacket
+            foreach ($hz in 0.36, 0.42, 0.48, 0.54) { Add-WeaponBox $black -0.003 0.003 ($h - 0.004) ($h - 0.001) ($z + $hz) ($z + $hz + 0.02) -Detail }      # cooling holes along its top
+            Add-WeaponRing $steel 0 ($h + 0.009) 0.014 ($z + 0.6) 0.02                                            # the muzzle ring
+            Add-WeaponBox $gun -0.028 0.028 $h ($h + 0.045) $z ($z + 0.3)                                         # the receiver
+            Add-WeaponBox $black -0.02 0.02 ($h - 0.004) $h ($z + 0.04) ($z + 0.28) -Detail                               # the rail on top
+            Add-WeaponBox $black 0.014 0.027 ($h + 0.005) ($h + 0.012) ($z + 0.08) ($z + 0.14) -Detail                    # the ejection port
+            Add-WeaponBox $dark -0.02 0.02 ($h + 0.045) ($h + 0.075) ($z + 0.2) ($z + 0.3)                        # the fore-grip
+            Add-WeaponBox $steel -0.003 0.003 ($h - 0.016) $h ($z + 0.58) ($z + 0.6) -Detail                              # the front sight
+            Add-WeaponBox $steel -0.008 0.008 ($h - 0.011) ($h - 0.004) ($z + 0.02) ($z + 0.04) -Detail                   # the rear sight
+            if ($flash) { Add-WeaponFlash @('FF8020', 'FFD040', 'FFFFFF') 0 ($h + 0.005) ($z + 0.7) 6 }
         }
         'chaingun' {
-            if ($flash) { Add-Oval 'FF9020' 17 (10 + $dy) 30 26; Add-Oval 'FFE060' 22 (14 + $dy) 20 18; Add-Oval 'FFFFFF' 28 (19 + $dy) 8 8 }
-            $spin = if ($Frame % 2) { 1 } else { 0 }
-            foreach ($bx in 22, 28, 34, 40) { Add-Box '181C20' ($bx + $spin) (22 + $dy) 3 20; Add-Box '50585F' ($bx + $spin) (22 + $dy) 1 20 }
-            Add-Box '30363C' 19 (28 + $dy) 27 4
-            Add-Box '3A4046' 18 (40 + $dy) 28 18; Add-Box '5A626A' 18 (40 + $dy) 28 2; Add-Box '23282D' 22 (46 + $dy) 20 6
-            Add-Box '282C30' 14 (56 + $dy) 36 10
-            Add-Poly 'E0A878' @(8, 64, 20, 64, 20, (54 + $dy), 12, (56 + $dy)); Add-Poly 'E0A878' @(44, 64, 56, 64, 52, (56 + $dy), 44, (54 + $dy))
+            $spin = $Frame % 2
+            foreach ($i in 0, 1, 2) {                                                                          # three barrels above the body, turning
+                $bx = ($i - 1) * 0.034; $c = if (($i + $spin) % 2) { $steel } else { $gun }
+                Add-WeaponBox $c ($bx - 0.014) ($bx + 0.014) ($h - 0.02) ($h + 0.008) ($z + 0.22) ($z + 0.7) -Round -Open
+            }
+            Add-WeaponRing $dark 0 ($h - 0.006) 0.052 ($z + 0.62) 0.03                                          # the ring at the muzzles
+            Add-WeaponBox $dark -0.045 0.045 ($h + 0.015) ($h + 0.1) $z ($z + 0.22)                               # the body, wide and low
+            Add-WeaponBox 'C0A030' -0.05 0.05 ($h + 0.055) ($h + 0.065) ($z + 0.001) ($z + 0.05) -Detail                  # a yellow band
+            Add-WeaponBox $black -0.035 0.035 ($h + 0.025) ($h + 0.04) ($z + 0.001) ($z + 0.03) -Detail                    # a vent
+            if ($flash) { Add-WeaponFlash @('FF8020', 'FFD040', 'FFFFFF') 0 ($h - 0.006) ($z + 0.78) 5 }
+        }
+        'pipeline' {
+            $blue = '2A4460'
+            Add-WeaponBox $blue -0.014 0.014 ($h - 0.002) ($h + 0.024) ($z + 0.3) ($z + 0.68) -Round               # the accelerator tube
+            foreach ($rz in 0.36, 0.46, 0.56) { Add-WeaponRing $(if ($flash) { 'FFFFFF' } else { '40E0FF' }) 0 ($h + 0.011) 0.018 ($z + $rz) 0.02 }      # the rings
+            Add-WeaponBox $(if ($flash) { 'FFFFFF' } else { '80F0FF' }) -0.008 0.008 ($h + 0.004) ($h + 0.018) ($z + 0.68) ($z + 0.7) -Round -Detail      # the lens
+            Add-WeaponBox $blue -0.035 0.035 $h ($h + 0.06) $z ($z + 0.3)                                         # the housing
+            Add-WeaponBox '182430' -0.03 0.03 ($h - 0.003) ($h + 0.001) ($z + 0.05) ($z + 0.25) -Detail                   # a vent along the top
+            Add-WeaponBox '40E0FF' -0.03 0.03 ($h + 0.025) ($h + 0.03) ($z + 0.001) ($z + 0.02) -Detail                   # its light
+            # no flash of its own: the beam that leaves the muzzle is the effect
+        }
+        'forcegun' {
+            $body = '2A2A30'
+            Add-WeaponBox '101418' -0.07 0.07 ($h - 0.03) ($h + 0.04) ($z + 0.36) ($z + 0.4) -Round               # the emitter dish, edge on
+            Add-WeaponBox '303038' -0.05 0.05 ($h - 0.02) ($h + 0.03) ($z + 0.4) ($z + 0.405) -Round               # its inner ring
+            Add-WeaponBox $(if ($Frame -eq 1) { 'C0FFC8' } else { '40FF60' }) -0.025 0.025 ($h - 0.008) ($h + 0.018) ($z + 0.405) ($z + 0.41) -Round
+            Add-WeaponBox '50585F' -0.05 -0.04 ($h - 0.01) ($h + 0.07) ($z + 0.02) ($z + 0.36) -Round; Add-WeaponBox '50585F' 0.04 0.05 ($h - 0.01) ($h + 0.07) ($z + 0.02) ($z + 0.36) -Round      # the rails
+            Add-WeaponBox $body -0.04 0.04 $h ($h + 0.08) $z ($z + 0.36)                                          # the body
+            foreach ($gy in 0.03, 0.05) { Add-WeaponBox '30C050' -0.04 0.04 ($h + $gy) ($h + $gy + 0.008) ($z + 0.001) ($z + 0.03) -Detail }      # green bands
+            Add-WeaponBox '30C050' -0.01 0.01 ($h - 0.003) ($h + 0.001) ($z + 0.1) ($z + 0.3) -Detail                     # a green line along the top
+            if ($flash) { Add-WeaponFlash @('20A040', 'A0FFB0', 'FFFFFF') 0 ($h + 0.005) ($z + 0.5) 9 }
+        }
+        'launcher' {
+            $olive = '4A5A3A'
+            Add-WeaponBox '20281A' 0.02 0.05 ($h + 0.03) ($h + 0.09) ($z - 0.02) ($z + 0.06)                     # the shoulder rest
+            Add-WeaponBox $olive -0.04 0.04 ($h - 0.02) ($h + 0.06) $z ($z + 0.75) -Round -Open                    # the tube, fat and long, its mouth open
+            Add-WeaponRing '6A7A5A' 0 ($h + 0.02) 0.044 ($z + 0.72) 0.03                                          # the muzzle ring
+            foreach ($bz in 0.22, 0.5) { Add-WeaponRing 'A08A20' 0 ($h + 0.02) 0.041 ($z + $bz) 0.015 }             # the bands
+            Add-WeaponBox $steel -0.004 0.004 ($h - 0.045) ($h - 0.02) ($z + 0.3) ($z + 0.34) -Detail                     # the sight post
+            Add-WeaponRing $steel 0 ($h - 0.045) 0.008 ($z + 0.3) 0.01                                            # its ring
+            Add-WeaponBox $black -0.02 0.02 ($h + 0.06) ($h + 0.09) ($z + 0.08) ($z + 0.2)                        # the grip under it
+            if ($flash) { Add-WeaponFlash @('FF7010', 'FFD040', 'FFFFFF') 0 ($h + 0.02) ($z + 0.85) 8 }
+        }
+        'flamer' {
+            $red = '8A2A1A'
+            Add-WeaponBox $gun -0.008 0.008 ($h + 0.002) ($h + 0.018) ($z + 0.3) ($z + 0.62) -Round -Open          # the nozzle
+            Add-WeaponRing $steel 0 ($h + 0.01) 0.011 ($z + 0.6) 0.02                                             # its ring
+            Add-WeaponBox 'FF9020' -0.004 0.004 ($h - 0.012) ($h - 0.002) ($z + 0.6) ($z + 0.62) -Round -Detail            # the pilot light
+            Add-WeaponBox $red -0.062 -0.034 ($h - 0.02) ($h + 0.09) ($z + 0.02) ($z + 0.26) -Round                # the tank on the left
+            Add-WeaponRing 'E0C020' -0.048 ($h + 0.035) 0.016 ($z + 0.1) 0.015                                     # its band
+            Add-WeaponBox $steel -0.052 -0.044 ($h - 0.03) ($h - 0.02) ($z + 0.05) ($z + 0.07) -Round -Detail             # the valve on top
+            Add-WeaponBox $dark -0.036 -0.024 ($h + 0.01) ($h + 0.02) ($z + 0.12) ($z + 0.14) -Detail                     # the hose
+            Add-WeaponBox $red -0.03 0.03 $h ($h + 0.06) $z ($z + 0.3)                                            # the body
+            Add-WeaponBox 'E0C020' -0.03 0.03 ($h + 0.025) ($h + 0.03) ($z + 0.001) ($z + 0.03) -Detail                   # a yellow band
+            # no flash: the flames themselves are out there in the room
+        }
+        'tknife' {
+            $t = (0, -0.02, 0.2, 0.06, 0)[$Frame]
+            if ($Frame -ne 2 -and $Frame -ne 3) {
+                $bx = 0.03; $by = $h + 0.01; $bz = $z + 0.08 + $t                                                     # held by the tip, the point up: we see its flat side
+                Add-WeaponBox '3A2A1A' ($bx - 0.01) ($bx + 0.01) ($by + 0.02) ($by + 0.09) $bz ($bz + 0.02) -Round      # the handle, out in the open above the guard
+                Add-WeaponBox $steel ($bx - 0.026) ($bx + 0.026) ($by + 0.016) ($by + 0.024) $bz ($bz + 0.02)         # the guard
+                Add-WeaponQuad 'C8D0D8' @(($bx - 0.014), ($by + 0.016), $bz, ($bx + 0.014), ($by + 0.016), $bz, ($bx + 0.003), ($by - 0.1), $bz, ($bx - 0.003), ($by - 0.1), $bz)      # the blade, point up
+                Add-WeaponQuad 'F4F6F8' @(($bx - 0.014), ($by + 0.016), $bz, ($bx - 0.005), ($by + 0.016), $bz, ($bx - 0.003), ($by - 0.1), $bz, ($bx - 0.005), ($by - 0.098), $bz)      # its edge
+            }
+        }
+        'taser' {
+            $body = '20262C'
+            Add-WeaponBox $body -0.014 0.014 ($h + 0.032) ($h + 0.13) ($z + 0.02) ($z + 0.05)                    # the grip
+            Add-WeaponBox $steel -0.014 -0.01 ($h - 0.02) $h ($z + 0.2) ($z + 0.22); Add-WeaponBox $steel 0.01 0.014 ($h - 0.02) $h ($z + 0.2) ($z + 0.22) -Detail      # the prongs
+            Add-WeaponBox $body -0.02 0.02 $h ($h + 0.04) $z ($z + 0.2)                                           # the body
+            Add-WeaponBox 'E0C020' -0.02 0.02 ($h + 0.015) ($h + 0.022) ($z + 0.001) ($z + 0.03) -Detail                  # the yellow band
+            Add-WeaponBox 'E0C020' -0.021 0.021 ($h - 0.001) ($h + 0.002) ($z + 0.14) ($z + 0.16) -Detail                 # a stripe across the top
+            Add-WeaponBox '40E0FF' -0.006 0.006 ($h - 0.002) ($h + 0.002) ($z + 0.05) ($z + 0.08) -Detail                 # the window
+            if ($flash) { $p = ConvertTo-WeaponPixel 0 ($h - 0.02) ($z + 0.24); Add-Poly '40E0FF' @(($p[0] - 4), $p[1], ($p[0] - 2), ($p[1] - 8), $p[0], ($p[1] - 3), ($p[0] + 3), ($p[1] - 11), ($p[0] + 4), $p[1], ($p[0] + 1), ($p[1] - 5), ($p[0] - 1), ($p[1] - 2)); Add-Oval 'FFFFFF' ($p[0] - 2) ($p[1] - 8) 4 4 }
         }
     }
 }
@@ -836,8 +990,7 @@ function Add-WeaponArt([string]$Key, [int]$Frame) {
 function Add-WeaponSprites {
     foreach ($w in $script:Weapons) {
         $frames = [object[]]::new(5)
-        # drawn on the 64x64 grid, then shrunk towards the bottom centre so the gun does not fill the screen
-        for ($f = 0; $f -lt 5; $f++) { $frames[$f] = New-Sprite { Set-Pivot 32 64 0 0.62 0.62; Add-WeaponArt $w.Key $f; Reset-Pivot } }
+        for ($f = 0; $f -lt 5; $f++) { $frames[$f] = New-Sprite { Add-WeaponArt $w.Key $f } }      # projected, so it needs no shrinking
         $script:Spr["weapon.$($w.Key)"] = $frames
     }
 }
