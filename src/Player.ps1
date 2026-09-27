@@ -329,8 +329,12 @@ function Invoke-FlameAttack {
     Start-Sfx 'flame'
     $p = $script:P; $rad = $p.Angle * [Math]::PI / 180.0
     $dx = [Math]::Cos($rad); $dy = - [Math]::Sin($rad)
+    $reach = 9.0                                                  # the flames stop at a wall instead of burning behind it
+    $wall = Find-WallPoint
+    if ($wall) { $reach = [Math]::Max(0.3, [Math]::Sqrt(($wall[0] - $p.X) * ($wall[0] - $p.X) + ($wall[1] - $p.Y) * ($wall[1] - $p.Y)) - 0.1) }
     foreach ($d in 0.9, 1.9) {
         $side = ($script:Rng.NextDouble() - 0.5) * 0.5
+        if ($d -gt $reach) { $d = $reach - 0.25 * ($d - 0.9); if ($d -lt 0.3) { $d = 0.3 } }
         Add-Effect 'flame' ($p.X + $dx * $d - $dy * $side) ($p.Y + $dy * $d + $dx * $side)
     }
     $cx = $script:ViewW / 2; $tol = $script:ViewW / 4

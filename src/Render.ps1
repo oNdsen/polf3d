@@ -214,7 +214,7 @@ function Update-View {
         if ($depth -lt 0.2) { continue }
         $lat = $ry * $dirX - $rx * $dirY
         $keys.Add(- $depth)
-        $draw.Add(@($s.Sprite, [int]($halfW * (1.0 + $lat / ($depth * $pl))), [int]($projH / $depth), $depth))
+        $draw.Add(@($s.Sprite, [int]($halfW * (1.0 + $lat / ($depth * $pl))), [int]($projH / $depth), $depth, $depth))
     }
 
     foreach ($a in $script:Actors) {
@@ -245,7 +245,10 @@ function Update-View {
             $spr = $spr[$view]
         }
         $keys.Add(- $depth)
-        $draw.Add(@($spr, $a.ScreenX, [int]($projH / $depth), $depth))
+        # sparks, flames and explosions happen right at a wall, and a sprite is half a tile wide: tested against the
+        # wall half a tile behind them, they are not cut off where the wall comes nearer than their middle
+        $test = if ($a.Kind -eq 'fx' -or $st.Sprite -like 'rocket.boom*') { [Math]::Max(0.01, $depth - 0.5) } else { $depth }
+        $draw.Add(@($spr, $a.ScreenX, [int]($projH / $depth), $depth, $test))
     }
 
     # far sprites, then the window strips, then the sprites in front of the nearest window
@@ -262,7 +265,7 @@ function Update-View {
                 $windowsPending = $false
             }
             $fog = [int]($it[3] * $fogK * $cone[[Math]::Max(0, [Math]::Min($W - 1, [int]$it[1]))]); if ($fog -gt $maxFog) { $fog = $maxFog }
-            $scaler::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[3], $fog)
+            $scaler::Sprite($fb, $W, $H, $zbuf, $it[0], $it[1], $it[2], $it[4], $fog)
         }
     }
     if ($windowsPending) {
