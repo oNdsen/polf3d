@@ -122,6 +122,7 @@ param(
     [switch]$Version,
     [switch]$Update,                                     # fetch and install the latest release, then return
     [switch]$NoUpdateCheck,                              # the title screen does not ask GitHub whether there is a newer version
+    [Parameter(DontShow)][int]$WaitFor = 0,              # after an update: the process of the old game, to be gone before this one loads the C# helpers
     [Parameter(DontShow)][string]$RecordAttractDemo,     # maintenance: let the bot play floor 1 and save the demo to this file
     [Parameter(DontShow)][int]$BalanceTest = 0,          # maintenance: let the bot play this floor on every difficulty and print how it fared (negative: only the boss duels)
     [Parameter(DontShow)][string]$Screenshots,           # maintenance: stage and save the README pictures into this folder
@@ -193,6 +194,8 @@ function Import-CSharpClass([string]$File, [string]$ClassName) {
                 Add-Type -TypeDefinition $code -OutputAssembly $dll -OutputType Library
             }
             Add-Type -Path $dll
+            # older builds of the same class are of no use any more - unless a game that is still closing holds one, then next time
+            Get-ChildItem $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Where-Object Name -ne "$name.dll" | Remove-Item -Force -ErrorAction SilentlyContinue
         }
         catch {
             Write-Verbose "DLL cache not usable ($($_.Exception.Message)), compiling in memory."
@@ -216,6 +219,7 @@ function Initialize-Scaler {
 }
 
 Write-Step "POLF 3D $script:PolfVersion starting ..."
+if ($WaitFor) { Write-Step 'waiting for the old game to close ...'; Wait-Process -Id $WaitFor -Timeout 20 -ErrorAction SilentlyContinue }
 foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Update', 'Game', 'SelfTest') {
     . (Join-Path $PSScriptRoot "src/$file.ps1")
 }

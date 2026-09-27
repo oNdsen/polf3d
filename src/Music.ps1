@@ -474,6 +474,9 @@ function New-MusicTrack([int]$Track, [string]$Path) {
     $bw.Dispose(); $fs.Dispose()
 }
 
+# Tracks composed by another version of the composer would never be played again: away with them.
+function Clear-StaleMusic { Get-ChildItem -LiteralPath $script:MusicDir -Filter 'track*-v*.wav' -ErrorAction SilentlyContinue | Where-Object Name -NotLike "*-v$($script:MUSIC_VERSION).wav" | Remove-Item -Force -ErrorAction SilentlyContinue }
+
 function Get-MusicPath([int]$Track) { Join-Path $script:MusicDir ("track{0}-v{1}.wav" -f $Track, $script:MUSIC_VERSION) }
 
 # The whole soundtrack is composed in the background, in a runspace of its own, as soon as the game is up: a track
@@ -484,6 +487,7 @@ function Get-MusicPath([int]$Track) { Join-Path $script:MusicDir ("track{0}-v{1}
 function Start-MusicComposer([int[]]$Tracks) {
     if (-not $script:MusicEnabled -or -not $script:Mixer -or $script:Composer) { return }
     $null = New-Item -ItemType Directory -Path $script:MusicDir -Force
+    Clear-StaleMusic
     $jobs = @(foreach ($t in $Tracks) { $path = Get-MusicPath $t; if (-not (Test-Path -LiteralPath $path)) { @{ Track = $t; Path = $path } } })
     if (-not $jobs.Count) { return }
     $ps = [powershell]::Create()

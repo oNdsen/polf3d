@@ -210,7 +210,7 @@ function Restore-UpdateBackup([string]$Path, [string]$Root) {
 function ConvertTo-StartArguments([System.Collections.IDictionary]$Bound) {
     $arguments = [System.Collections.Generic.List[string]]::new()
     foreach ($name in $Bound.Keys) {
-        if ($name -in 'Update', 'Version') { continue }
+        if ($name -in 'Update', 'Version', 'WaitFor') { continue }
         $value = $Bound[$name]
         if ($value -is [switch] -or $value -is [bool]) { if ($value) { $arguments.Add("-$name") }; continue }
         $arguments.Add("-$name"); $arguments.Add("$value")
@@ -218,11 +218,11 @@ function ConvertTo-StartArguments([System.Collections.IDictionary]$Bound) {
     $arguments.ToArray()
 }
 
-# The game starts itself again, the way it was started: Play.cmd if there is one, plain pwsh otherwise - and with
-# the same parameters as the first time.
+# The game starts itself again, the way it was started: Play.cmd if there is one, plain pwsh otherwise - with the
+# same parameters as the first time, and told to wait for this process, so that the old DLLs can be swept away.
 function Restart-Game([string]$Root) {
     $play = Join-Path $Root 'Play.cmd'
-    $arguments = @($script:StartArguments)
+    $arguments = @($script:StartArguments) + @('-WaitFor', "$PID")       # the new game waits until this one has let go of its DLLs
     if (Test-Path -LiteralPath $play) {
         $quoted = @($arguments | ForEach-Object { if ($_ -match '\s') { "'$_'" } else { $_ } })      # Play.cmd hands them to a PowerShell command line
         Start-Process -FilePath 'cmd.exe' -ArgumentList (@('/c', "`"$play`"") + $quoted) -WorkingDirectory $Root

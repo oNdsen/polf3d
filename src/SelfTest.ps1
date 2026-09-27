@@ -1229,10 +1229,14 @@ function Invoke-SelfTest([string]$OutDir) {
     $rolledBack = try { $null = Install-Update $script:NewRelease $old2; $false } catch { $_.Exception.Message -like '*the old files are back*' }
     $lock.Dispose()
     $restored = (Get-Content -LiteralPath (Join-Path $old2 'Start-Polf3D.ps1') -Raw) -match "PolfVersion = '$([regex]::Escape($script:PolfVersion))'" -and (Get-Content -LiteralPath (Join-Path $old2 'src/Newcomer.ps1') -Raw) -like '*the old one*'
-    $sameStart = (@(ConvertTo-StartArguments ([ordered]@{ Scale = 4; Terminal = [switch]$true; NoSound = [switch]$false; PlayerName = 'Big Boss'; Update = [switch]$true })) -join ' ') -eq '-Scale 4 -Terminal -PlayerName Big Boss'
+    $sameStart = (@(ConvertTo-StartArguments ([ordered]@{ Scale = 4; Terminal = [switch]$true; NoSound = [switch]$false; PlayerName = 'Big Boss'; Update = [switch]$true; WaitFor = 4711 })) -join ' ') -eq '-Scale 4 -Terminal -PlayerName Big Boss'
+    $keepMusicDir = $script:MusicDir; $script:MusicDir = Join-Path $rel 'music'; $null = New-Item -ItemType Directory -Path $script:MusicDir -Force
+    Set-Content -LiteralPath (Join-Path $script:MusicDir 'track1-v0.wav') -Value 'stale'; Set-Content -LiteralPath (Join-Path $script:MusicDir "track1-v$($script:MUSIC_VERSION).wav") -Value 'current'
+    Clear-StaleMusic; $swept = -not (Test-Path -LiteralPath (Join-Path $script:MusicDir 'track1-v0.wav')) -and (Test-Path -LiteralPath (Join-Path $script:MusicDir "track1-v$($script:MUSIC_VERSION).wav"))
+    $script:MusicDir = $keepMusicDir
     $script:UpdateSource = $keepSource; $script:Settings.UpdateCheck = $keepCheck; $script:UpdateCheckOff = $keepNoCheck; $script:NewRelease = $null; $script:UpdateState = ''
-    Write-Step "update test: a release of $newVersion is found: $found, its notes read plain: $plain, the answer is kept: $stamped and reused: $remembered; an older release is none: $older; installed: $installed with the new file: $newFile, the old files backed up: $backedUp; a damaged download is refused: $refused; a copy that fails half way is undone: $rolledBack with the old files back: $restored; the start line survives a restart: $sameStart"
-    if (-not ($found -and $plain -and $stamped -and $remembered -and $older -and $installed -and $newFile -and $backedUp -and $refused -and $rolledBack -and $restored -and $sameStart)) { throw 'update test failed.' }
+    Write-Step "update test: a release of $newVersion is found: $found, its notes read plain: $plain, the answer is kept: $stamped and reused: $remembered; an older release is none: $older; installed: $installed with the new file: $newFile, the old files backed up: $backedUp; a damaged download is refused: $refused; a copy that fails half way is undone: $rolledBack with the old files back: $restored; the start line survives a restart: $sameStart; stale music is swept: $swept"
+    if (-not ($found -and $plain -and $stamped -and $remembered -and $older -and $installed -and $newFile -and $backedUp -and $refused -and $rolledBack -and $restored -and $sameStart -and $swept)) { throw 'update test failed.' }
 
     # ---- title screen ----
     $script:HighScores = @()
