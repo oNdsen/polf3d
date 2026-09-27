@@ -383,11 +383,13 @@ function Show-Overlays {
     $level = if ($script:MadeNoise) { 3 } elseif ($script:StepNoise -ge $script:NOISE_DOOR) { 2 } elseif ($script:StepNoise -gt 0) { 1 } else { 0 }
     if ($level -gt $script:NoiseShown) { $script:NoiseShown = $level; $script:NoiseShownUntil = $script:Clock.Elapsed.TotalSeconds + 0.35 }
     elseif ($script:Clock.Elapsed.TotalSeconds -gt $script:NoiseShownUntil) { $script:NoiseShown = $level }
+    # ... shown top left under the policy label, out of the way of the weapon (below the network line in a network game)
+    $noiseY = if ($script:NetLive) { 21.0 } else { 11.0 }
     for ($i = 1; $i -le 3; $i++) {
         $lit = $i -le $script:NoiseShown
-        Write-HudBar $(if (-not $lit) { '60101A2C' } elseif ($i -eq 3) { 'FF4030' } elseif ($i -eq 2) { 'FFC040' } else { '60FF80' }) (152 + $i * 4) ($viewH - 8 - $i * 2) 3 (2 + $i * 2)
+        Write-HudBar $(if (-not $lit) { '60101A2C' } elseif ($i -eq 3) { 'FF4030' } elseif ($i -eq 2) { 'FFC040' } else { '60FF80' }) (2 + $i * 4) ($noiseY + 8 - $i * 2) 3 (2 + $i * 2)
     }
-    if ($script:P.Sneaking) { Write-HudText 'SNEAKING' 'Small' '60FF80' 172 ($viewH - 19) 40 8 }
+    if ($script:P.Sneaking) { Write-HudLine 'SNEAKING' 'Small' '60FF80' 19 ($noiseY + 2) }
     # the building's execution policy: how nervous the floor is
     if (-not $script:NetClient) { $policy = Get-Policy; Write-HudBar '70101A2C' 2 2 46 7; Write-HudText $policy.Name 'Small' $policy.Color 2 2.4 46 7 }
     Show-Hint                                                       # what the floor has to say about the room (@hint)
