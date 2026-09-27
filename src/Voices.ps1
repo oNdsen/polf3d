@@ -64,6 +64,7 @@ function Initialize-Voices {
             $script:Sfx[$name] = @{ Id = $id; Seconds = $script:Mixer::Seconds($id); Prio = $line[5] }
             if (-not $script:Voices[$line[0]]) { $script:Voices[$line[0]] = @() }
             $script:Voices[$line[0]] += $name
+            Update-LoadStep ($i + 1) $script:VoiceLines.Count
         }
     }
     catch {

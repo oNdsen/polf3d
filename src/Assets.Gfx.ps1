@@ -340,6 +340,7 @@ function Initialize-WallTextures {
         if ($script:WallNames[$i] -like '*_window') { Add-WindowArt }      # ... but the hole must stay a hole
         $script:WallDark[$i] = Get-Pixels $bmp
         $script:GFX.Dispose(); $bmp.Dispose()
+        Update-LoadStep $i ($n + 7)                                     # the eight flats come after the walls
     }
 }
 
@@ -388,11 +389,13 @@ function Add-FlatArt([string]$Name) {
 
 function Initialize-Flats {
     $script:Flats = @{}
+    $n = $script:WallNames.Count - 1
     foreach ($name in 'flat_stone', 'flat_wood', 'flat_moss', 'flat_tech', 'flat_carpet', 'ceil_plain', 'ceil_rock', 'ceil_tech') {
         $bmp = New-Canvas
         Add-FlatArt $name
         $script:Flats[$name] = Get-Pixels $bmp
         $script:GFX.Dispose(); $bmp.Dispose()
+        Update-LoadStep (++$n) ($script:WallNames.Count + 7)
     }
 }
 
@@ -1008,20 +1011,22 @@ function Add-WhatIfSprites {
 
 function Initialize-Sprites {
     $script:Spr = @{}
-    foreach ($k in 'guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield', 'engineer', 'auditor') { Add-SoldierSprites $k }
-    foreach ($k in $script:ModKinds) { Add-SoldierSprites $k }     # newcomers from mods: a palette is all they need
-    Add-ShieldOverlay
-    Add-BossSprites
-    Add-UberSprites
-    Add-DogSprites
-    Add-ThingSprites
-    Add-BotSprites              # after the things: the bot dies in the rocket's explosion frames
-    Add-SecuritySprites
-    Add-BsodSprites
-    Add-BugSprites
+    $kinds = @('guard', 'officer', 'elite', 'mutant', 'pilot', 'sniper', 'shield', 'engineer', 'auditor')
+    if ($script:ModKinds) { $kinds += @($script:ModKinds) }        # newcomers from mods: a palette is all they need
+    $n = 0; $count = $kinds.Count + 11                             # every part reports itself: the loading screen shows how far it is
+    foreach ($k in $kinds) { Add-SoldierSprites $k; Update-LoadStep (++$n) $count }
+    Add-ShieldOverlay;          Update-LoadStep (++$n) $count
+    Add-BossSprites;            Update-LoadStep (++$n) $count
+    Add-UberSprites;            Update-LoadStep (++$n) $count
+    Add-DogSprites;             Update-LoadStep (++$n) $count
+    Add-ThingSprites;           Update-LoadStep (++$n) $count
+    Add-BotSprites;             Update-LoadStep (++$n) $count      # after the things: the bot dies in the rocket's explosion frames
+    Add-SecuritySprites;        Update-LoadStep (++$n) $count
+    Add-BsodSprites;            Update-LoadStep (++$n) $count
+    Add-BugSprites;             Update-LoadStep (++$n) $count
     $script:Spr['uber.jam'] = New-Sprite { Add-MechArt 'stand'; Add-Box 'F4F4F4' 25 27 14 10; Add-Box 'B0B0B0' 27 30 10 1; Add-Box 'B0B0B0' 27 33 8 1; Add-Box 'FF2020' 27 22 10 3 }
-    Add-WhatIfSprites
-    Add-WeaponSprites
+    Add-WhatIfSprites;          Update-LoadStep (++$n) $count
+    Add-WeaponSprites;          Update-LoadStep (++$n) $count
 }
 
 # ---- the super boss: a walking war machine -------------------------------------------------------

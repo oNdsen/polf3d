@@ -172,9 +172,12 @@ $script:CheatAllWeapons = [bool]$AllWeapons
 $script:AutoQuit = $AutoQuitSeconds
 $script:SfxEnabled = -not $NoSound -and -not $SelfTest
 
-function Write-Step([string]$Text) {
-    Write-Host ('[{0,6:0.0}s] {1}' -f $script:Clock.Elapsed.TotalSeconds, $Text) -ForegroundColor DarkCyan
-    if ($script:Form) { Show-LoadStep $Text }                     # the window is up before the assets are made: it shows the steps
+function Write-Step([string]$Text, [double]$Weight = 0) {
+    # a weight makes it a step of the start-up plan, with a percentage of its own and a share of the total
+    $total = if ($script:LoadPlan) { Get-LoadPercent } else { $null }
+    Write-Host ('[{0,6:0.0}s] {1}{2}' -f $script:Clock.Elapsed.TotalSeconds, $(if ($null -ne $total) { '{0,3}% ' -f $total } else { '' }), $Text) -ForegroundColor DarkCyan
+    if ($script:Form) { Show-LoadStep $Text $Weight }             # the window is up before the assets are made: it shows the steps
+    elseif ($Weight -gt 0) { Complete-LoadStep; $script:LoadCurrent = @($script:Clock.Elapsed.TotalSeconds, $Text, $Weight, 0.0) }
 }
 
 # ---- the only C#: the pixel scalers. Compiled once and cached as a DLL next to the script. -------
@@ -191,7 +194,7 @@ function Import-CSharpClass([string]$File, [string]$ClassName) {
         $dll = Join-Path $binDir "$name.dll"
         try {
             if (-not (Test-Path $dll)) {
-                Write-Step "compiling $File (once - it is cached in bin/ until the source changes) ..."
+                Write-Step "compiling $File - once, it is kept in bin/ ..."
                 $null = New-Item -ItemType Directory -Path $binDir -Force
                 Get-ChildItem $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
                 Add-Type -TypeDefinition $code -OutputAssembly $dll -OutputType Library
@@ -211,30 +214,28 @@ function Import-CSharpClass([string]$File, [string]$ClassName) {
 function Initialize-Scaler {
     $script:Scaler = Import-CSharpClass 'src/Scaler.cs' 'PolfScaler'
     if (-not $script:Scaler) { throw 'The scaler (src/Scaler.cs) could not be compiled.' }
+    Update-LoadStep 1 3
     # the game pad is optional: no pad, no XInput or no compiler -> keyboard and mouse only
     $script:Pad = if ($NoGamepad) { $null } else { try { Import-CSharpClass 'src/Gamepad.cs' 'PolfGamepad' } catch { $null } }
+    Update-LoadStep 2 3
     # sound: a software mixer on waveOut. No sound device, no compiler -> a silent game
     $script:Mixer = $null
     if ($script:SfxEnabled -or $script:MusicEnabled) {
         try { $script:Mixer = Import-CSharpClass 'src/Mixer.cs' 'PolfMixer'; if (-not $script:Mixer::Open()) { $script:Mixer = $null } } catch { $script:Mixer = $null }
         if (-not $script:Mixer) { Write-Warning 'No sound: the mixer could not open an audio device.'; $script:SfxEnabled = $false; $script:MusicEnabled = $false }
     }
+    Update-LoadStep 3 3
 }
 
 Write-Step "POLF 3D $script:PolfVersion starting ..."
-if ($WaitFor) { Write-Step 'waiting for the old game to close ...'; Wait-Process -Id $WaitFor -Timeout 20 -ErrorAction SilentlyContinue }
-foreach ($file in 'Defs', 'Assets.Gfx', 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Render', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Settings', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Update', 'Game', 'SelfTest') {
-    . (Join-Path $PSScriptRoot "src/$file.ps1")
-}
+# the modules the window needs come first, so that the window is up while the rest loads
+foreach ($file in 'Defs', 'Assets.Gfx', 'Render', 'Settings', 'Update', 'Game') { . (Join-Path $PSScriptRoot "src/$file.ps1") }
+$modules = 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending'
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
 $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
 $script:AttractDemo = Join-Path $PSScriptRoot 'demos/attract.json'
 
-if (-not $NoMods -and (-not $headless -or $VerifyDemo -or $ExportGif)) {
-    Import-Mods (Join-Path $PSScriptRoot 'mods')
-    if ($script:Mods) { Write-Step "mods: $($script:Mods -join ', ')" }
-}
 if (-not $headless) {
     # what the player has set in the options menu - unless the command line says otherwise
     Import-Settings
@@ -243,17 +244,29 @@ if (-not $headless) {
 }
 $script:UpdateCheckOff = [bool]$NoUpdateCheck -or $headless
 $script:StartArguments = @(ConvertTo-StartArguments $PSBoundParameters)
-if ($Update) { Invoke-Update; return }
+if ($Update) { foreach ($file in $modules) { . (Join-Path $PSScriptRoot "src/$file.ps1") }; Invoke-Update; return }
 # the window first, so that the start can be watched - the console is hidden when Play.cmd starts the game
 Initialize-Renderer $Scale ([int](320 / $Columns))
 if (-not $headless -and -not ($Terminal -or $TerminalKeys)) { New-GameWindow }
-Write-Step 'loading the C# helpers ...';       Initialize-Scaler
+# the steps of the start-up, weighted by how long they take: the total percentage on the loading screen
+$script:LoadPlan = @{ Total = 68.0; Done = 0.0 }
+Write-Step 'loading the modules ...' 20
+for ($i = 0; $i -lt $modules.Count; $i++) { . (Join-Path $PSScriptRoot "src/$($modules[$i]).ps1"); Update-LoadStep ($i + 1) $modules.Count }
+if (-not $NoMods -and (-not $headless -or $VerifyDemo -or $ExportGif)) {
+    Import-Mods (Join-Path $PSScriptRoot 'mods')
+    if ($script:Mods) { Write-Step "mods: $($script:Mods -join ', ')" }
+}
+if ($WaitFor) { Write-Step 'waiting for the old game to close ...'; Wait-Process -Id $WaitFor -Timeout 20 -ErrorAction SilentlyContinue }
+Write-Step 'loading the C# helpers ...' 8;     Initialize-Scaler
 if (-not $headless) { Update-Settings }
-Write-Step 'building state tables ...';        Initialize-States
-Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initialize-Flats
-Write-Step 'painting sprites ...';             Initialize-Sprites
-Write-Step 'synthesising sounds ...';          Initialize-Sounds
-if (-not $NoVoices) { Initialize-Voices }
+Write-Step 'building state tables ...' 1;      Initialize-States
+Write-Step 'painting wall textures ...' 10;    Initialize-WallTextures; Initialize-Flats
+Write-Step 'painting sprites ...' 24;          Initialize-Sprites
+Write-Step 'synthesising sounds ...' 4;        Initialize-Sounds
+if (-not $NoVoices) { Write-Step 'loading the voices ...' 1; Initialize-Voices }
+Complete-LoadPlan
+Write-Step 'ready.'
+$script:LoadPlan = $null
 
 if ($RecordAttractDemo) {
     Export-AttractDemo $RecordAttractDemo
@@ -278,6 +291,7 @@ if ($Screenshots) {
     return
 }
 if ($SelfTest) {
+    . (Join-Path $PSScriptRoot 'src/SelfTest.ps1')
     Invoke-SelfTest (Join-Path $PSScriptRoot 'selftest')
     return
 }
@@ -286,7 +300,6 @@ if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.'
 $script:AutoTutorial = [bool]$Tutorial
 $script:AutoHorde = if ($HordeNumber) { $HordeNumber } elseif ($Horde) { Get-DailySeed } else { 0 }
 $script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
-Write-Step 'ready.'
 try {
     if ($HostGame) { Initialize-Network 'host' $(if ($HostGame -eq 'Coop') { 'coop' } else { 'duel' }) '' $Port $MaxPlayers $PlayerName; Write-Step "hosting a $HostGame game for up to $MaxPlayers players on port $Port" }
     elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port 4 $PlayerName; Write-Step "joining the game on ${JoinGame}:$Port" }

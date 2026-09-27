@@ -81,16 +81,40 @@ function Reset-ScreenEffects {
 # as well (riding the lift to the next floor). Keys never leave their floor.
 # While a floor is loaded nothing is drawn and no message is answered - long enough, on a slow machine, for Windows to
 # call the window "not responding". So: say what is going on, and let the window answer.
-$script:LoadLog = [System.Collections.Generic.List[object]]::new()      # the recent steps, with the time they came: the last few stay on the screen
-function Show-LoadStep([string]$Text) {
-    if (-not $script:Form -or $script:Form.IsDisposed -or $script:TerminalMode -or -not $script:BackG) { return }
+$script:LoadLog = [System.Collections.Generic.List[object]]::new()      # the recent lines: when, what, the weight of the step and how far it is
+$script:LoadDrawn = 0.0
+
+# A line of the loading screen. With a weight it is a step of the start-up: its own percentage grows with
+# Update-LoadStep, the total with the weights of the steps that are done. Without one it is a line and nothing more.
+function Show-LoadStep([string]$Text, [double]$Weight = 0) {
     $now = $script:Clock.Elapsed.TotalSeconds
-    $script:LoadLog.Add(@($now, $Text)); while ($script:LoadLog.Count -and $now - $script:LoadLog[0][0] -gt 12) { $script:LoadLog.RemoveAt(0) }
+    $entry = @($now, $Text, $Weight, 0.0)
+    if ($Weight -gt 0) { Complete-LoadStep; $script:LoadCurrent = $entry }
+    $script:LoadLog.Add($entry)
+    while ($script:LoadLog.Count -gt 9 -or ($script:LoadLog.Count -and $now - $script:LoadLog[0][0] -gt 12)) { $script:LoadLog.RemoveAt(0) }
+    Write-LoadScreen
+}
+
+function Write-LoadScreen {
+    if (-not $script:Form -or $script:Form.IsDisposed -or $script:TerminalMode -or -not $script:BackG) { return }
+    $script:LoadDrawn = $script:Clock.Elapsed.TotalSeconds
     Show-Shade 'FF0A1020'
     Write-HudBar '2C54C4' 0 0 320 3; Write-HudBar '2C54C4' 0 237 320 3
     Write-HudText '>_' 'Huge' '2C54C4' 0 36 320 40
-    $y = 146.0 - ($script:LoadLog.Count - 1) * 9
-    for ($i = 0; $i -lt $script:LoadLog.Count; $i++) { Write-HudText $script:LoadLog[$i][1] 'Mid' $(if ($i -eq $script:LoadLog.Count - 1) { 'FFFFFF' } else { '506080' }) 0 $y 320 12; $y += 9 }
+    $y = 148.0 - ($script:LoadLog.Count - 1) * 9
+    for ($i = 0; $i -lt $script:LoadLog.Count; $i++) {
+        $e = $script:LoadLog[$i]
+        $color = if ($i -eq $script:LoadLog.Count - 1) { 'FFFFFF' } else { '506080' }
+        Write-HudLine $e[1] 'Mid' $color 64 $y
+        if ($e[2] -gt 0) { Write-HudLine ('{0,3}%' -f [int][Math]::Floor(100 * $e[3])) 'Mid' $color 236 $y }
+        $y += 9
+    }
+    $total = Get-LoadPercent
+    if ($null -ne $total) {
+        Write-HudLine 'total' 'Mid' 'FFFFFF' 64 174
+        Write-HudBar '506080' 100 175 132 6; Write-HudBar '0A1020' 101 176 130 4; Write-HudBar '2C54C4' 101 176 (1.3 * $total) 4
+        Write-HudLine ('{0,3}%' -f $total) 'Mid' 'FFFFFF' 236 174
+    }
     Show-Back
     [System.Windows.Forms.Application]::DoEvents()
 }

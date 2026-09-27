@@ -95,10 +95,12 @@ function Initialize-Sounds {
         level_done    = @(10, @(@(0.12, 'q', 523, 523, 0.5, 0.5), @(0.12, 'q', 659, 659, 0.5, 0.5), @(0.12, 'q', 784, 784, 0.5, 0.5), @(0.12, 'q', 1047, 1047, 0.5, 0.5), @(0.35, 'q', 1319, 1319, 0.5, 0.0)))
     }
     try {
+        $n = 0
         foreach ($name in $defs.Keys) {
             $p = New-SfxSample $defs[$name][1]
             $p.Prio = $defs[$name][0]
             $script:Sfx[$name] = $p
+            Update-LoadStep (++$n) $defs.Count
         }
     }
     catch {

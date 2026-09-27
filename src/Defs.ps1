@@ -381,9 +381,44 @@ function Add-State {
     $script:States[$Name] = @{ Name = $Name; Sprite = $Sprite; Rot = $Rot; Tics = $Tics; Think = $Think; Action = $Action; Next = $Next }
 }
 
+# ---- the steps of the start-up: what runs, what it weighs, how far it is (the loading screen is in Game.ps1) ----
+$script:LoadPlan = $null                                                 # while the game starts: the weight of all steps and of those done - the total percentage
+$script:LoadCurrent = $null                                              # the step that is running: when, what, weight, part done
+
+# how far the running step is - drawn at most 25 times a second, the last part always
+function Update-LoadStep([int]$Done, [int]$Total) {
+    if (-not $script:LoadCurrent -or -not $script:Form) { return }
+    $script:LoadCurrent[3] = if ($Total -gt 0) { [Math]::Min(1.0, $Done / $Total) } else { 1.0 }
+    if ($Done -lt $Total -and $script:Clock.Elapsed.TotalSeconds - $script:LoadDrawn -lt 0.04) { return }
+    Write-LoadScreen
+}
+
+# the running step is done: its weight counts towards the total
+function Complete-LoadStep {
+    if (-not $script:LoadCurrent) { return }
+    $script:LoadCurrent[3] = 1.0
+    if ($script:LoadPlan) { $script:LoadPlan.Done += $script:LoadCurrent[2] }
+    $script:LoadCurrent = $null
+}
+
+# when the start-up is through, everything counts as done - whatever was skipped (no sound, no voices)
+function Complete-LoadPlan {
+    Complete-LoadStep
+    if ($script:LoadPlan) { $script:LoadPlan.Done = $script:LoadPlan.Total }
+}
+
+# the total: the finished steps plus the part of the running one - nothing outside the start-up
+function Get-LoadPercent {
+    if (-not $script:LoadPlan -or $script:LoadPlan.Total -le 0) { return $null }
+    $done = $script:LoadPlan.Done + $(if ($script:LoadCurrent) { $script:LoadCurrent[2] * $script:LoadCurrent[3] } else { 0 })
+    [int][Math]::Min(100, [Math]::Floor(100 * $done / $script:LoadPlan.Total))
+}
+
 function Initialize-States {
     $script:States = @{}
+    $n = 0
     foreach ($kind in $script:EnemyDefs.Keys) {
+        Update-LoadStep ($n++) ($script:EnemyDefs.Count + 1)
         $def = $script:EnemyDefs[$kind]
         $rot = [bool]$def.Rotates
         $chaseThink = if ($def.ChaseThink) { $def.ChaseThink } elseif ($kind -eq 'dog') { 'DogChase' } else { 'Chase' }
