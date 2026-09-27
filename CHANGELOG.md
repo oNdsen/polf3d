@@ -2,6 +2,33 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.3.1 - 2026-09-27
+
+The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start
+`Play.cmd` (Windows, PowerShell 7.2 or newer – nothing else).
+
+Changed:
+
+* **The weapons are drawn in perspective.** Each one is a small model of boxes in metres from the eye, projected with
+  the game's own lens: the barrel runs towards the crosshair, the top shows as a narrow lit strip, round parts are
+  shaded, and the recoil is the model moving back. No more weapons aimed at the ceiling that hide half the view.
+* **The game runs without a console window.** `Play.cmd` starts it under a headless console host and is gone at once;
+  should the game not start, the reason comes up in a dialog. `-Terminal` keeps its console, it plays there.
+* **The window comes first** and shows the start-up: every step with a percentage of its own and a bar with the total.
+  Only the modules the window needs load before it, so it is up after half a second instead of two.
+* A crossed-out speaker under the noise bars and on the title screen says when the music (F4) or the sound is off.
+  A track that fails to start says why in the game and is tried again, instead of silencing the music for good.
+* The noise bars moved to the top left, under the policy label, out of the weapon's way.
+
+Fixed:
+
+* A rocket that hit a wall lost half its explosion to the wall behind it; explosions and sparks stay whole now, and
+  the flamethrower no longer burns behind a wall it is pointed at.
+* A locked door is locked for the enemies too: nobody opens the silver door from the far side any more. A thrown
+  knife goes through the bars of a window, as a bullet does.
+* After an update the old builds of the C# helpers and the music of an older composer stayed in `bin/`; every start
+  sweeps them once the current ones are loaded, and the restart waits for the old game to close first.
+
 ## 1.3.0 - 2026-09-25
 
 **Download `polf3d.zip` below, unpack it and start `Play.cmd`** (Windows, PowerShell 7.2 or newer – nothing else).
