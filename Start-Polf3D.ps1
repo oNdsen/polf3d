@@ -172,7 +172,10 @@ $script:CheatAllWeapons = [bool]$AllWeapons
 $script:AutoQuit = $AutoQuitSeconds
 $script:SfxEnabled = -not $NoSound -and -not $SelfTest
 
-function Write-Step([string]$Text) { Write-Host ('[{0,6:0.0}s] {1}' -f $script:Clock.Elapsed.TotalSeconds, $Text) -ForegroundColor DarkCyan }
+function Write-Step([string]$Text) {
+    Write-Host ('[{0,6:0.0}s] {1}' -f $script:Clock.Elapsed.TotalSeconds, $Text) -ForegroundColor DarkCyan
+    if ($script:Form) { Show-LoadStep $Text }                     # the window is up before the assets are made: it shows the steps
+}
 
 # ---- the only C#: the pixel scalers. Compiled once and cached as a DLL next to the script. -------
 # Compiles one of the two C# files and returns its class. The class name carries a hash of its
@@ -241,6 +244,9 @@ if (-not $headless) {
 $script:UpdateCheckOff = [bool]$NoUpdateCheck -or $headless
 $script:StartArguments = @(ConvertTo-StartArguments $PSBoundParameters)
 if ($Update) { Invoke-Update; return }
+# the window first, so that the start can be watched - the console is hidden when Play.cmd starts the game
+Initialize-Renderer $Scale ([int](320 / $Columns))
+if (-not $headless -and -not ($Terminal -or $TerminalKeys)) { New-GameWindow }
 Write-Step 'loading the C# helpers ...';       Initialize-Scaler
 if (-not $headless) { Update-Settings }
 Write-Step 'building state tables ...';        Initialize-States
@@ -248,7 +254,6 @@ Write-Step 'painting wall textures ...';       Initialize-WallTextures; Initiali
 Write-Step 'painting sprites ...';             Initialize-Sprites
 Write-Step 'synthesising sounds ...';          Initialize-Sounds
 if (-not $NoVoices) { Initialize-Voices }
-Initialize-Renderer $Scale ([int](320 / $Columns))
 
 if ($RecordAttractDemo) {
     Export-AttractDemo $RecordAttractDemo
@@ -285,7 +290,7 @@ Write-Step 'ready.'
 try {
     if ($HostGame) { Initialize-Network 'host' $(if ($HostGame -eq 'Coop') { 'coop' } else { 'duel' }) '' $Port $MaxPlayers $PlayerName; Write-Step "hosting a $HostGame game for up to $MaxPlayers players on port $Port" }
     elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port 4 $PlayerName; Write-Step "joining the game on ${JoinGame}:$Port" }
-    if ($Terminal -or $TerminalKeys) { Initialize-Terminal ([bool]$TerminalKeys) } else { New-GameWindow }
+    if ($Terminal -or $TerminalKeys) { Initialize-Terminal ([bool]$TerminalKeys) } elseif (-not $script:Form) { New-GameWindow }
     # the soundtrack of the floors is composed in the background from now on, the floors first
     Start-MusicComposer (@(1..$script:MapFiles.Count) + $script:MUSIC_BONUS + $script:MUSIC_ENDING + 0)
     Start-GameLoop

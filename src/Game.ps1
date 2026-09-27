@@ -81,12 +81,16 @@ function Reset-ScreenEffects {
 # as well (riding the lift to the next floor). Keys never leave their floor.
 # While a floor is loaded nothing is drawn and no message is answered - long enough, on a slow machine, for Windows to
 # call the window "not responding". So: say what is going on, and let the window answer.
+$script:LoadLog = [System.Collections.Generic.List[object]]::new()      # the recent steps, with the time they came: the last few stay on the screen
 function Show-LoadStep([string]$Text) {
     if (-not $script:Form -or $script:Form.IsDisposed -or $script:TerminalMode -or -not $script:BackG) { return }
+    $now = $script:Clock.Elapsed.TotalSeconds
+    $script:LoadLog.Add(@($now, $Text)); while ($script:LoadLog.Count -and $now - $script:LoadLog[0][0] -gt 12) { $script:LoadLog.RemoveAt(0) }
     Show-Shade 'FF0A1020'
     Write-HudBar '2C54C4' 0 0 320 3; Write-HudBar '2C54C4' 0 237 320 3
-    Write-HudText '>_' 'Huge' '2C54C4' 0 84 320 40
-    Write-HudText $Text 'Mid' 'FFFFFF' 0 128 320 12
+    Write-HudText '>_' 'Huge' '2C54C4' 0 36 320 40
+    $y = 146.0 - ($script:LoadLog.Count - 1) * 9
+    for ($i = 0; $i -lt $script:LoadLog.Count; $i++) { Write-HudText $script:LoadLog[$i][1] 'Mid' $(if ($i -eq $script:LoadLog.Count - 1) { 'FFFFFF' } else { '506080' }) 0 $y 320 12; $y += 9 }
     Show-Back
     [System.Windows.Forms.Application]::DoEvents()
 }
