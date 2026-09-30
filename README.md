@@ -6,6 +6,7 @@ verifiable runs,<br>ten floors, a secret one and an ending worth playing for, fi
 mode –<br>procedurally generated graphics, sound, speech and music – as much PowerShell as possible, as little C# as necessary.</i></p>
 
 <p align="center">
+<a href="https://ondsen.github.io/polf3d/"><img alt="Website" src="https://img.shields.io/badge/website-ondsen.github.io%2Fpolf3d-DCFF63?labelColor=2049EF"></a>
 <a href="https://github.com/oNdsen/polf3d/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/oNdsen/polf3d?label=release&color=2C54C4"></a>
 <a href="https://github.com/oNdsen/polf3d/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/oNdsen/polf3d/total?label=downloads&color=2C54C4"></a>
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/oNdsen/polf3d?color=2C54C4"></a>
@@ -21,7 +22,7 @@ mode –<br>procedurally generated graphics, sound, speech and music – as much
 <p align="center"><img src="media/gameplay.gif" alt="Ten seconds of the attract demo: the hub hall of floor 1" width="640"><br>
 <sub>Ten seconds of the demo that plays on the title screen – exported by the game itself: <code>./Start-Polf3D.ps1 -ExportGif demos/attract.json</code></sub></p>
 
-**[Download polf3d.zip](https://github.com/oNdsen/polf3d/releases/latest/download/polf3d.zip)**, unpack it and start
+**[ondsen.github.io/polf3d](https://ondsen.github.io/polf3d/)** shows the game at a glance. **[Download polf3d.zip](https://github.com/oNdsen/polf3d/releases/latest/download/polf3d.zip)**, unpack it and start
 `Play.cmd` – or clone the repository:
 
 ```powershell

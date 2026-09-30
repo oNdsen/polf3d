@@ -1,12 +1,322 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<title>POLF 3D</title>
-<meta http-equiv="refresh" content="0; url=https://github.com/oNdsen/polf3d">
-<link rel="canonical" href="https://github.com/oNdsen/polf3d">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POLF 3D — Your shell. Their problem.</title>
+<meta name="description" content="A complete 90s-style shooter, written in PowerShell. Fight your way through ten floors, weaponize common parameters, and bring three friends.">
+<meta name="theme-color" content="#2049ef">
+<meta property="og:title" content="POLF 3D — Your shell. Their problem.">
+<meta property="og:description" content="A complete 90s-style shooter, written in PowerShell. Ten floors, a real console, co-op for four. Free and open source.">
+<meta property="og:image" content="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/banner.png">
+<link rel="icon" href="favicon.svg">
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-<p>POLF 3D, a 90s-style ray casting shooter written in PowerShell: <a href="https://github.com/oNdsen/polf3d">github.com/oNdsen/polf3d</a></p>
+<header class="nav wrap">
+  <a class="brand" href="#" aria-label="POLF 3D home"><span class="shell">&gt;_</span> POLF<span class="brand-3d">3D</span></a>
+  <nav aria-label="Main navigation">
+    <a href="#game">The game</a>
+    <a href="#powers">Shell powers</a>
+    <a href="#console">The console</a>
+    <a href="#modes">Ways to play</a>
+    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d">GitHub ↗</a>
+  </nav>
+  <a class="nav-download" href="#download">Get the game <span>↓</span></a>
+</header>
+
+<main>
+<section class="hero wrap">
+  <div class="hero-copy">
+    <p class="eyebrow">A FIRST-PERSON SHOOTER. IN POWERSHELL.</p>
+    <h1>Your shell.<br>Their <em>problem.</em></h1>
+    <p class="intro">Someone gave PowerShell a gun.<br>Now there are ten floors to clear, a printer to fight, and absolutely no good reason this should work.</p>
+    <div class="actions">
+      <a class="button acid" href="https://github.com/oNdsen/polf3d/releases/latest/download/polf3d.zip">Download free <span>↓</span></a>
+      <button class="text-button" id="watch">Watch gameplay <span>▶</span></button>
+    </div>
+    <p class="requirements">WINDOWS · POWERSHELL 7.2+ · OPEN SOURCE</p>
+  </div>
+  <div class="hero-visual">
+    <div class="window-bar"><span>&gt;_ &nbsp; Start-Polf3D.ps1</span><span>― &nbsp; □ &nbsp; ×</span></div>
+    <img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/warmachine.png" alt="Actual POLF 3D gameplay: the Pipeline Cannon faces a guard and The Printer boss" width="960" height="720">
+    <div class="window-bottom"><span>ACTUAL GAMEPLAY. ACTUAL POWERSHELL.</span><span>100% UNREASONABLE</span></div>
+    <div class="sticker">YES,<br><strong>POWERSHELL.</strong></div>
+  </div>
+  <div class="hero-foot"><span>BUILT DIFFERENT. SCRIPTED LITERALLY.</span><a href="#game">Scroll to investigate ↓</a></div>
+</section>
+
+<div class="ticker" aria-label="Game highlights">
+  <span>NO GAME ENGINE.</span><span>NO ASSET FILES.</span><span>NO BUSINESS BEING THIS FUN.</span><span class="ticker-shell">&gt;_</span>
+</div>
+
+<section id="game" class="light">
+  <div class="wrap section">
+    <div class="section-heading">
+      <p class="eyebrow">01 / THE BEAUTIFULLY BAD IDEA</p>
+      <h2>IT STARTED WITH<br>“BUT COULD YOU?”</h2>
+      <p>A textured, ray-casting shooter with secret walls, boss fights, and a real in-game console. Almost all of it is plain PowerShell. Somehow, the answer was yes.</p>
+    </div>
+    <div class="stats">
+      <div><strong>10<span>+1</span></strong><p>Campaign floors + a secret one</p></div>
+      <div><strong>04</strong><p>Players. Co-op or deathmatch.</p></div>
+      <div><strong>00</strong><p>Pre-made game asset files</p></div>
+    </div>
+    <div class="game-grid">
+      <div class="game-image">
+        <img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/coop.png" alt="Two co-op teammates run ahead through a corridor, each in the colour of their slot" width="960" height="720" loading="lazy">
+        <span>BRING FRIENDS. ESCALATE PRIVILEGES.</span>
+      </div>
+      <div class="modes">
+        <article><span>01</span><div><h3>Clock in. Fight your way out.</h3><p>From Shellstein Dungeon to Ring 0. Ten floors of patrols, traps, secrets, and deeply unhelpful office equipment.</p></div></article>
+        <article><span>02</span><div><h3>Make it a team incident.</h3><p>Bring up to three friends over the network. Clear the campaign together, or settle things in deathmatch.</p></div></article>
+        <article><span>03</span><div><h3>Tomorrow, another dungeon.</h3><p>A daily generated dungeon with verifiable runs. Or step into the arena and see how many waves you survive.</p></div></article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="floors" class="blue">
+  <div class="wrap section">
+    <div class="split-heading">
+      <div>
+        <p class="eyebrow">02 / THE BUILDING</p>
+        <h2>TEN FLOORS.<br>ONE LIFT. NO HELPDESK.</h2>
+      </div>
+      <p>Every floor has its own walls, its own music and its own way of making your day worse. Find the keys, find the lift, and read the report it hands you on the way up.</p>
+    </div>
+    <div class="shots three">
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/hub.png" alt="The hub hall on floor 1 with patrols and banners" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 01 / SHELLSTEIN DUNGEON</b>The hub hall. Patrols, banners, and the &gt;_ coat of arms.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/catacombs.png" alt="Mutants between the pillars of the catacombs" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 03 / THE CATACOMBS</b>Mutants between the pillars. They never shout an alarm.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/lab.png" alt="An elite patrol in the ring corridor of Lab Zero" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 04 / LAB ZERO</b>An elite patrol in the ring corridor.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/citadel.png" alt="The great hall of the citadel" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 05 / THE CITADEL</b>The great hall, and everyone in it.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/datacentre.png" alt="A cold aisle of the data centre" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 06 / THE DATA CENTRE</b>Cold aisles. A sniper at the far end of every one.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/ring0.png" alt="The dark core of Ring 0 with a blue glow" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 10 / RING 0</b>Dark, and something in there is glowing blue.</figcaption></figure>
+    </div>
+    <ul class="chips" aria-label="What the floors are made of">
+      <li>Gold and silver keys</li><li>Wall levers</li><li>Secret push-walls</li><li>Cracked walls</li><li>Windows to shoot through</li><li>Spikes and crushers</li><li>Teleporter pads</li><li>Dark rooms and a flashlight</li><li>Lockdowns</li><li>Power failures</li><li>Patch Tuesday</li><li>A hidden lift switch</li>
+    </ul>
+  </div>
+</section>
+
+<section id="powers" class="dark">
+  <div class="wrap section">
+    <div class="powers-heading">
+      <div>
+        <p class="eyebrow">03 / COMMON PARAMETERS. UNCOMMON VIOLENCE.</p>
+        <h2>YOUR COMMAND LINE.<br>NOW WITH CONSEQUENCES.</h2>
+      </div>
+      <p>These aren't cheat codes. They're your abilities.<br>Spend privilege. Bend the rules.</p>
+    </div>
+    <div class="power-layout">
+      <div>
+        <div class="power-tabs" role="tablist" aria-label="PowerShell abilities">
+          <button role="tab" aria-selected="true" aria-controls="power-panel" id="tab-whatif" data-power="whatif">-WhatIf</button>
+          <button role="tab" aria-selected="false" aria-controls="power-panel" id="tab-confirm" tabindex="-1" data-power="confirm">-Confirm</button>
+          <button role="tab" aria-selected="false" aria-controls="power-panel" id="tab-verbose" tabindex="-1" data-power="verbose">-Verbose</button>
+          <button role="tab" aria-selected="false" aria-controls="power-panel" id="tab-force" tabindex="-1" data-power="force">-Force</button>
+          <button role="tab" aria-selected="false" aria-controls="power-panel" id="tab-undo" tabindex="-1" data-power="undo">Undo</button>
+        </div>
+        <div id="power-panel" role="tabpanel" aria-labelledby="tab-whatif" tabindex="0">
+          <p class="power-key" id="power-key">[ Z ] · 25 PRIVILEGE</p>
+          <h3 id="power-title">See the future. Then ruin their plans.</h3>
+          <p id="power-description">Freeze time for four seconds. Ghosts reveal the next two seconds of enemy movement. The red ones are about to fire. Plan accordingly.</p>
+          <p class="power-note" id="power-note">A real forecast: the game simulates ahead, then restores the world.</p>
+        </div>
+      </div>
+      <figure>
+        <img id="power-image" src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/whatif.png" alt="The WhatIf ability reveals ghost predictions of enemy movement" width="960" height="720" loading="lazy">
+        <figcaption id="power-caption">IN-GAME CAPTURE / -WHATIF</figcaption>
+      </figure>
+    </div>
+    <div class="code-note">
+      <span>&gt;_</span>
+      <p>Yes, the console is real.</p>
+      <p>Pipelines, a $PROFILE, background jobs. All inside the game's sandbox.</p>
+      <a href="#console">See it below ↓</a>
+    </div>
+  </div>
+</section>
+
+<section id="console" class="light">
+  <div class="wrap section">
+    <div class="section-heading">
+      <p class="eyebrow">04 / POWERSHELL IS NOT JUST THE LANGUAGE. IT IS THE THEME.</p>
+      <h2>PRESS TAB.<br>GET A PROMPT.</h2>
+      <p>The world stops and you get a PowerShell prompt. A real one: pipelines, <code>Where-Object</code>, <code>Sort-Object</code>, script blocks, tab completion. The game's cmdlets cost privilege when they do something.</p>
+    </div>
+    <div class="console-grid">
+      <figure class="game-image">
+        <img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/console.png" alt="The in-game PowerShell console with a pipeline that lists the nearest enemies" width="960" height="720" loading="lazy">
+        <span>REAL PIPELINES. REAL -WHATIF. NO WAY OUT OF THE SANDBOX.</span>
+      </figure>
+      <div>
+        <pre class="ps" aria-label="Example console lines"><code><span class="c"># who is coming, nearest first?</span>
+Get-Enemy | Sort-Object Distance | Select-Object -First 4
+
+<span class="c"># freeze everyone who is shooting at you</span>
+Get-Enemy | Where-Object State -eq 'attacking' | Suspend-Enemy
+
+<span class="c"># who needs keys</span>
+Get-Door | Where-Object Lock -ne '-' | Open-Door
+
+<span class="c"># the sentry gun changes sides</span>
+Get-Enemy -Kind turret | Set-Turret -Owner Me</code></pre>
+        <div class="modes tight">
+          <article><span>01</span><div><h3>Terminals with files.</h3><p>Log on at a terminal and read what happened at Shellstein, floor by floor: tickets nobody could close, a duty roster, the minutes of the board. Some of them give codes away.</p></div></article>
+          <article><span>02</span><div><h3>Background jobs.</h3><p><code>Start-Job</code> sends out a drone that flies through the ventilation and brings back ammunition, first aid and keys. <code>Receive-Job</code> drops the load at your feet.</p></div></article>
+          <article><span>03</span><div><h3>A $PROFILE and hotkeys.</h3><p>Write a function, save it to your profile, and put it on a key with <code>Set-Hotkey</code>. It runs in the middle of a fight without opening the console.</p></div></article>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="stealth" class="blue">
+  <div class="wrap section">
+    <div class="split-heading">
+      <div>
+        <p class="eyebrow">05 / STEALTH</p>
+        <h2>THE BUILDING HAS AN<br>EXECUTION POLICY.</h2>
+      </div>
+      <p>Anyone who has not noticed you takes double damage. Sneak, use the knife, stay out of sight. Every shot you fire and every camera that sees you makes the whole floor more nervous.</p>
+    </div>
+    <div class="policy-grid">
+      <figure class="game-image">
+        <img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/firefight.png" alt="A guard takes aim, seen through a door frame; the execution policy is shown in the top left corner" width="960" height="720" loading="lazy">
+        <span>TOP LEFT: THE POLICY, AND HOW MUCH NOISE YOU ARE MAKING.</span>
+      </figure>
+      <div class="policy" role="table" aria-label="The four execution policies">
+        <div role="row"><code role="cell">Restricted</code><p role="cell"><b>The house suspects nothing.</b> Nobody watches the logs, so your privilege comes back 30 % faster.</p></div>
+        <div role="row"><code role="cell">AllSigned</code><p role="cell"><b>It has been told to look twice.</b> Enemies react quicker and gunfire carries further.</p></div>
+        <div role="row"><code role="cell">RemoteSigned</code><p role="cell"><b>It is on edge.</b> Quicker still, and a shot is heard most of the way down the floor.</p></div>
+        <div role="row"><code role="cell">Unrestricted</code><p role="cell"><b>It sounds the alarm.</b> Everybody who can reach you comes running.</p></div>
+        <p class="power-note"><code>Set-ExecutionPolicy Restricted</code> calms the house down again, for a price. Setting it to <code>Unrestricted</code> is free. You will pay for it in other ways.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="cast" class="dark">
+  <div class="wrap section">
+    <div class="powers-heading">
+      <div>
+        <p class="eyebrow">06 / THE STAFF AND THE ARSENAL</p>
+        <h2>SEVENTEEN KINDS OF COLLEAGUE.<br>TEN WAYS TO DISAGREE.</h2>
+      </div>
+      <p>Guards, dogs, snipers and shield bearers.<br>And then the office equipment.</p>
+    </div>
+    <img class="wide" src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/cast.png" alt="The cast of POLF 3D: guards, officers, elites, mutants, machines and bosses" loading="lazy">
+    <div class="trio">
+      <article><p class="power-key">BOSS / LEGACY.BAT</p><h3>“Runs as SYSTEM. Nobody dares to touch it.”</h3><p>Twin machine guns, three rounds per salvo, then a pause. That pause is your moment.</p></article>
+      <article><p class="power-key">SUPER BOSS / THE PRINTER</p><h3>“PC LOAD LETTER.”</h3><p>Gun bursts and salvos of rockets. After every second salvo it has a paper jam: four seconds of helpless blinking and triple damage.</p></article>
+      <article><p class="power-key">ALSO ON THE PAYROLL</p><h3>Auditors, engineers and bugs.</h3><p>The auditor runs for a terminal to report you. The engineer repairs what you broke. Blow up a bug and two smaller ones crawl out: fix one, get two.</p></article>
+    </div>
+    <img class="wide arsenal" src="assets/arsenal.png" alt="The ten weapons as the player holds them: knife, pistol, machine gun, chain gun, Pipeline Cannon, Force Blaster, rocket launcher, flamethrower, throwing knives and taser" loading="lazy">
+    <div class="trio">
+      <article><p class="power-key">[ 5 ] PIPELINE CANNON</p><h3>“<code>|</code> passes everything along.”</h3><p>The beam goes through every enemy in the line of fire.</p></article>
+      <article><p class="power-key">[ 6 ] FORCE BLASTER</p><h3>Remove-Item -Recurse -Force.</h3><p>For your whole field of view. Fed by rare Force charges.</p></article>
+      <article><p class="power-key">[ 0 ] TASER</p><h3>Stop-Process.</h3><p>Silent. Stuns people for five seconds and switches cameras, sentry guns and kamikaze bots off for good.</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="modes" class="light">
+  <div class="wrap section">
+    <div class="section-heading">
+      <p class="eyebrow">07 / MORE WAYS TO PLAY</p>
+      <h2>THE CAMPAIGN IS<br>ONLY THE DAY JOB.</h2>
+      <p>New here? Start with the onboarding. Done with the campaign? There is a fresh dungeon every day, an arena that never ends, and a version that runs in your terminal.</p>
+    </div>
+    <div class="shots three on-light">
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/tutorial.png" alt="The onboarding floor with a hint at the top of the view" width="960" height="720" loading="lazy"><figcaption><b>THE ONBOARDING / [ N ]</b>Ten rooms, one mechanism each. The floor explains itself.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/dungeon.png" alt="The plan of a generated dungeon" width="960" height="720" loading="lazy"><figcaption><b>THE DAILY DUNGEON / [ G ]</b>Built from today's date, so everybody gets the same one. One life. Every run can be verified.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/arena.png" alt="The arena: a wave of enemies comes through the gates" width="960" height="720" loading="lazy"><figcaption><b>THE ARENA / [ H ]</b>One hall, four gates, wave after wave. Every fifth wave brings a boss.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/players.png" alt="The player list of a network game, an admin panel on the host" width="960" height="720" loading="lazy"><figcaption><b>CO-OP AND DEATHMATCH</b>Up to four over the network. The host is the admin: kick, ban, forgive.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/terminal.png" alt="The game rendered as half-block characters in a terminal" width="960" height="720" loading="lazy"><figcaption><b>TERMINAL MODE / -Terminal</b>The same game as coloured characters. Yes, it works over SSH.</figcaption></figure>
+      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/tests.png" alt="The report at the end of a floor, in the style of a Pester test run" width="960" height="720" loading="lazy"><figcaption><b>EVERY FLOOR IS A TEST SUITE</b>Ten tests per floor, reported Pester style. A hundred to pass in all.</figcaption></figure>
+    </div>
+    <ul class="chips on-light" aria-label="What else is in the box">
+      <li>Saved games and autosave</li><li>Speedrun clock</li><li>Demos that can be verified</li><li>Demos exported as GIFs</li><li>Modules to install in the lift</li><li>Mods in ten lines of data</li><li>A point-and-click level editor</li><li>Game pad support</li><li>Updates itself</li>
+    </ul>
+  </div>
+</section>
+
+<section id="generated" class="dark">
+  <div class="wrap section">
+    <div class="powers-heading">
+      <div>
+        <p class="eyebrow">08 / NO ASSET FILES</p>
+        <h2>EVERYTHING YOU SEE AND HEAR<br>IS MADE WHEN IT STARTS.</h2>
+      </div>
+      <p>The download is 350 KB.<br>The rest is arithmetic.</p>
+    </div>
+    <div class="stats on-dark">
+      <div><strong>480</strong><p>Sprite images, painted by code</p></div>
+      <div><strong>50</strong><p>Sound effects, synthesised</p></div>
+      <div><strong>13</strong><p>Tracks, composed by a chiptune composer</p></div>
+    </div>
+    <img class="wide" src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/faces.png" alt="The face in the status bar in all its states" loading="lazy">
+    <div class="code-note">
+      <span>&gt;_</span>
+      <p>How far can PowerShell go?</p>
+      <p>Ray casting, AI, music, a network protocol, a GIF encoder. C# only where PowerShell cannot keep up.</p>
+      <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/blob/main/HOW-IT-WAS-BUILT.md">Read how it was built ↗</a>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="download">
+  <div class="wrap section">
+    <div>
+      <p class="eyebrow">09 / EXECUTION POLICY: HAVE FUN</p>
+      <h2>YOUR NEXT BAD IDEA<br>IS ONE ZIP AWAY.</h2>
+      <p>Free to play. Open source. Unreasonably committed to the bit.</p>
+      <a class="button acid" href="https://github.com/oNdsen/polf3d/releases/latest/download/polf3d.zip">Download POLF 3D <span>↓</span></a>
+      <p class="requirements">WINDOWS · POWERSHELL 7.2+ · MIT LICENSE</p>
+    </div>
+    <div class="install">
+      <h3>Three steps. Zero dignity lost.</h3>
+      <ol>
+        <li><span>01</span><p>Get <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows">PowerShell 7.2 or newer ↗</a></p></li>
+        <li><span>02</span><p>Download and unpack <code>polf3d.zip</code>.</p></li>
+        <li><span>03</span><p>Run <code>Play.cmd</code>. Press <kbd>N</kbd> for the tutorial.</p></li>
+      </ol>
+      <details>
+        <summary>Prefer to clone it?</summary>
+        <div class="command">
+          <pre id="clone-command">git clone https://github.com/oNdsen/polf3d.git
+cd polf3d
+./Start-Polf3D.ps1</pre>
+          <button id="copy" aria-label="Copy installation commands">Copy</button>
+        </div>
+        <p id="copy-status" role="status"></p>
+      </details>
+      <p class="install-note">First launch compiles four small C# helpers and caches generated audio. No extra modules needed. After that the game updates itself from the title screen. <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d#readme">Full setup notes ↗</a></p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer class="wrap">
+  <a class="brand" href="#"><span class="shell">&gt;_</span> POLF<span class="brand-3d">3D</span></a>
+  <p>A gloriously unnecessary game by <a target="_blank" rel="noopener" href="https://github.com/oNdsen">oNdsen</a>.</p>
+  <div>
+    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d">Source ↗</a>
+    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/releases">Releases ↗</a>
+    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/blob/main/LICENSE">MIT license</a>
+  </div>
+  <p class="credit">This page was designed and built by <a target="_blank" rel="noopener" href="https://github.com/The-Running-Dev">Ben Richards</a>. Thank you, Ben, for the work and for the push.</p>
+</footer>
+
+<dialog id="gameplay-dialog" aria-labelledby="demo-title">
+  <div class="dialog-head">
+    <h2 id="demo-title">POWERSHELL. IN MOTION.</h2>
+    <button id="close-demo" aria-label="Close gameplay demo">✕</button>
+  </div>
+  <img data-src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/gameplay.gif" alt="POLF 3D gameplay demo through the hub hall" width="640" height="480">
+  <p>An attract demo, played by a little bot and exported by the game itself.</p>
+</dialog>
+<script src="script.js"></script>
 </body>
 </html>
