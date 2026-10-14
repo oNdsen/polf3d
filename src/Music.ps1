@@ -14,7 +14,7 @@ $script:MUSIC_RATE = 22050
 $script:MUSIC_VERSION = 3                       # bump to invalidate cached tracks
 $script:MUSIC_BONUS = 99                        # track number of the secret floor
 $script:MUSIC_ENDING = 98                       # ... and of the epilogue
-$script:MusicEnabled = $true
+if ($null -eq $script:MusicEnabled) { $script:MusicEnabled = $true }  # the start script decides first (-NoMusic, the window-less modes): a default only
 $script:MusicIds = @{}                          # track -> the mixer's id of its samples
 $script:MusicTrack = -1
 

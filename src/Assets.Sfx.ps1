@@ -7,7 +7,7 @@
 $script:SFX_RATE = 11025
 $script:SFX_RANGE = 22.0           # tiles at which a sound has faded to (almost) nothing
 $script:Sfx = @{}
-$script:SfxEnabled = $true
+if ($null -eq $script:SfxEnabled) { $script:SfxEnabled = $true }      # the start script decides first (-NoSound, the window-less modes): a default only
 
 # Segment = @(seconds, wave, freqStart, freqEnd, volStart, volEnd); wave: q=square s=saw n=noise
 function New-SfxSample([object[]]$Segments) {
