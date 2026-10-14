@@ -635,7 +635,9 @@ function Test-NetGuestHit([hashtable]$Player, [Actor]$Target, [int]$Damage, [str
     $px = $Player.Proxy
     if (-not (Test-NetPoint $px.X $px.Y) -or -not (Test-NetPoint $Target.X $Target.Y)) { return $false }
     $distance = [Math]::Sqrt(($px.X - $Target.X) * ($px.X - $Target.X) + ($px.Y - $Target.Y) * ($px.Y - $Target.Y))
-    if (($Source -eq 'knife' -and $distance -gt 1.6) -or ($Source -eq 'taser' -and $distance -gt 2.7) -or ($Source -eq 'flame' -and $distance -gt 3.7)) { return $false }
+    # the host's copy of the guest is one update (50 ms) plus the latency old, and a running player covers about 0.35 tiles
+    # between two updates: every reach gets half a tile of slack (knife 1.5, taser 2.6, flame 3.6 in the game)
+    if (($Source -eq 'knife' -and $distance -gt 2.0) -or ($Source -eq 'taser' -and $distance -gt 3.1) -or ($Source -eq 'flame' -and $distance -gt 4.1)) { return $false }
     Test-LineToPlayer $px.X $px.Y $Target.X $Target.Y
 }
 
@@ -861,7 +863,7 @@ function Invoke-NetMessage([string]$Line, [hashtable]$From) {
             Set-Mode 'play'
             if ((Get-MapHash $script:MapFile) -ne $f[8]) { Show-Message 'WARNING: your copy of this map differs from the host''s' }
         }
-        'M' { Set-NetPlayerState ([int]$f[1]) $f }
+        'M' { $null = Set-NetPlayerState ([int]$f[1]) $f }                   # the answer is for the host; uncaught it would print True
         'O' { $gone = $n.Names[[int]$f[1]]; Remove-NetPlayer ([int]$f[1]); if ($gone) { Show-Message "$gone is out: $($f[2])" } }
         'C' { foreach ($pair in $f[1].Split(',')) { $kv = $pair.Split(':'); if ($kv.Count -eq 2) { $n.Frags[[int]$kv[0]] = [int]$kv[1] } }; $script:HudDirty = $true }
         'Z' { Import-NetSnapshot $f }
@@ -945,7 +947,7 @@ function Invoke-NetGuestMessage([string[]]$f, [hashtable]$From) {
             if ($f.Count -lt 5) { break }
             $tx = [int]$f[1]; $ty = [int]$f[2]; $dx = [int]$f[3]; $dy = [int]$f[4]; $px = $n.Players[$slot].Proxy
             if ([Math]::Abs($dx) + [Math]::Abs($dy) -ne 1 -or $tx -lt 0 -or $ty -lt 0 -or $tx -ge $script:MapW -or $ty -ge $script:MapH -or
-                [Math]::Abs(($tx - $dx) - [Math]::Floor($px.X)) + [Math]::Abs(($ty - $dy) - [Math]::Floor($px.Y)) -gt 1) { break }
+                [Math]::Abs(($tx - $dx) - [Math]::Floor($px.X)) + [Math]::Abs(($ty - $dy) - [Math]::Floor($px.Y)) -gt 2) { break }      # one tile of slack for lag
             Invoke-InPeerContext $slot { Invoke-UseAt $tx $ty $dx $dy }
         }
         'P' {
@@ -961,7 +963,8 @@ function Invoke-NetGuestMessage([string[]]$f, [hashtable]$From) {
             $i = [int]$f[1]
             if ($i -ge 0 -and $i -lt $script:Items.Count -and -not $script:Items[$i].Removed) {
                 $item = $script:Items[$i]; $px = $n.Players[$slot].Proxy
-                if ([Math]::Abs($px.X - ($item.X + 0.5)) -lt 0.6 -and [Math]::Abs($px.Y - ($item.Y + 0.5)) -lt 0.6) { Register-NetPickup $i $false; Send-NetExcept $slot "I|$i" }
+                # 1.2 tiles: the guest takes it at 0.6 locally, and the host's copy of him may be a step behind
+                if ([Math]::Abs($px.X - ($item.X + 0.5)) -lt 1.2 -and [Math]::Abs($px.Y - ($item.Y + 0.5)) -lt 1.2) { Register-NetPickup $i $false; Send-NetExcept $slot "I|$i" }
             }
         }
         'Q' {
