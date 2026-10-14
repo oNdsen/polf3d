@@ -195,7 +195,12 @@ function Invoke-Force {
     if ($t -ge $script:TILE_DOOR_BASE -and $t -lt $script:TILE_PUSHWALL) {
         $d = $script:Doors[$t - $script:TILE_DOOR_BASE]
         if ($d.Lock -in 1, 2, 4) { $d.Unlocked = $true; if ($d.Lock -ne 4) { $d.Lock = 0; $d.TexId = $script:TEX_DOOR }; Show-Message '-Force: who needs a key' }
-        Open-Door ($t - $script:TILE_DOOR_BASE); $d.Open = [Math]::Max($d.Open, 0.6)
+        $shut = $d.Open -le 0; $d.Jam = 0.0                            # a sealed door gives way too - it is your own boot
+        Open-Door ($t - $script:TILE_DOOR_BASE)
+        if ($d.Action -eq 'opening') {
+            if ($shut) { Connect-DoorArea $d }                          # the kick skips the first step of the opening, where the rooms are joined
+            $d.Open = [Math]::Max($d.Open, 0.6)
+        }
     }
     elseif ($script:Breakable[$idx]) {
         Set-MapTile $idx 0; $script:Breakable[$idx] = $false; $script:Stats.Secrets++; $script:MapBmp = $null

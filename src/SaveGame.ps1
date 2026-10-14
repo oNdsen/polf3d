@@ -156,7 +156,7 @@ function Restore-Game([string]$Slot = 'quick') {
         for ($i = 0; $i -lt $script:Doors.Count; $i++) {
             $d = $script:Doors[$i]; $sd = $state.Doors[$i]
             $d.Action = $sd.Action; $d.Open = $sd.Open; $d.Timer = $sd.Timer; $d.Unlocked = [bool]$sd.Unlocked
-            if ($d.Action -ne 'closed') { $script:AreaConnect[$d.Area1, $d.Area2]++; $script:AreaConnect[$d.Area2, $d.Area1]++ }
+            if ($d.Action -ne 'closed' -and -not ($d.Action -eq 'opening' -and $d.Open -le 0)) { $script:AreaConnect[$d.Area1, $d.Area2]++; $script:AreaConnect[$d.Area2, $d.Area1]++ }      # one that has not moved yet joins them in its first update
         }
 
         for ($i = 0; $i -lt [Math]::Min($script:Traps.Count, @($state.Traps).Count); $i++) { $script:Traps[$i].Phase = [double]$state.Traps[$i]; $script:Traps[$i].State = -1 }

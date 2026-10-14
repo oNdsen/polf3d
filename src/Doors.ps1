@@ -41,6 +41,10 @@ function Test-PlayerInDoorway([Door]$d) {
 
 function Close-Door([int]$Index) {
     $d = $script:Doors[$Index]
+    # a closed door, or one that has not moved yet, has not joined its two rooms - there is nothing to part (a lockdown
+    # closes every door, and closing a closed one used to take the rooms apart a second time)
+    if ($d.Action -eq 'closed') { return }
+    if ($d.Action -eq 'opening' -and $d.Open -le 0) { $d.Action = 'closed'; return }
     $idx = $d.Y * $script:MapW + $d.X
     if ($null -ne $script:ActorAt[$idx]) { return }          # never close on somebody
     if (Test-PlayerInDoorway $d) { return }
@@ -69,6 +73,13 @@ function Invoke-DoorUse([int]$Index) {
     if ($d.Action -in 'closed', 'closing') { Open-Door $Index } else { Close-Door $Index }
 }
 
+# A door starts to open: from now on sound and sight pass between its two rooms. Undone once, when it is shut again.
+function Connect-DoorArea([Door]$d) {
+    $script:AreaConnect[$d.Area1, $d.Area2]++
+    $script:AreaConnect[$d.Area2, $d.Area1]++
+    Update-AreaByPlayer
+}
+
 function Update-Doors([double]$Tics) {
     $step = $Tics / $script:DOOR_OPEN_TICS
     for ($i = 0; $i -lt $script:Doors.Count; $i++) {
@@ -82,10 +93,7 @@ function Update-Doors([double]$Tics) {
             }
             'opening' {
                 if ($d.Open -le 0) {
-                    # first movement: from now on sound and sight pass through
-                    $script:AreaConnect[$d.Area1, $d.Area2]++
-                    $script:AreaConnect[$d.Area2, $d.Area1]++
-                    Update-AreaByPlayer
+                    Connect-DoorArea $d                                   # first movement: from now on sound and sight pass through
                     if ($script:AreaByPlayer[$d.Area1]) { Start-Sfx 'door_open' ($d.X + 0.5) ($d.Y + 0.5) }
                 }
                 $d.Open += $step
