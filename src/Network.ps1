@@ -330,12 +330,12 @@ function Find-NetFreeSpots([double]$X, [double]$Y, [int]$Count) {
                 if ($tx -lt 1 -or $ty -lt 1 -or $tx -ge $w - 1 -or $ty -ge $script:MapH - 1) { continue }
                 $idx = $ty * $w + $tx
                 if ($script:Tiles[$idx] -eq 0 -and -not $script:StaticBlock[$idx] -and $null -eq $script:ActorAt[$idx] -and
-                    $script:AreaOf[$idx] -eq $script:AreaOf[$cy * $w + $cx]) { $found.Add(@(($tx + 0.5), ($ty + 0.5))); if ($found.Count -ge $Count) { return $found.ToArray() } }
+                    $script:AreaOf[$idx] -eq $script:AreaOf[$cy * $w + $cx]) { $found.Add(@(($tx + 0.5), ($ty + 0.5))); if ($found.Count -ge $Count) { return , $found.ToArray() } }
             }
         }
     }
     while ($found.Count -lt $Count) { $found.Add(@($X, $Y)) }
-    $found.ToArray()
+    , $found.ToArray()                                           # the comma keeps a single pair a list of one pair: one guest is a common game
 }
 
 # The spawn spot farthest away from everybody in $Others (a list of x,y pairs); with $Pick > 1 a random one of the best.
