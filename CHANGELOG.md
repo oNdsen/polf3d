@@ -2,6 +2,27 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.3.2 - 2026-10-14
+
+The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start
+`Play.cmd` (Windows, PowerShell 7.2 or newer – nothing else).
+
+Fixed:
+
+* **A guest can no longer crash a network game.** One malformed line from a guest, a coordinate of `NaN` for example,
+  ended the game for everybody. The host now checks what guests send: positions have to be real numbers on the map,
+  and hits, frags, door use and pickups have to be within reach and in sight. By Ben Richards
+  ([@The-Running-Dev](https://github.com/The-Running-Dev)), thank you. The checks leave half a tile of room for lag,
+  so that a real network does not make a guest miss what loopback lets them hit.
+* **Co-op with one guest** put that guest inside the top wall of the map. Two or three guests were fine.
+* **`-NoSound` and `-NoMusic` work again.** Since 1.3.1 they did nothing, and the self-test and the other modes without
+  a window played the whole game out loud.
+* **A lockdown cut rooms off.** It closed doors that were already closed, and from then on the rooms behind such a door
+  stayed apart even with the door open: enemies there neither saw nor heard anything, and nobody could shoot through.
+  A door kicked in with `-Force` had the same effect once it shut again. Floors 7 to 10 have lockdowns.
+* `Receive-Job` with the drone in view ended the game.
+* A guest printed `True` about twenty times a second into the PowerShell window.
+
 ## 1.3.1 - 2026-09-27
 
 The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start
