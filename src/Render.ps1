@@ -233,6 +233,7 @@ function Update-View {
         $a.ScreenX = [int]($halfW * (1.0 + $lat / ($depth * $pl)))
 
         $st = $script:States[$a.State]
+        if (-not $st) { $a.Visible = $false; continue }               # 'gone': removed at the end of the next update, and the console draws frames without one
         $spr = $script:Spr[$st.Sprite]
         if ($st.Rot) {
             # pick one of four views from where the player stands relative to the enemy's heading
