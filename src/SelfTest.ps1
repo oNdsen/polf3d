@@ -962,6 +962,13 @@ function Invoke-SelfTest([string]$OutDir) {
     if ($script:Pad) {
         $state = $script:Pad::Read(0)
         Update-Gamepad; $in = $idle.Clone(); Add-GamepadInput $in
+        # the buttons without a pad: a state as the bridge would report it - X pressed, A and B held
+        $keep = @($script:PadState, $script:PadHit, $script:PadButtons)
+        $script:PadState = [double[]]@(0, 0, 0, 0, 0, 0, 0); $script:PadHit = $script:PadBits.X; $script:PadButtons = $script:PadBits.A -bor $script:PadBits.B
+        $in = $idle.Clone(); $in.Ability = 0; Add-GamepadInput $in; $pressed = "$($in.Ability)/$($in.Use)/$($in.Sneak)"
+        $script:PadState = $keep[0]; $script:PadHit = $keep[1]; $script:PadButtons = $keep[2]
+        Write-Step "game pad buttons: X, A and B give power/use/sneak $pressed"
+        if ($pressed -ne '2/True/True') { throw 'game pad test failed.' }
         Write-Step "game pad test: XInput bridge loaded, pad connected: $([bool]$state)"
     }
     else { Write-Step 'game pad test: bridge not available (skipped)' }

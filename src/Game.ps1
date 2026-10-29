@@ -198,7 +198,8 @@ function Get-PlayerInput {
 # Game pad (XInput):  left stick move/strafe, right stick turn, RT fire, LT run, A use, B sneak,
 # LB/RB previous/next weapon, Back automap, Start pause. In menus: D-pad and A.
 # ---------------------------------------------------------------------------------------------
-$script:PAD = @{ Up = 1; Down = 2; Start = 0x10; Back = 0x20; LB = 0x100; RB = 0x200; A = 0x1000; B = 0x2000; X = 0x4000; Y = 0x8000 }
+# the button bits of XInput. (Not $script:PAD: PowerShell does not tell it from $script:Pad, the reader, which overwrote it.)
+$script:PadBits = @{ Up = 1; Down = 2; Start = 0x10; Back = 0x20; LB = 0x100; RB = 0x200; A = 0x1000; B = 0x2000; X = 0x4000; Y = 0x8000 }
 
 # Polls the pad once per frame. Looking for a pad that is not there is slow, so that happens only
 # every two seconds. Sets $script:PadState (or $null) and $script:PadHit (buttons pressed this frame).
@@ -225,7 +226,7 @@ function Get-NextWeapon([int]$Step) {
 function Add-GamepadInput([hashtable]$In) {
     $s = $script:PadState
     if (-not $s) { return }
-    $b = $script:PadButtons; $pad = $script:PAD
+    $b = $script:PadButtons; $pad = $script:PadBits
     $In.Strafe += $s[0]; $In.Forward += $s[1]
     $In.Turn += $s[2] * 1.4
     if ($s[5] -gt 0.3) { $In.Fire = $true }
@@ -507,7 +508,7 @@ function Start-GameLoop {
         # the pad's menu buttons arrive as the keys they stand for
         Update-Gamepad
         if ($script:PadHit) {
-            $pad = $script:PAD
+            $pad = $script:PadBits
             if ($script:PadHit -band $pad.Start) { $hits += $(if ($script:Mode -in 'play', 'paused') { $vk.P } else { $vk.Enter }) }
             if ($script:Mode -ne 'play') {
                 if ($script:PadHit -band $pad.A) { $hits += $vk.Enter }
@@ -516,7 +517,7 @@ function Start-GameLoop {
             }
             elseif ($script:PadHit -band $pad.Y) { $hits += $vk.N }
         }
-        if ($script:PadState) { $script:KeyDown[$script:Bind.Map] = [bool]($script:PadButtons -band $script:PAD.Back) }
+        if ($script:PadState) { $script:KeyDown[$script:Bind.Map] = [bool]($script:PadButtons -band $script:PadBits.Back) }
         if ($hits -contains $vk.F3) { $script:Settings.Fps = -not $script:Settings.Fps; Update-Settings }
         if ($script:Net -and $hits -contains $vk.F1 -and $script:Mode -in 'title', 'play') { Open-NetPanel; $hits = @() }      # who is here? (the host: and who should not be)
         if ($hits -contains $vk.F4) { Switch-Music }
