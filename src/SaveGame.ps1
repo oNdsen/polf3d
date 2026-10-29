@@ -215,7 +215,7 @@ function Get-SpeedrunData {
     $path = Join-Path $script:SaveDir 'speedrun.json'
     $data = $null
     if (Test-Path -LiteralPath $path) { try { $data = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable } catch { $data = $null } }
-    if (-not $data) { $data = @{} }
+    if ($data -isnot [System.Collections.IDictionary]) { $data = @{} }
     if (-not $data.Floors) { $data.Floors = @{} }
     if (-not $data.Runs) { $data.Runs = @() }
     $data
@@ -250,7 +250,7 @@ function Add-SpeedrunResult([double]$FloorSeconds, [bool]$RunComplete) {
 function Get-HighScores {
     $path = Join-Path $script:SaveDir 'highscores.json'
     if (-not (Test-Path -LiteralPath $path)) { return @() }
-    try { @(Get-Content -LiteralPath $path -Raw | ConvertFrom-Json) } catch { @() }
+    try { @(Get-Content -LiteralPath $path -Raw | ConvertFrom-Json | Where-Object { $_ }) } catch { @() }      # an empty file reads as no scores
 }
 
 function Add-HighScore([int]$Score, [string]$Result) {

@@ -236,6 +236,7 @@ function Save-DungeonRun([bool]$Completed) {
         $file = Join-Path $script:SaveDir 'dungeon.json'
         $all = @{}
         if (Test-Path -LiteralPath $file) { try { $all = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json -AsHashtable } catch { $all = @{} } }
+        if ($all -isnot [System.Collections.IDictionary]) { $all = @{} }   # an empty file reads as nothing
         $key = "$($script:DungeonSeed)|$($script:Difficulty)"
         if (-not $all[$key] -or $seconds -lt [double]$all[$key].Seconds) { $all[$key] = @{ Seconds = $seconds; Kills = $script:Stats.Kills; Demo = $name; Cheated = [bool]$script:P.Cheated; Game = $script:PolfVersion } }
         $all | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $file -Encoding utf8

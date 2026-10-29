@@ -26,7 +26,7 @@ function Get-AchievementPath { Join-Path $script:SaveDir 'achievements.json' }
 
 function Get-Achievements {
     $path = Get-AchievementPath
-    if (Test-Path -LiteralPath $path) { try { return (Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable) } catch { } }
+    if (Test-Path -LiteralPath $path) { try { $data = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable; if ($data -is [System.Collections.IDictionary]) { return $data } } catch { } }      # an empty file reads as nothing
     @{}
 }
 

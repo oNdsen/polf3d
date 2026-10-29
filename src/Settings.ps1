@@ -66,10 +66,21 @@ function Import-Settings {
     if (-not (Test-Path -LiteralPath $path)) { return }
     try {
         $saved = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable
-        foreach ($k in @($script:Settings.Keys)) { if ($saved.ContainsKey($k) -and $null -ne $saved[$k]) { $script:Settings[$k] = $saved[$k] } }
-        if ($saved.Keys -contains 'Bind') { foreach ($k in @($script:Bind.Keys)) { $v = [int]$saved.Bind[$k]; if ($v -gt 0 -and $v -lt 256) { $script:Bind[$k] = $v } } }
+        if ($saved -isnot [System.Collections.IDictionary]) { return }      # empty or not ours: the defaults
+        # a value is taken only if it is of the kind the default is: "Scale": "big" would stop the next start
+        foreach ($k in @($script:Settings.Keys)) {
+            if (-not $saved.ContainsKey($k) -or $null -eq $saved[$k]) { continue }
+            $default = $script:Settings[$k]; $v = $saved[$k]
+            if ($default -is [bool]) { if ($v -is [bool]) { $script:Settings[$k] = $v } }
+            elseif ($default -is [ValueType]) { if ($v -is [ValueType] -and $v -isnot [bool] -and [double]::IsFinite([double]$v)) { $script:Settings[$k] = $v } }
+            elseif ($v -is [string]) { $script:Settings[$k] = $v }
+        }
+        if ($saved.Bind -is [System.Collections.IDictionary]) {
+            foreach ($k in @($script:Bind.Keys)) { $v = $saved.Bind[$k]; if ($v -is [ValueType] -and $v -isnot [bool] -and $v -gt 0 -and $v -lt 256) { $script:Bind[$k] = [int]$v } }
+        }
         $script:Settings.Mouse = [Math]::Max(0.02, [Math]::Min(0.5, [double]$script:Settings.Mouse))
         $script:Settings.Scale = [Math]::Max(2, [Math]::Min(5, [int]$script:Settings.Scale))
+        foreach ($k in 'Sfx', 'Music') { if ($script:Settings.Contains($k)) { $script:Settings[$k] = [Math]::Max(0.0, [Math]::Min(1.0, [double]$script:Settings[$k])) } }
     }
     catch { Write-Warning "saves/settings.json could not be read: $($_.Exception.Message)" }
 }
