@@ -2,6 +2,32 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.3.3 - 2026-10-29
+
+The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start
+`Play.cmd` (Windows, PowerShell 7.2 or newer – nothing else).
+
+Fixed:
+
+* **The console sandbox is sealed.** Constrained language mode still let `[xml]` through, and with it the console could
+  read and write any file the player may touch, from a typed line or from `saves/profile.ps1`. Every line is now
+  checked before it runs, statement by statement: types only from a short list of harmless ones, and none of the ways
+  that turn text into code. A profile with one refused line still defines the rest.
+* **A doctored demo no longer verifies.** One frame with negative time took minutes off a dungeon time and still came
+  out VALID, and one huge frame hung the verifier. Every value of a demo is now checked against what the game itself
+  can record before it is played.
+* **The game starts from any folder.** An apostrophe, brackets, an `&` or a `^` in the path of the game folder kept it
+  from starting, from caching its helpers or from restarting after an update, and a folder nobody may write to (one
+  under Program Files) stopped it at once. The caches move to the temp folder when they have to.
+* Closing the window while the game was loading left it running without a window. It ends now.
+* An empty `achievements.json` or `dungeon.json` crashed the next floor completed, and a hand-edited `settings.json`
+  could keep the game from starting.
+
+Changed:
+
+* Every push is tested on GitHub: the self-test, the map validator, the verb check and the attract demo, with the
+  newest PowerShell and with 7.2.
+
 ## 1.3.2 - 2026-10-14
 
 The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start
