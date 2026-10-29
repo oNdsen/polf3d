@@ -323,6 +323,7 @@ function Write-HudLine([string]$Text, [string]$Font, [string]$Color, [double]$X,
 # A crossed-out speaker when the music is off (F4, or the options) or the sound is: so that a silent game is a choice
 # one can see, not a fault one has to guess at. Nothing is drawn while everything plays.
 function Show-MuteSign([double]$X, [double]$Y) {
+    if (-not $script:Form -and -not $script:TerminalMode) { return }      # pictures rendered without a window never have sound: no sign in them
     $music = -not $script:MusicEnabled -or ($script:Settings -and [double]$script:Settings.Music -le 0)
     $sfx = -not $script:SfxEnabled -or ($script:Settings -and [double]$script:Settings.Sfx -le 0)
     if (-not $music -and -not $sfx) { return }
