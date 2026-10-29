@@ -486,7 +486,7 @@ function Get-MusicPath([int]$Track) { Join-Path $script:MusicDir ("track{0}-v{1}
 # and renamed when it is complete - whoever wants it earlier simply composes it on the spot, as before.
 function Start-MusicComposer([int[]]$Tracks) {
     if (-not $script:MusicEnabled -or -not $script:Mixer -or $script:Composer) { return }
-    $null = New-Item -ItemType Directory -Path $script:MusicDir -Force
+    try { $null = New-Item -ItemType Directory -Path $script:MusicDir -Force } catch { return }      # a folder nobody may write to: the tracks are composed when wanted
     Clear-StaleMusic
     $jobs = @(foreach ($t in $Tracks) { $path = Get-MusicPath $t; if (-not (Test-Path -LiteralPath $path)) { @{ Track = $t; Path = $path } } })
     if (-not $jobs.Count) { return }

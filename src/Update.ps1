@@ -213,6 +213,7 @@ function ConvertTo-StartArguments([System.Collections.IDictionary]$Bound) {
         if ($name -in 'Update', 'Version', 'WaitFor') { continue }
         $value = $Bound[$name]
         if ($value -is [switch] -or $value -is [bool]) { if ($value) { $arguments.Add("-$name") }; continue }
+        if ($name -eq 'Map') { $value = (Resolve-Path -LiteralPath $value).Path }      # the restart runs in the game folder
         $arguments.Add("-$name"); $arguments.Add("$value")
     }
     $arguments.ToArray()
@@ -220,16 +221,25 @@ function ConvertTo-StartArguments([System.Collections.IDictionary]$Bound) {
 
 # The game starts itself again, the way it was started: Play.cmd if there is one, plain pwsh otherwise - with the
 # same parameters as the first time, and told to wait for this process, so that the old DLLs can be swept away.
+# Start-Process reads its working folder as a pattern, so a game folder with brackets in its name would not restart.
+function Start-GameProcess([string]$File, [string]$Arguments, [string]$Folder) {
+    $info = [System.Diagnostics.ProcessStartInfo]::new($File, $Arguments)
+    $info.WorkingDirectory = $Folder; $info.UseShellExecute = $true
+    $null = [System.Diagnostics.Process]::Start($info)
+}
+
 function Restart-Game([string]$Root) {
     $play = Join-Path $Root 'Play.cmd'
     $arguments = @($script:StartArguments) + @('-WaitFor', "$PID")       # the new game waits until this one has let go of its DLLs
     if (Test-Path -LiteralPath $play) {
-        $quoted = @($arguments | ForEach-Object { if ($_ -match '\s') { "'$_'" } else { $_ } })      # Play.cmd hands them to a PowerShell command line
-        Start-Process -FilePath 'cmd.exe' -ArgumentList (@('/c', "`"$play`"") + $quoted) -WorkingDirectory $Root
+        # Play.cmd hands them to a PowerShell command line: a value with a blank or an apostrophe goes in single quotes
+        $quoted = @($arguments | ForEach-Object { if ($_ -match "[\s']") { "'" + ($_ -replace "'", "''") + "'" } else { $_ } })
+        # /s with the whole line in quotes: cmd keeps the inner quotes, so an & or ^ in the folder name stays part of the path
+        Start-GameProcess 'cmd.exe' ('/d /s /c ""' + $play + '" ' + ($quoted -join ' ') + '"') $Root
     }
     else {
         $quoted = @($arguments | ForEach-Object { if ($_ -match '\s') { "`"$_`"" } else { $_ } })
-        Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$(Join-Path $Root 'Start-Polf3D.ps1')`"") + $quoted) -WorkingDirectory $Root
+        Start-GameProcess 'pwsh' ((@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$(Join-Path $Root 'Start-Polf3D.ps1')`"") + $quoted) -join ' ') $Root
     }
     $script:Running = $false
 }

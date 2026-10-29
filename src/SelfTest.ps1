@@ -856,7 +856,7 @@ function Invoke-SelfTest([string]$OutDir) {
     # ---- every floor: load, look around, let the world run for a while ----
     $script:StatesSeen = @()
     $floors = @(for ($i = 0; $i -lt $script:MapFiles.Count; $i++) { , @($i, $null) })
-    foreach ($b in Get-ChildItem (Split-Path $script:MapFiles[0]) -Filter 'bonus*.map') { $floors += , @(([int]($b.BaseName -replace '\D') - 1), $b.FullName) }
+    foreach ($b in Get-ChildItem -LiteralPath (Split-Path $script:MapFiles[0]) -Filter 'bonus*.map') { $floors += , @(([int]($b.BaseName -replace '\D') - 1), $b.FullName) }
     for ($fi = 0; $fi -lt $floors.Count; $fi++) {
         $li = $floors[$fi][0]; $script:LevelIndex = $li; $script:BonusMap = $floors[$fi][1]
         Start-Level $true $true
@@ -919,7 +919,7 @@ function Invoke-SelfTest([string]$OutDir) {
     if (-not ($counts[0] -lt $counts[1] -and $counts[1] -lt $counts[2])) { throw 'reinforcement test failed.' }
 
     # ---- secret exit: floor 2 -> bonus floor -> floor 3 ----
-    if (Test-Path (Join-Path (Split-Path $script:MapFiles[0]) 'bonus2.map')) {
+    if (Test-Path -LiteralPath (Join-Path (Split-Path $script:MapFiles[0]) 'bonus2.map')) {
         $script:LevelIndex = 1; $script:BonusMap = $null
         Start-Level $false $false
         $script:SecretExit = $true; Complete-Level

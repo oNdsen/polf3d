@@ -155,9 +155,17 @@ Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
 $script:Clock = [System.Diagnostics.Stopwatch]::StartNew()
 $script:SaveDir = Join-Path $PSScriptRoot 'saves'
-$script:MusicDir = Join-Path $PSScriptRoot 'bin/music'
+# The caches - the compiled helpers, the music, the voices - live in bin/. A game folder nobody may write to (one under
+# Program Files, a read-only share) gets them in the temp folder instead: the game starts either way.
+$script:BinDir = Join-Path $PSScriptRoot 'bin'
+try {
+    $null = New-Item -ItemType Directory -Path $script:BinDir -Force
+    $probe = Join-Path $script:BinDir ".write-test-$PID"; [System.IO.File]::WriteAllText($probe, ''); [System.IO.File]::Delete($probe)
+}
+catch { $script:BinDir = Join-Path ([System.IO.Path]::GetTempPath()) 'polf3d-bin' }
+$script:MusicDir = Join-Path $script:BinDir 'music'
 $script:MapFiles = @(if ($Map) { (Resolve-Path -LiteralPath $Map).Path }
-    else { Get-ChildItem (Join-Path $PSScriptRoot 'maps') -Filter 'level*.map' | Sort-Object { [int]($_.BaseName -replace '\D') } | ForEach-Object FullName })
+    else { Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'maps') -Filter 'level*.map' | Sort-Object { [int]($_.BaseName -replace '\D') } | ForEach-Object FullName })
 if (-not $script:MapFiles) { throw 'No maps found (maps/level*.map).' }
 $script:StartLevelIndex = [Math]::Min($Level, $script:MapFiles.Count) - 1
 $script:LevelIndex = $script:StartLevelIndex
@@ -190,18 +198,22 @@ function Import-CSharpClass([string]$File, [string]$ClassName) {
     $name = "${ClassName}_$hash"
     if (-not ($name -as [type])) {
         $code = $source.Replace("class $ClassName", "class $name")
-        $binDir = Join-Path $PSScriptRoot 'bin'
+        $binDir = $script:BinDir
         $dll = Join-Path $binDir "$name.dll"
         try {
-            if (-not (Test-Path $dll)) {
+            if (-not (Test-Path -LiteralPath $dll)) {
                 Write-Step "compiling $File - once, it is kept in bin/ ..."
                 $null = New-Item -ItemType Directory -Path $binDir -Force
-                Get-ChildItem $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-                Add-Type -TypeDefinition $code -OutputAssembly $dll -OutputType Library
+                Get-ChildItem -LiteralPath $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+                # Add-Type reads its output path as a pattern, and brackets in the game folder would break it: the
+                # compiler writes into the temp folder, and the DLL moves into place from there
+                $tmp = Join-Path ([System.IO.Path]::GetTempPath()) "polf3d-$name-$PID.dll"
+                Add-Type -TypeDefinition $code -OutputAssembly $tmp -OutputType Library
+                [System.IO.File]::Move($tmp, $dll, $true)
             }
-            Add-Type -Path $dll
+            Add-Type -LiteralPath $dll
             # older builds of the same class are of no use any more - unless a game that is still closing holds one, then next time
-            Get-ChildItem $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Where-Object Name -ne "$name.dll" | Remove-Item -Force -ErrorAction SilentlyContinue
+            Get-ChildItem -LiteralPath $binDir -Filter "$ClassName*.dll" -ErrorAction SilentlyContinue | Where-Object Name -ne "$name.dll" | Remove-Item -Force -ErrorAction SilentlyContinue
         }
         catch {
             Write-Verbose "DLL cache not usable ($($_.Exception.Message)), compiling in memory."
