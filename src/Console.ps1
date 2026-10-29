@@ -316,15 +316,31 @@ function Test-SandboxScript([string]$Text) {
     $refusal
 }
 
+# The statements of a script, one text each - or $null when it is not a plain list of statements.
+function Get-SandboxStatement([string]$Text) {
+    $tokens = $null; $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($Text, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors -or $ast.ParamBlock -or $ast.BeginBlock -or $ast.ProcessBlock -or $ast.DynamicParamBlock -or -not $ast.EndBlock) { return $null }
+    , @($ast.EndBlock.Statements | ForEach-Object { $_.Extent.Text })
+}
+
 function Invoke-SandboxScript([string]$Text) {
+    # what is refused is refused statement by statement, so that a profile with one bad line still defines the rest
+    $refused = [System.Collections.Generic.List[string]]::new()
     $refusal = Test-SandboxScript $Text
-    if ($refusal) { return @{ Output = @(); Errors = @("Access is denied: $refusal") } }
+    if ($refusal) {
+        $statements = Get-SandboxStatement $Text
+        if (-not $statements) { return @{ Output = @(); Errors = @("Access is denied: $refusal") } }
+        $kept = @(foreach ($statement in $statements) { $why = Test-SandboxScript $statement; if ($why) { $refused.Add("Access is denied: $why") } else { $statement } })
+        if (-not $kept.Count) { return @{ Output = @(); Errors = @($refused) } }
+        $Text = $kept -join "`n"
+    }
     $ps = [powershell]::Create(); $ps.Runspace = $script:Con.Runspace
     try {
         $null = $ps.AddScript($Text)
         $async = $ps.BeginInvoke()
         if (-not $async.AsyncWaitHandle.WaitOne(2000)) { $ps.Stop(); return @{ Output = @(); Errors = @('The pipeline has been stopped: two seconds is all a line gets down here.') } }
-        $out = @(); $errors = @()
+        $out = @(); $errors = @($refused)
         try { $out = @($ps.EndInvoke($async)) } catch { $e = $_.Exception; while ($e.InnerException) { $e = $e.InnerException }; $errors += $e.Message }
         foreach ($err in $ps.Streams.Error) { $errors += ($err.ToString() -split "`n")[0] }
         @{ Output = $out; Errors = $errors }
