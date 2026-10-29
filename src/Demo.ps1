@@ -49,9 +49,36 @@ function Stop-DemoRecording([string]$Path) {
 # ---------------------------------------------------------------------------------------------
 # Playback
 # ---------------------------------------------------------------------------------------------
+# A demo is a seed and the input of every frame, and -VerifyDemo replays it. That proves the run - but only if every
+# value is one the game itself could have recorded: one frame with negative time takes minutes off the clock, a huge one
+# hangs the replay, a difficulty of 7 has enemies without health. $null if the demo is fine, otherwise what is wrong.
+function Test-DemoData([System.Collections.IDictionary]$Demo) {
+    $number = { param($v) $v -is [ValueType] -and $v -isnot [bool] -and -not ($v -is [double] -and ([double]::IsNaN($v) -or [double]::IsInfinity($v))) }
+    if (-not (& $number $Demo.Difficulty) -or [double]$Demo.Difficulty -notin 0, 1, 2, 3) { return "difficulty '$($Demo.Difficulty)'" }
+    if (-not (& $number $Demo.Seed) -or [double]$Demo.Seed -lt 1 -or [double]$Demo.Seed -gt [int]::MaxValue) { return "seed '$($Demo.Seed)'" }
+    if ($null -ne $Demo.ColumnStep -and [string]$Demo.ColumnStep -notin '1', '2') { return "column step '$($Demo.ColumnStep)'" }
+    $frames = @($Demo.Frames)
+    if ($frames.Count -eq 0 -or $frames.Count -gt 1000000) { return "$($frames.Count) frames" }
+    $max = $script:MAXTICS + 0.0001
+    for ($i = 0; $i -lt $frames.Count; $i++) {
+        $f = @($frames[$i])
+        if ($f.Count -lt 7 -or $f.Count -gt 8) { return "frame $i has $($f.Count) values" }
+        foreach ($v in $f) { if (-not (& $number $v)) { return "frame $i holds '$v'" } }
+        if ($f[0] -lt 0 -or $f[0] -gt $max) { return "frame $i lasts $($f[0]) tics (0 to $script:MAXTICS)" }
+        if ([Math]::Abs($f[1]) -gt 1.0001 -or [Math]::Abs($f[2]) -gt 1.0001) { return "frame $i moves at $($f[1]), $($f[2]) (at most 1)" }
+        if ([Math]::Abs($f[3]) -gt 2.4001) { return "frame $i turns at $($f[3]) (at most 2.4)" }
+        if ($f[5] -lt 0 -or $f[5] -gt 15 -or [int]$f[5] -ne $f[5]) { return "frame $i has the flags $($f[5])" }
+        if ($f[6] -lt -1 -or $f[6] -ge $script:Weapons.Count -or [int]$f[6] -ne $f[6]) { return "frame $i picks weapon $($f[6])" }
+        if ($f.Count -gt 7 -and ($f[7] -lt 0 -or $f[7] -gt 7 -or [int]$f[7] -ne $f[7])) { return "frame $i uses power $($f[7])" }
+    }
+    $null
+}
+
 function Start-DemoPlayback([string]$Path) {
     try {
         $demo = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable
+        $wrong = Test-DemoData $demo
+        if ($wrong) { throw "the demo has been altered or damaged: $wrong" }
         if ((@($demo.Mods) -join '|') -ne (@($script:Mods) -join '|')) { throw "recorded with the mods '$(@($demo.Mods) -join ', ')', running with '$(@($script:Mods) -join ', ')'" }
         $index = -1
         if ($demo.Dungeon) { $script:DungeonSeed = [int]$demo.Dungeon; $script:DungeonMap = New-DungeonMap $script:DungeonSeed; $index = 0 }

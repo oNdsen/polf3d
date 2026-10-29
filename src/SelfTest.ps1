@@ -1084,9 +1084,13 @@ function Invoke-SelfTest([string]$OutDir) {
     $stale = Join-Path $OutDir 'dungeon-stale.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $stale
     $blamed = -not (Test-DemoFile $stale) -and $script:DemoVerdict -like '*recorded with POLF 3D 0.9.0, this is *'
     $stamped = (Get-Content -LiteralPath $proof -Raw | ConvertFrom-Json -AsHashtable).Game -eq $script:PolfVersion
-    Remove-Item -LiteralPath $proof, $fake, $stale -ErrorAction SilentlyContinue
-    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid and names the version: $stamped; a doctored copy is rejected: $caught; an old version's copy is blamed on the version: $blamed"
-    if (-not $valid -or -not $caught -or -not $stamped -or -not $blamed) { throw 'dungeon test failed.' }
+    $tampered = Get-Content -LiteralPath $proof -Raw | ConvertFrom-Json -AsHashtable
+    $tampered.Frames[5][0] = -3000                                    # ... and a frame that turns the clock back is refused before it is played
+    $rewound = Join-Path $OutDir 'dungeon-rewound.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $rewound
+    $refused = -not (Test-DemoFile $rewound) -and $script:Message -like '*altered or damaged: frame 5 lasts*'
+    Remove-Item -LiteralPath $proof, $fake, $stale, $rewound -ErrorAction SilentlyContinue
+    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid and names the version: $stamped; a doctored copy is rejected: $caught; an old version's copy is blamed on the version: $blamed; a rewound frame is refused: $refused"
+    if (-not $valid -or -not $caught -or -not $stamped -or -not $blamed -or -not $refused) { throw 'dungeon test failed.' }
     Stop-Dungeon; $script:GodMode = $true; $script:Difficulty = 1; $script:PlayerDied = $false; $script:Playback = $null
 
     # ---- terminal mode: the frame buffer as half-block characters ----
