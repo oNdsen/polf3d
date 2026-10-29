@@ -252,6 +252,10 @@ function Update-View {
         $draw.Add(@($spr, $a.ScreenX, [int]($projH / $depth), $depth, $test))
     }
 
+    # the ghost of a dungeon run: drawn, never simulated
+    $ghost = Get-GhostSprite $px $py $dirX $dirY $pl $halfW $projH $frame
+    if ($ghost) { $keys.Add(- $ghost[3]); $draw.Add(@($ghost[0], $ghost[1], $ghost[2], $ghost[3], $ghost[3])) }
+
     # far sprites, then the window strips, then the sprites in front of the nearest window
     $windowsPending = $minWin -lt 1e9
     if ($draw.Count) {
@@ -424,6 +428,7 @@ function Show-Overlays {
         Write-HudBar $(if ($boss.HP / $full -le 0.3) { 'FF4030' } else { 'D03838' }) 80 48 (160 * [Math]::Max(0.0, [Math]::Min(1.0, $boss.HP / $full))) 3
     }
     Show-AbilityOverlays
+    Show-GhostLabel
 
     # progress on this floor, and the clock when speedrunning
     $st = $script:Stats

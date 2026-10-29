@@ -1090,10 +1090,17 @@ function Invoke-SelfTest([string]$OutDir) {
     $script:GodMode = $false; $script:Difficulty = 0
     $null = Start-Dungeon 20260918
     Reset-Bot
-    for ($f = 0; $f -lt 700 -and -not $script:PlayerDied -and -not $script:LevelDone; $f++) { Update-View; $in = Get-BotInput $f; Add-DemoFrame 2.0 $in; Update-World 2.0 $in }
+    for ($f = 0; $f -lt 700 -and -not $script:PlayerDied -and -not $script:LevelDone; $f++) { Update-View; $in = Get-BotInput $f; Add-DemoFrame 2.0 $in; Update-World 2.0 $in; Add-GhostPoint }
     $kills = $script:Stats.Kills
     $proof = Join-Path $script:SaveDir (Save-DungeonRun $false)
     $valid = Test-DemoFile $proof
+    # ... and it brings its path along: the ghost of the next run, ten points a second, where the player was
+    $run = Read-GhostRun $proof 'the bot'
+    $script:GhostRun = $run; $keepTics = $script:Stats.Tics
+    $script:Stats.Tics = 0; $start = Get-GhostPose
+    $script:Stats.Tics = 1e9; $end = Get-GhostPose
+    $script:Stats.Tics = $keepTics; $script:GhostRun = $null
+    $ghosted = $run -and $run.Path.Count -gt 100 -and $run.Dungeon -eq 20260918 -and [Math]::Abs($start.X - $run.Path[0][0]) -lt 0.01 -and $end.Done -and -not $start.Done
     $tampered = Get-Content -LiteralPath $proof -Raw | ConvertFrom-Json -AsHashtable
     $tampered.End.Kills = [int]$tampered.End.Kills + 3            # "I killed three more, honest"
     $fake = Join-Path $OutDir 'dungeon-fake.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $fake
@@ -1107,8 +1114,8 @@ function Invoke-SelfTest([string]$OutDir) {
     $rewound = Join-Path $OutDir 'dungeon-rewound.json'; $tampered | ConvertTo-Json -Depth 4 -Compress | Set-Content -LiteralPath $rewound
     $refused = -not (Test-DemoFile $rewound) -and $script:Message -like '*altered or damaged: frame 5 lasts*'
     Remove-Item -LiteralPath $proof, $fake, $stale, $rewound -ErrorAction SilentlyContinue
-    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid and names the version: $stamped; a doctored copy is rejected: $caught; an old version's copy is blamed on the version: $blamed; a rewound frame is refused: $refused"
-    if (-not $valid -or -not $caught -or -not $stamped -or -not $blamed -or -not $refused) { throw 'dungeon test failed.' }
+    Write-Step "dungeon test: $($sizes -join ', '); the bot's run ($kills kills) verifies: $valid and names the version: $stamped; a doctored copy is rejected: $caught; an old version's copy is blamed on the version: $blamed; a rewound frame is refused: $refused; its ghost has $(if ($run) { $run.Path.Count } else { 0 }) points: $ghosted"
+    if (-not $valid -or -not $caught -or -not $stamped -or -not $blamed -or -not $refused -or -not $ghosted) { throw 'dungeon test failed.' }
     Stop-Dungeon; $script:GodMode = $true; $script:Difficulty = 1; $script:PlayerDied = $false; $script:Playback = $null
 
     # ---- terminal mode: the frame buffer as half-block characters ----

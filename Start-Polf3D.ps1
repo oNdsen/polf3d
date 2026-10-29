@@ -39,6 +39,9 @@
     Go straight into today's dungeon: one generated floor, the same for everybody today, one life, recorded as a demo.
 .PARAMETER Dungeon
     Play the dungeon generated from this number instead of today's.
+.PARAMETER Ghost
+    Race somebody else's run: the demo file of a dungeon run (saves/dungeon-*.json). The game builds that dungeon, on
+    that difficulty, and the run goes along as a ghost.
 .PARAMETER Tutorial
     Straight into the onboarding: a floor that explains every mechanism, one room at a time (N on the title screen).
 .PARAMETER Horde
@@ -96,6 +99,7 @@ param(
     [ValidateRange(1024, 65535)][int]$Port = 27500,
     [switch]$Daily,
     [ValidateRange(1, 99999999)][int]$Dungeon,
+    [string]$Ghost,
     [switch]$Tutorial,
     [switch]$Horde,
     [ValidateRange(1, 99999999)][int]$HordeNumber,
@@ -242,7 +246,7 @@ function Initialize-Scaler {
 Write-Step "POLF 3D $script:PolfVersion starting ..."
 # the modules the window needs come first, so that the window is up while the rest loads
 foreach ($file in 'Defs', 'Assets.Gfx', 'Render', 'Settings', 'Update', 'Game') { . (Join-Path $PSScriptRoot "src/$file.ps1") }
-$modules = 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Browser'
+$modules = 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Browser', 'Ghost'
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
 $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
@@ -314,6 +318,14 @@ $script:NetPort = $Port                                          # the server br
 $script:NetName = Get-NetSafeName $(if ($PlayerName) { $PlayerName } else { $env:USERNAME }) 'Player'
 $script:AutoHorde = if ($HordeNumber) { $HordeNumber } elseif ($Horde) { Get-DailySeed } else { 0 }
 $script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
+$script:GhostFile = $null
+if ($Ghost) {
+    # somebody else's run: its dungeon, on its difficulty, and the run as the ghost
+    $script:GhostFile = (Resolve-Path -LiteralPath $Ghost).Path
+    $race = Read-GhostRun $script:GhostFile ''
+    if (-not $race) { throw "-Ghost: '$Ghost' is not the demo of a dungeon run with a path (runs are recorded with one since 1.4.0)." }
+    $script:AutoDungeon = $race.Dungeon; $script:Difficulty = $race.Difficulty
+}
 try {
     if ($HostGame) { Initialize-Network 'host' $(if ($HostGame -eq 'Coop') { 'coop' } else { 'duel' }) '' $Port $MaxPlayers $PlayerName; Write-Step "hosting a $HostGame game for up to $MaxPlayers players on port $Port" }
     elseif ($JoinGame) { Initialize-Network 'client' 'coop' $JoinGame $Port 4 $PlayerName; Write-Step "joining the game on ${JoinGame}:$Port" }

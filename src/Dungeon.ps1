@@ -219,11 +219,13 @@ function Start-Dungeon([int]$Seed) {
     $script:BonusMap = $null
     Start-DemoRecording $Seed                                     # a run is always recorded: that is what makes it checkable
     $script:P.Lives = 0                                           # one life
-    Show-Message "Dungeon #$Seed - one life, no saving. Find the commander, take his key, reach the lift."
+    Start-GhostRun $Seed                                          # ... and the best run so far runs along
+    $race = if ($script:GhostRun) { "  Racing: $($script:GhostRun.Label), $(Format-Time $script:GhostRun.Seconds -Tenths)." } elseif ($script:GhostNote) { "  $($script:GhostNote)" } else { '' }
+    Show-Message "Dungeon #$Seed - one life, no saving. Find the commander, take his key, reach the lift.$race"
     $true
 }
 
-function Stop-Dungeon { $script:DungeonSeed = 0; $script:DungeonMap = $null }
+function Stop-Dungeon { $script:DungeonSeed = 0; $script:DungeonMap = $null; Stop-GhostRun }
 
 # The demo of a finished (or failed) run goes next to the saved games, its time into the name.
 function Save-DungeonRun([bool]$Completed) {

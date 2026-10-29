@@ -464,7 +464,8 @@ function Show-DoneScreen {
     if ($r.Transcript) { Write-HudText "`"$($r.Transcript.Verdict)`"" 'Small' 'C0C8D8' 0 173 320 8 }
     if ($r.DungeonDemo) {
         $was = if ($r.DungeonBest) { "best so far $(Format-Time ([double]$r.DungeonBest.Seconds) -Tenths)" } else { 'first run of this dungeon' }
-        Write-HudText "Dungeon #$($script:DungeonSeed)   $was" 'Small' '40E0FF' 0 182 320 8
+        $race = Get-GhostVerdict $r.Exact
+        Write-HudText "Dungeon #$($script:DungeonSeed)   $was$(if ($race) { "   -   $race" })" 'Small' '40E0FF' 0 182 320 8
         Write-HudText "proof: saves/$($r.DungeonDemo)   (check it with -VerifyDemo)" 'Small' '8FB0FF' 0 190 320 8
     }
     $foot = if ($script:Net -and $script:Net.Role -eq 'client' -and $script:Net.Connected -and -not $r.Last) { 'Waiting for the host to call the lift ...' } elseif ($r.Last) { $(if ($script:DungeonSeed -or $script:MapFiles.Count -le 1) { 'Completed - thanks for playing!   Enter = main menu' } else { 'All floors completed!   Enter = the way out' }) } elseif ($r.ToBonus) { 'This lift goes somewhere it should not ...   Enter = find out' } else { 'Enter = take the lift to the next floor' }
@@ -642,6 +643,7 @@ function Start-GameLoop {
                 $in = Get-PlayerInput
                 if ($script:Recording) { Add-DemoFrame $tics $in }
                 Update-World $tics $in
+                if ($script:Recording) { Add-GhostPoint }                 # where the player is now: the ghost of a later run
                 Show-PlayFrame
                 if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' }
                 elseif ($script:LevelDone -and $script:TutorialMode) { Start-Sfx 'level_done'; Set-Mode 'title'; Show-Message 'Onboarding complete. Welcome to Shellstein.' }

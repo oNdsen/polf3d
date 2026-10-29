@@ -19,7 +19,7 @@ function Start-DemoRecording([int]$Seed = 0) {
     $script:BonusMap = $null
     Start-Level $false $false
     Update-View                                                   # prime what the enemies can see, exactly as playback does
-    $script:Recording = @{ Seed = $script:LevelSeed; Frames = [System.Collections.Generic.List[object]]::new() }
+    $script:Recording = @{ Seed = $script:LevelSeed; Frames = [System.Collections.Generic.List[object]]::new(); Path = [System.Collections.Generic.List[object]]::new(); PathNext = 0.0 }
     Show-Message 'RECORDING - F12 stops and saves'
 }
 
@@ -36,6 +36,7 @@ function Stop-DemoRecording([string]$Path) {
         Version = 1; Game = $script:PolfVersion; Map = Split-Path $script:MapFile -Leaf; Difficulty = $script:Difficulty; Seed = $rec.Seed
         Mods = @($script:Mods)                                                    # they change the rules
         Dungeon = $script:DungeonSeed; ColumnStep = $script:ColumnStep           # a dungeon is rebuilt from its number; the ray count decides who is seen
+        Path = $rec.Path; PathStep = $script:GHOST_STEP; Player = $script:NetName          # where the player went: the ghost of a later run
         Completed = [bool]$script:LevelDone; Seconds = [Math]::Round($script:Stats.Tics / $script:TICRATE, 2)
         # where the recording ended - playback must arrive at exactly the same numbers
         End = [ordered]@{ X = $script:P.X; Y = $script:P.Y; Health = $script:P.Health; Kills = $script:Stats.Kills; Score = $script:P.Score }
