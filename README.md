@@ -7,6 +7,7 @@ mode –<br>procedurally generated graphics, sound, speech and music – as much
 
 <p align="center">
 <a href="https://ondsen.github.io/polf3d/"><img alt="Website" src="https://img.shields.io/badge/website-ondsen.github.io%2Fpolf3d-DCFF63?labelColor=2049EF"></a>
+<a href="https://github.com/oNdsen/polf3d/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/oNdsen/polf3d/actions/workflows/tests.yml/badge.svg"></a>
 <a href="https://github.com/oNdsen/polf3d/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/oNdsen/polf3d?label=release&color=2C54C4"></a>
 <a href="https://github.com/oNdsen/polf3d/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/oNdsen/polf3d/total?label=downloads&color=2C54C4"></a>
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/oNdsen/polf3d?color=2C54C4"></a>
@@ -744,6 +745,10 @@ files, though, so you can just as well edit them by hand or in [the editor](tool
 ./tools/Test-Verbs.ps1         # every function uses an approved verb
 ./Start-Polf3D.ps1 -BalanceTest 1   # a bot plays floor 1 on every difficulty and duels its bosses: who wins how often?
 ```
+
+GitHub runs the self-test, both tools and a check of the attract demo on every push and every pull request, on Windows
+with the newest PowerShell and with 7.2, the oldest the game supports ([.github/workflows/tests.yml](.github/workflows/tests.yml)). The self-test is silent
+and needs no window, so it runs there as it runs here.
 
 ## Origin and scope
 

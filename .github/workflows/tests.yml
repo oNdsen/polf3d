@@ -1,0 +1,63 @@
+# Every push and every pull request runs the game's own checks on Windows: the verb check, the map validator, the
+# attract demo and the self-test (headless and silent - it plays the game, the network included, without a window).
+# Twice: with the PowerShell the runner has, and with the oldest one the game supports.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: PowerShell ${{ matrix.powershell }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        powershell: ['latest', '7.2']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PowerShell 7.2
+        if: matrix.powershell == '7.2'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = gh api repos/PowerShell/PowerShell/releases --paginate --jq '.[].tag_name' |
+              Where-Object { $_ -match '^v7\.2\.\d+$' } | Sort-Object { [version]$_.Substring(1) } | Select-Object -Last 1
+          $zip = Join-Path $env:RUNNER_TEMP 'pwsh72.zip'; $dir = Join-Path $env:RUNNER_TEMP 'pwsh72'
+          gh release download $tag --repo PowerShell/PowerShell --pattern "PowerShell-$($tag.Substring(1))-win-x64.zip" --output $zip
+          Expand-Archive -LiteralPath $zip -DestinationPath $dir
+          $dir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Which PowerShell
+        shell: pwsh
+        run: '"PowerShell $($PSVersionTable.PSVersion) at $((Get-Process -Id $PID).Path)"'
+
+      - name: Approved verbs
+        shell: pwsh
+        run: ./tools/Test-Verbs.ps1
+
+      - name: Maps
+        shell: pwsh
+        run: ./tools/Test-Level.ps1
+
+      - name: Attract demo
+        shell: pwsh
+        run: ./Start-Polf3D.ps1 -VerifyDemo ./demos/attract.json
+
+      - name: Self-test
+        shell: pwsh
+        run: ./Start-Polf3D.ps1 -SelfTest
+
+      - name: Keep the self-test pictures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selftest-powershell-${{ matrix.powershell }}
+          path: selftest/
+          if-no-files-found: ignore
