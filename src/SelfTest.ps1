@@ -255,7 +255,8 @@ function Invoke-SelfTest([string]$OutDir) {
     Remove-Item -LiteralPath (Get-SettingsPath) -ErrorAction SilentlyContinue
     Open-Options
     $script:Options.Row = 0; Update-Options @($script:VK.Right, $script:VK.Right)                    # mouse sensitivity up twice
-    $script:Options.Row = 8; Update-Options @($script:VK.Enter); Update-Options @(65)                # row 8 is "forward" (after seven settings): it becomes A - which was "strafe left"
+    $script:Options.Row = [Array]::IndexOf(@(Get-OptionRows | ForEach-Object { $_.Key }), 'Forward')
+    Update-Options @($script:VK.Enter); Update-Options @(65)                                         # "forward" becomes A - which was "strafe left"
     Show-Options; Save-BackBuffer (Join-Path $OutDir 'screen-options.png')
     Update-Options @($script:VK.Esc)
     $script:Bind.Forward = 1; $script:Settings.Mouse = 9
@@ -960,15 +961,18 @@ function Invoke-SelfTest([string]$OutDir) {
 
     # ---- game pad: the XInput bridge must load and answer (with or without a pad plugged in) ----
     if ($script:Pad) {
-        $state = $script:Pad::Read(0)
+        $state = $script:Pad::Read(0, 0.22)
         Update-Gamepad; $in = $idle.Clone(); Add-GamepadInput $in
-        # the buttons without a pad: a state as the bridge would report it - X pressed, A and B held
-        $keep = @($script:PadState, $script:PadHit, $script:PadButtons)
-        $script:PadState = [double[]]@(0, 0, 0, 0, 0, 0, 0); $script:PadHit = $script:PadBits.X; $script:PadButtons = $script:PadBits.A -bor $script:PadBits.B
-        $in = $idle.Clone(); $in.Ability = 0; Add-GamepadInput $in; $pressed = "$($in.Ability)/$($in.Use)/$($in.Sneak)"
-        $script:PadState = $keep[0]; $script:PadHit = $keep[1]; $script:PadButtons = $keep[2]
-        Write-Step "game pad buttons: X, A and B give power/use/sneak $pressed"
-        if ($pressed -ne '2/True/True') { throw 'game pad test failed.' }
+        # the buttons without a pad: a state as the bridge would report it, and what each new button does
+        $keepState = $script:PadState; $keepHit = $script:PadHit
+        $script:PadState = [double[]]@(0, 0, 0.5, 0, 0, 0, 0); $script:Settings.PadTurn = 2.0
+        $powers = foreach ($b in 'Up', 'Left', 'Right', 'Down', 'LS', 'RS', 'X') { $script:PadHit = $script:PadBits[$b]; $in = $idle.Clone(); $in.Ability = 0; Add-GamepadInput $in; $in.Ability }
+        $turn = $in.Turn
+        $script:PadHit = 0; $keepButtons = $script:PadButtons; $script:PadButtons = $script:PadBits.A -bor $script:PadBits.B      # held: A uses, B sneaks
+        $in = $idle.Clone(); Add-GamepadInput $in; $held = "$($in.Use)/$($in.Sneak)"
+        $script:Settings.PadTurn = 1.4; $script:PadState = $keepState; $script:PadHit = $keepHit; $script:PadButtons = $keepButtons
+        Write-Step "game pad buttons: up/left/right/down/left stick/right stick/X give $($powers -join ','), A/B held use/sneak $held, turning at 2.0 gives $turn"
+        if (($powers -join ',') -ne '1,3,4,5,6,7,2' -or $held -ne 'True/True' -or $turn -ne 1.0) { throw 'game pad test failed.' }
         Write-Step "game pad test: XInput bridge loaded, pad connected: $([bool]$state)"
     }
     else { Write-Step 'game pad test: bridge not available (skipped)' }

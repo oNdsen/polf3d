@@ -32,9 +32,9 @@ public static class PolfGamepad
         return Math.Sign(d) * (Math.Abs(d) - deadZone) / (1.0 - deadZone);
     }
 
-    // Returns null when no pad is connected, otherwise
+    // Returns null when no pad is connected, otherwise (with the sticks' dead zone from the options)
     // { leftX, leftY, rightX, rightY, leftTrigger, rightTrigger, buttons } with axes in -1..1.
-    public static double[] Read(int index)
+    public static double[] Read(int index, double deadZone)
     {
         State s; uint rc;
         try { rc = useOld ? GetState910((uint)index, out s) : GetState14((uint)index, out s); }
@@ -46,7 +46,7 @@ public static class PolfGamepad
         }
         if (rc != 0) return null;
         return new double[] {
-            Axis(s.LX, 0.24), Axis(s.LY, 0.24), Axis(s.RX, 0.20), Axis(s.RY, 0.20),
+            Axis(s.LX, deadZone), Axis(s.LY, deadZone), Axis(s.RX, deadZone), Axis(s.RY, deadZone),
             s.LeftTrigger / 255.0, s.RightTrigger / 255.0, s.Buttons };
     }
 }

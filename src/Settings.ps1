@@ -24,7 +24,9 @@ $script:OptionHelp = @{
     MiniMap = 'the radar in the corner: walls you have seen, alerted enemies (N)'
     Fps = 'frames per second in the corner (F3)'
     FlatFloors = 'plain floors and ceilings are faster on a slow machine'
-    UpdateCheck = 'once a day the title screen asks GitHub for a newer version - one request, nothing else'
+    UpdateCheck = 'once a day the title screen asks GitHub for a newer version - one request'
+    PadTurn = 'how fast the right stick of a game pad turns the view'
+    PadDeadZone = 'how far a stick has to move before it counts - more if the view drifts'
     Forward = 'walk forward (arrow up always works too)'
     Back = 'walk backwards (arrow down always works too)'
     StrafeLeft = 'step to the left without turning'
@@ -54,7 +56,7 @@ $script:OptionHelp = @{
 # keys that mean something in every mode and must not be given away
 $script:BindReserved = 48, 13, 27, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 123, 49, 50, 51, 52, 53, 54, 55, 56, 57
 
-$script:Settings = @{ Mouse = 0.12; Sfx = 0.7; Music = 0.45; MiniMap = $true; Fps = $false; FlatFloors = $false; Scale = 3; UpdateCheck = $true }
+$script:Settings = @{ Mouse = 0.12; Sfx = 0.7; Music = 0.45; MiniMap = $true; Fps = $false; FlatFloors = $false; Scale = 3; UpdateCheck = $true; PadTurn = 1.4; PadDeadZone = 0.22 }
 $script:Bind = @{}
 foreach ($k in $script:BindDefaults.Keys) { $script:Bind[$k] = $script:BindDefaults[$k] }
 $script:Options = @{ Row = 0; Return = 'title'; Waiting = $false }
@@ -81,6 +83,8 @@ function Import-Settings {
         $script:Settings.Mouse = [Math]::Max(0.02, [Math]::Min(0.5, [double]$script:Settings.Mouse))
         $script:Settings.Scale = [Math]::Max(2, [Math]::Min(5, [int]$script:Settings.Scale))
         foreach ($k in 'Sfx', 'Music') { if ($script:Settings.Contains($k)) { $script:Settings[$k] = [Math]::Max(0.0, [Math]::Min(1.0, [double]$script:Settings[$k])) } }
+        $script:Settings.PadTurn = [Math]::Max(0.6, [Math]::Min(3.0, [double]$script:Settings.PadTurn))
+        $script:Settings.PadDeadZone = [Math]::Max(0.06, [Math]::Min(0.4, [double]$script:Settings.PadDeadZone))
     }
     catch { Write-Warning "saves/settings.json could not be read: $($_.Exception.Message)" }
 }
@@ -122,6 +126,8 @@ function Get-OptionRows {
     $rows.Add(@{ Kind = 'toggle'; Key = 'FlatFloors'; Text = ('{0,-22} {1}' -f 'Floors and ceilings', $(if ($s.FlatFloors) { 'plain (faster)' } else { 'textured' })) })
     $rows.Add(@{ Kind = 'slider'; Key = 'Scale'; Step = 1; Min = 2; Max = 5; Text = ('{0,-22} {1} x 320x240   (from the next start)' -f 'Window size', $s.Scale) })
     $rows.Add(@{ Kind = 'toggle'; Key = 'UpdateCheck'; Text = ('{0,-22} {1}' -f 'Check for updates', $(if ($s.UpdateCheck) { 'once a day' } else { 'never' })) })
+    $rows.Add(@{ Kind = 'slider'; Key = 'PadTurn'; Step = 0.2; Min = 0.6; Max = 3.0; Text = ('{0,-22} {1}  {2:0.0}' -f 'Game pad: turning', (& $bar $s.PadTurn 3.0), $s.PadTurn) })
+    $rows.Add(@{ Kind = 'slider'; Key = 'PadDeadZone'; Step = 0.02; Min = 0.06; Max = 0.4; Text = ('{0,-22} {1}  {2,3:0} %' -f 'Game pad: dead zone', (& $bar $s.PadDeadZone 0.4), ($s.PadDeadZone * 100)) })
     foreach ($k in $script:BindDefaults.Keys) { $rows.Add(@{ Kind = 'key'; Key = $k; Text = ('{0,-22} {1}' -f "Key: $($script:BindLabels[$k])", (Get-KeyName $script:Bind[$k])) }) }
     $rows.Add(@{ Kind = 'action'; Key = 'Reset'; Text = 'Reset everything to the defaults' })
     $rows
@@ -160,7 +166,7 @@ function Update-Options([int[]]$Keys) {
         elseif ($row.Kind -eq 'key' -and $k -eq $vk.Enter) { $o.Waiting = $true; $o.Note = '' }
         elseif ($row.Kind -eq 'action' -and $k -eq $vk.Enter) {
             foreach ($b in $script:BindDefaults.Keys) { $script:Bind[$b] = $script:BindDefaults[$b] }
-            $s.Mouse = 0.12; $s.Sfx = 0.7; $s.Music = 0.45; $s.MiniMap = $true; $s.Fps = $false; $s.FlatFloors = $false; $s.Scale = 3
+            $s.Mouse = 0.12; $s.Sfx = 0.7; $s.Music = 0.45; $s.MiniMap = $true; $s.Fps = $false; $s.FlatFloors = $false; $s.Scale = 3; $s.PadTurn = 1.4; $s.PadDeadZone = 0.22
             Update-Settings; $o.Note = 'Back to the defaults.'
         }
     }
@@ -191,10 +197,12 @@ function Show-Options {
     Write-HudBar 'FF0A1020' 0 0 320 240
     Write-HudBar 'FF2C54C4' 0 0 320 1.5
     $y = 6.0
-    foreach ($line in (Get-OptionLines)) {
-        if ($line[2]) { Write-HudBar 'FF2C54C4' 4 ($y - 0.5) 312 6.4 }
+    $lines = @(Get-OptionLines)
+    $step = [Math]::Min(5.9, 230.0 / $lines.Count)                # every line on the screen, however many settings and keys there are
+    foreach ($line in $lines) {
+        if ($line[2]) { Write-HudBar 'FF2C54C4' 4 ($y - 0.5) 312 ($step + 0.5) }
         $g.DrawString($line[0], $script:Fonts.Term, (Get-Brush $line[1]), [single](8 * $sc), [single]($y * $sc))
         if ($line.Count -gt 3 -and $line[3]) { $g.DrawString($line[3], $script:Fonts.Term, (Get-Brush $(if ($line[2]) { 'FFFFFF' } else { '7080A0' })), [single](126 * $sc), [single]($y * $sc)) }
-        $y += 5.9
+        $y += $step
     }
 }

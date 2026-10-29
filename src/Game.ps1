@@ -196,10 +196,12 @@ function Get-PlayerInput {
 
 # ---------------------------------------------------------------------------------------------
 # Game pad (XInput):  left stick move/strafe, right stick turn, RT fire, LT run, A use, B sneak,
-# LB/RB previous/next weapon, Back automap, Start pause. In menus: D-pad and A.
+# LB/RB previous/next weapon, X -Confirm, Y radar, Back automap, Start pause; the D-pad has the other
+# four powers (up -WhatIf, left -Verbose, right -Force, down Undo), a click on the left stick the
+# flashlight, on the right stick the mine. In menus: D-pad and A. Turning and dead zone: the options.
 # ---------------------------------------------------------------------------------------------
 # the button bits of XInput. (Not $script:PAD: PowerShell does not tell it from $script:Pad, the reader, which overwrote it.)
-$script:PadBits = @{ Up = 1; Down = 2; Start = 0x10; Back = 0x20; LB = 0x100; RB = 0x200; A = 0x1000; B = 0x2000; X = 0x4000; Y = 0x8000 }
+$script:PadBits = @{ Up = 1; Down = 2; Left = 4; Right = 8; Start = 0x10; Back = 0x20; LS = 0x40; RS = 0x80; LB = 0x100; RB = 0x200; A = 0x1000; B = 0x2000; X = 0x4000; Y = 0x8000 }
 
 # Polls the pad once per frame. Looking for a pad that is not there is slow, so that happens only
 # every two seconds. Sets $script:PadState (or $null) and $script:PadHit (buttons pressed this frame).
@@ -208,7 +210,7 @@ function Update-Gamepad {
     if (-not $script:Pad) { return }
     $now = $script:Clock.Elapsed.TotalSeconds
     if (-not $script:PadState -and $now -lt $script:PadRetry) { return }
-    $state = $script:Pad::Read(0)
+    $state = $script:Pad::Read(0, [double]$script:Settings.PadDeadZone)
     if (-not $state) { $script:PadState = $null; $script:PadRetry = $now + 2.0; return }
     $buttons = [int]$state[6]
     $script:PadHit = $buttons -band (-bnot [int]$script:PadButtons)
@@ -228,7 +230,7 @@ function Add-GamepadInput([hashtable]$In) {
     if (-not $s) { return }
     $b = $script:PadButtons; $pad = $script:PadBits
     $In.Strafe += $s[0]; $In.Forward += $s[1]
-    $In.Turn += $s[2] * 1.4
+    $In.Turn += $s[2] * [double]$script:Settings.PadTurn
     if ($s[5] -gt 0.3) { $In.Fire = $true }
     if ($s[4] -gt 0.3) { $In.Run = $true }
     if ($b -band $pad.A) { $In.Use = $true }
@@ -236,6 +238,8 @@ function Add-GamepadInput([hashtable]$In) {
     if ($script:PadHit -band $pad.RB) { $In.Weapon = Get-NextWeapon 1 }
     if ($script:PadHit -band $pad.LB) { $In.Weapon = Get-NextWeapon -1 }
     if ($script:PadHit -band $pad.X) { $In.Ability = 2 }          # -Confirm: the one you need in a hurry
+    # ... and the rest of them, so that a pad needs no keyboard: the D-pad has the powers, the stick clicks light and mine
+    foreach ($button in @('Up', 1), @('Left', 3), @('Right', 4), @('Down', 5), @('LS', 6), @('RS', 7)) { if ($script:PadHit -band $pad[$button[0]]) { $In.Ability = $button[1] } }
     $In.Forward = [Math]::Max(-1.0, [Math]::Min(1.0, $In.Forward)); $In.Strafe = [Math]::Max(-1.0, [Math]::Min(1.0, $In.Strafe))
 }
 
@@ -375,7 +379,7 @@ function Show-TitleScreen {
         foreach ($pair in $column) { Write-HudLine $pair[0] 'Small' '40E0FF' $x $y; Write-HudLine $pair[1] 'Small' 'C0C8D8' ($x + $width) $y; $y += 7.4 }
         $x += $width + ($column | ForEach-Object { $_[1].Length } | Measure-Object -Maximum).Maximum * 2.5 + 12
     }
-    Write-HudLine 'Game pad (XInput): sticks move and turn, RT fire, LT run, A use, B sneak, LB/RB weapon.   Everything else: O' 'Small' '7080A0' 16 215
+    Write-HudLine 'Game pad: RT fire, LT run, A use, B sneak, LB/RB weapon, X and the D-pad the powers, stick clicks light and mine' 'Small' '7080A0' 16 215
     Show-MuteSign 262 26                                          # top right, under the version and the update notice
     $notice = Get-UpdateNotice                                    # top right, under the version: the news, and the key that opens it
     if ($notice) { Write-HudBar '2C54C4' 202 14 114 9; Write-HudLine '[U]' 'Small' 'FFE860' 205 15; Write-HudLine $notice 'Small' 'FFFFFF' 216 15 }
