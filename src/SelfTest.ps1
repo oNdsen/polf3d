@@ -183,7 +183,7 @@ function Invoke-SelfTest([string]$OutDir) {
 
     # ---- abilities: snapshots must restore the world exactly; -WhatIf, -Confirm, -Force and Undo must do what they say ----
     $script:LevelIndex = 0; $script:BonusMap = $null; $script:Difficulty = 1
-    Start-Level $false $false
+    $script:NextSeed = 4711; Start-Level $false $false                      # the same floor every time: the clock must not decide
     $keepGod = $script:GodMode; $script:GodMode = $false
     $walker = $script:Actors | Where-Object { $_.State -like '*.path*' } | Select-Object -First 1
     Set-TestCamera ($walker.X + 0.2) ($walker.Y + 2.4) 90; $script:P.Privilege = 100.0
@@ -219,7 +219,9 @@ function Invoke-SelfTest([string]$OutDir) {
     $forced = $gold.Action                                        # (the undo below goes back to before this)
     # Undo: take a beating, then take it back
     $script:P.Privilege = 100.0; $script:P.Health = 100
+    $script:GodMode = $true                                       # nobody else gets a shot in while Undo collects its checkpoints
     for ($f = 0; $f -lt 60; $f++) { Update-World 2.0 $idle }
+    $script:GodMode = $false
     Invoke-PlayerDamage 200 $null; $hurt = $script:P.Health
     $undo = $idle.Clone(); $undo.Ability = 5
     Update-World 1.0 $undo
