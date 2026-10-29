@@ -2,6 +2,23 @@
 
 Fixes and balance raise the last number, new features and floors the middle one.
 
+## 1.4.0 - 2026-10-29
+
+The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start
+`Play.cmd` (Windows, PowerShell 7.2 or newer – nothing else).
+
+New:
+
+* **A server browser.** `[J]` on the title screen lists the games hosted on the local network - name, mode, players,
+  what they are doing and the version - and Enter joins one. `A` takes an address by hand, `C` hosts a co-op game and
+  `D` a deathmatch, right from there; no command line needed any more. The name the others see is `-PlayerName`, or
+  your Windows user name. Esc on the title screen leaves a network game. The host answers on the game port over UDP
+  as well, so its firewall has to let that in too.
+* **The ghost race.** Your best run of a dungeon comes along the next time: a see-through figure in gold, with its
+  time in the corner, and at the lift the verdict - "4.2 s ahead of your best". `-Ghost <file>` races somebody else:
+  give it the demo file of their run, and the game builds their dungeon on their difficulty. The ghost is only drawn,
+  so a run with a ghost verifies like any other. Runs recorded before 1.4.0 have no ghost yet; the next one does.
+
 ## 1.3.3 - 2026-10-29
 
 The game fetches this one itself: `[U]` on the title screen. Or download `polf3d.zip` below, unpack it and start

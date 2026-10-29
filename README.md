@@ -385,6 +385,11 @@ checked**:
 The verifier rebuilds the dungeon, plays the input back without a window and compares where it ends. A doctored file
 does not end where it claims to. Best times are kept per seed and difficulty.
 
+**The ghost race.** A run also records where you went, so your best run of a dungeon comes along the next time:
+a see-through figure in gold, with its time in the corner, and at the lift the verdict - "4.2 s ahead of your best".
+`-Ghost <file>` races somebody else: give it the demo file of their run, and the game builds their dungeon on their
+difficulty. The ghost is only drawn and touches nothing, so a run with a ghost verifies like any other.
+
 ## The arena
 
 `H` on the title screen (or `./Start-Polf3D.ps1 -Horde`, `-HordeNumber 4711` for a particular one): one life, one hall
@@ -456,13 +461,20 @@ down again, for 15 privilege a step. (Setting it to `Unrestricted` is free. You 
 
 ## Up to four players: co-op and deathmatch
 
+**`J` on the title screen** is the easy way: it lists the games hosted on the local network - name, mode, players,
+what they are doing and the version - and Enter joins one. `A` takes an address by hand, `C` hosts a co-op game and
+`D` a deathmatch. The browser finds the games with one UDP broadcast on the game port, which the host answers; routers
+do not pass broadcasts on, so over the internet a game is joined by its address. The name the others see is
+`-PlayerName`, or your Windows user name. Esc on the title screen leaves a network game. The command line does the
+same:
+
 ```powershell
 ./Start-Polf3D.ps1 -HostGame Coop -PlayerName Boss           # or: -HostGame Deathmatch   (-MaxPlayers 2..4)
 ./Start-Polf3D.ps1 -JoinGame 192.168.1.20 -PlayerName Anna   # on the other computers: name or address of the host
 ```
 
 Guests gather on the host's title screen, which lists who has joined; the host picks the difficulty and presses
-Enter. The port is 27500/TCP (`-Port` changes it) – the host's firewall has to let it in. Whoever connects while a
+Enter. The port is 27500, TCP for the game and UDP for the browser (`-Port` changes it) – the host's firewall has to let it in. Whoever connects while a
 floor is being played waits in the lobby and is in from the next floor. Every player wears the colour of their slot:
 orange (the host), green, purple, yellow.
 
@@ -558,6 +570,7 @@ in the high score list and no speedrun records. No cheating in a duel.
 ./Start-Polf3D.ps1 -NoSound -NoMusic -NoVoices -NoGamepad -NoMods
 ./Start-Polf3D.ps1 -HostGame Coop  # network game, see above (-JoinGame <host>, -Port, -MaxPlayers, -PlayerName)
 ./Start-Polf3D.ps1 -Daily          # today's dungeon (-Dungeon <number> for any other)
+./Start-Polf3D.ps1 -Ghost <file>   # race the run in this demo file: its dungeon, its difficulty, the run as a ghost
 ./Start-Polf3D.ps1 -Tutorial       # the onboarding: every mechanism explained, one room at a time
 ./Start-Polf3D.ps1 -Horde          # the arena with today's waves (-HordeNumber <number> for any other)
 ./Start-Polf3D.ps1 -ExportGif <file>    # a demo as an animated GIF (-GifPath, -GifStart, -GifSeconds, -GifScale)
@@ -596,7 +609,9 @@ in the high score list and no speedrun records. No cheating in a duel.
 | [src/Tutorial.ps1](src/Tutorial.ps1) | the onboarding floor, and the hints any map can use |
 | [src/Horde.ps1](src/Horde.ps1) | the arena: waves from a number, supplies, the list of runs |
 | [src/Dungeon.ps1](src/Dungeon.ps1) | the dungeon generator, its records, and the demo verifier |
+| [src/Ghost.ps1](src/Ghost.ps1) | the ghost race: the path of a run, and the see-through runner it becomes |
 | [src/Network.ps1](src/Network.ps1) | network games: connections, protocol, relay, snapshots, the "peer context", the host's admin panel and ban list |
+| [src/Browser.ps1](src/Browser.ps1) | the server browser: the UDP search, the host's answer, joining and hosting from the title screen |
 | [src/Events.ps1](src/Events.ps1) | what a floor has scheduled: lockdown, power failure, Patch Tuesday |
 | [src/Policy.ps1](src/Policy.ps1) | the building's execution policy: the alarm level of a floor |
 | [src/Loot.ps1](src/Loot.ps1) | loot tables, armour, keycards, scrap, signed drops, the silent streak |
