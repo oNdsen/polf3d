@@ -1062,6 +1062,24 @@ function Invoke-SelfTest([string]$OutDir) {
     finally { if ($server) { $server.Dispose() }; Stop-Network; $listener.Stop() }
     $script:GodMode = $keepGod; $script:Difficulty = 1; $script:PlayerDied = $false
 
+    # ---- the server browser: a host answers the search, and the browser lists it once, as a game on this computer ----
+    $keepPort = $script:NetPort; $keepName = $script:NetName
+    $script:NetPort = 27577; $script:NetName = 'Browser'
+    try {
+        Initialize-Network 'host' 'duel' '' 27577 3 'Probe Host'
+        $beacon = [bool]$script:Net.Beacon
+        Start-NetSearch
+        $until = $script:Clock.Elapsed.TotalSeconds + 3
+        while (-not $script:Search.Found.Count -and $script:Clock.Elapsed.TotalSeconds -lt $until) { Update-Network 1.0; Update-NetSearch; Start-Sleep -Milliseconds 20 }
+        Start-Sleep -Milliseconds 200; Update-Network 1.0; Update-NetSearch      # every answer is in: the same game is not listed twice
+        $games = @($script:Search.Found.Values)
+        $game = $games | Select-Object -First 1
+        Write-Step "browser test: the host answers: $beacon; found $($games.Count): '$($game.Name)' $($game.Mode) $($game.Players)/$($game.Max) $($game.State) at $($game.Address):$($game.Port), on this computer: $($game.Here)"
+        if (-not $beacon -or $games.Count -ne 1 -or $game.Name -ne 'Probe Host' -or $game.Mode -ne 'deathmatch' -or $game.Players -ne 1 -or $game.Max -ne 3 -or
+            $game.Port -ne 27577 -or $game.Version -ne $script:PolfVersion -or -not $game.Here) { throw 'browser test failed.' }
+    }
+    finally { Stop-NetSearch; Stop-Network; $script:NetPort = $keepPort; $script:NetName = $keepName }
+
     # ---- the dungeon: every seed must give a valid floor, the same one each time, and a recorded run must verify ----
     $sizes = foreach ($seed in 20260918, 20260919, 1, 4711, 99999999) {
         $first = Get-Content -LiteralPath (New-DungeonMap $seed) -Raw

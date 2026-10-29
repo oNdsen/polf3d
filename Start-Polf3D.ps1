@@ -242,7 +242,7 @@ function Initialize-Scaler {
 Write-Step "POLF 3D $script:PolfVersion starting ..."
 # the modules the window needs come first, so that the window is up while the rest loads
 foreach ($file in 'Defs', 'Assets.Gfx', 'Render', 'Settings', 'Update', 'Game') { . (Join-Path $PSScriptRoot "src/$file.ps1") }
-$modules = 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending'
+$modules = 'Assets.Sfx', 'Voices', 'Map', 'Doors', 'Mechanics', 'Actors', 'Player', 'Music', 'Mods', 'SaveGame', 'Transcript', 'Achievements', 'Demo', 'GifExport', 'Dungeon', 'Network', 'Abilities', 'Policy', 'Perks', 'Loot', 'Events', 'Horde', 'Tutorial', 'Story', 'Console', 'Terminal', 'Ending', 'Browser'
 $headless = $SelfTest -or $Screenshots -or $RecordAttractDemo -or $BalanceTest -or $VerifyDemo -or $ExportGif
 $script:SfxEnabled = -not $NoSound -and -not $headless
 $script:MusicEnabled = -not $NoMusic -and -not $headless
@@ -310,6 +310,8 @@ if ($SelfTest) {
 
 if ($HostGame -and $JoinGame) { throw 'Either -HostGame or -JoinGame, not both.' }
 $script:AutoTutorial = [bool]$Tutorial
+$script:NetPort = $Port                                          # the server browser hosts, joins and searches on this port
+$script:NetName = Get-NetSafeName $(if ($PlayerName) { $PlayerName } else { $env:USERNAME }) 'Player'
 $script:AutoHorde = if ($HordeNumber) { $HordeNumber } elseif ($Horde) { Get-DailySeed } else { 0 }
 $script:AutoDungeon = if ($Dungeon) { $Dungeon } elseif ($Daily) { Get-DailySeed } else { 0 }
 try {

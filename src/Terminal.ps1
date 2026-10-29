@@ -87,7 +87,7 @@ function Get-TerminalScreen([string]$Mode) {
             for ($i = 0; $i -lt 4; $i++) { $lines.Add($(if ($i -eq $script:Difficulty) { "$w > $($i + 1)  $($script:Difficulties[$i].Name)$r" } else { "$d   $($i + 1)  $($script:Difficulties[$i].Name)$r" })) }
             $lines.Add('')
             if ($script:Net) { $lines.Add("$c   $(Get-NetStatus)$r") }
-            if (-not $script:Net) { $lines.Add("$c   G = today's dungeon #$(Get-DailySeed)$r") }
+            if (-not $script:Net) { $lines.Add("$c   G = today's dungeon #$(Get-DailySeed)     J = play together on the network$r") }
             if (Get-UpdateNotice) { $lines.Add("$y   U = $(Get-UpdateNotice)$r") }
             $lines.Add("$y   $(if ($script:HasSaves -and -not $script:Net) { 'L = load a saved game     ' })T = speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })     O = options     Esc = quit$r"); $lines.Add('')
             $lines.Add("$d   W/S move   A/D strafe   arrows turn   Shift run   C sneak   Ctrl or J fire   Space/E use   1-9 weapon$r")
@@ -108,6 +108,7 @@ function Get-TerminalScreen([string]$Mode) {
         }
         'ending' { foreach ($row in (Get-EndingScreen)) { $lines.Add($row) } }
         'options' { foreach ($row in (Get-OptionLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $(if ($row.Count -gt 3 -and $row[3]) { "$($row[0])".PadRight(48) + $row[3] } else { $row[0] })$r") } }
+        'browse' { foreach ($row in (Get-NetBrowserLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $($row[0])$r") } }
         'players' { foreach ($row in (Get-NetPanelLines)) { $lines.Add("$(if ($row[2]) { "`e[7m" })   $($row[0])$r") } }
         'gameover' { $lines.Add(''); $lines.Add("`e[38;2;255;64;48m   G A M E   O V E R$r"); $lines.Add(''); $lines.Add("   Score: $($script:P.Score)"); $lines.Add(''); $lines.Add("$y   Enter = main menu$r") }
         'done' {

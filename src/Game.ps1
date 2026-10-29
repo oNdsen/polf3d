@@ -329,15 +329,16 @@ function Show-TitleScreen {
         $rows.Add(@('G', "today's dungeon #$(Get-DailySeed)$(if ($best) { "  (your best: $(Format-Time ([double]$best.Seconds) -Tenths))" })", 'C0C8D8'))
         $rows.Add(@('H', 'the arena: waves until you drop', 'C0C8D8'))
         $rows.Add(@('N', 'new here? the onboarding explains everything', 'C0C8D8'))
+        $rows.Add(@('J', 'play together: games on the network, or host one', 'C0C8D8'))
         if ($script:HasSaves) { $rows.Add(@('L', 'load a saved game', 'C0C8D8')) }
     }
-    $y = 119.0
+    $y = 119.0; $step = [Math]::Min(7.4, 40.0 / $rows.Count)       # the rows and the small print end above the controls
     foreach ($row in $rows) {
         if ($row[0]) { Write-HudLine "[$($row[0])]" 'Small' 'FFE860' 16 $y; Write-HudLine $row[1] 'Small' $row[2] 40 $y } else { Write-HudLine $row[1] 'Small' $row[2] 16 $y }
-        $y += 7.4                                                  # six rows when there are saved games: they have to end above the controls
+        $y += $step
     }
     $x = 16.0                                                     # the small print: three keys on one line
-    foreach ($pair in @('O', 'options'), @('T', "speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })"), @('Esc', 'quit')) {
+    foreach ($pair in @('O', 'options'), @('T', "speedrun clock $(if ($script:Speedrun) { 'ON' } else { 'off' })"), @('Esc', $(if ($script:Net) { 'leave the network game' } else { 'quit' }))) {
         Write-HudLine "[$($pair[0])]" 'Small' 'FFE860' $x $y; $x += ($pair[0].Length + 2) * 2.5 + 5
         Write-HudLine $pair[1] 'Small' 'C0C8D8' $x $y; $x += $pair[1].Length * 2.5 + 12
     }
@@ -571,9 +572,11 @@ function Start-GameLoop {
                     elseif ($h -eq $vk.G -and -not $script:Net) { if (Start-Dungeon 0) { Set-Mode 'play' } }
                     elseif ($h -eq 72 -and (-not $script:Net -or (Test-NetStart))) { if (Start-Horde 0) { Set-Mode 'play' } }      # H: the arena (in a network game: the host, co-op)
                     elseif ($h -eq $vk.N -and -not $script:Net) { if (Start-Tutorial) { Set-Mode 'play' } }             # N: new here? the onboarding
+                    elseif ($h -eq $vk.J -and -not $script:Net) { Open-NetBrowser }                                     # J: play together
                     elseif ($h -eq $vk.T) { $script:Speedrun = -not $script:Speedrun }
                     elseif ($h -eq $vk.O) { Open-Options }
                     elseif ($h -eq $vk.U -and $script:NewRelease) { Set-Mode 'update' }
+                    elseif ($h -eq $vk.Esc -and $script:Net) { Stop-Network }                                           # out of the network game first
                     elseif ($h -eq $vk.Esc) { $script:Running = $false }
                 }
                 if ($script:Mode -eq 'title') {
@@ -651,6 +654,11 @@ function Start-GameLoop {
                 Update-Options $hits
                 if ($script:Mode -eq 'options' -and $script:NetLive) { Update-World $tics (New-IdleInput); if ($script:PlayerDied) { $script:ShowWeapon = $false; Set-Mode 'dying' } }
                 if ($script:Mode -eq 'options') { Show-Options }
+            }
+
+            'browse' {
+                Update-NetBrowser $hits
+                if ($script:Mode -eq 'browse') { Show-NetBrowser }
             }
 
             'players' {

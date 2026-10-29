@@ -56,7 +56,7 @@ function Initialize-Network([string]$Role, [string]$Mode, [string]$Address, [int
         In = [System.Text.StringBuilder]::new(); Out = [System.Text.StringBuilder]::new(); Decoder = [System.Text.Encoding]::UTF8.GetDecoder()
         Bytes = [byte[]]::new(16384); Chars = [char[]]::new(16384)
         # the host's connections
-        Listener = $null; Guests = [System.Collections.Generic.List[hashtable]]::new(); Bans = [System.Collections.Generic.List[string]]::new()
+        Listener = $null; Beacon = $null; Guests = [System.Collections.Generic.List[hashtable]]::new(); Bans = [System.Collections.Generic.List[string]]::new()
         Connected = $false; Status = ''; Received = 0
         # the floor in play
         Serial = 0; Roster = @(); Players = @{}; Names = @{}; Frags = @{}; Ctx = 0; Home = $null
@@ -75,6 +75,7 @@ function Initialize-Network([string]$Role, [string]$Mode, [string]$Address, [int
         Import-NetBans
         $script:Net.Listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $Port)
         $script:Net.Listener.Start()
+        Start-NetBeacon                                              # ... and the server browsers on the network can find the game
     }
 }
 
@@ -84,6 +85,7 @@ function Stop-Network {
     foreach ($g in @($n.Guests)) { foreach ($o in $g.Stream, $g.Tcp) { if ($o) { try { $o.Dispose() } catch { } } } }
     foreach ($o in $n.Stream, $n.Tcp) { if ($o) { try { $o.Dispose() } catch { } } }
     if ($n.Listener) { try { $n.Listener.Stop() } catch { } }
+    if ($n.Beacon) { try { $n.Beacon.Dispose() } catch { } }
     $script:Net = $null; $script:NetLive = $false; $script:NetClient = $false
 }
 
@@ -274,6 +276,7 @@ function Update-Network([double]$Tics) {
     $n = $script:Net
     if (-not $n) { return }
     if ($n.Role -eq 'host') {
+        Update-NetBeacon
         try { Add-NetGuest } catch { $n.Status = "($(Get-NetErrorText $_))" }
         foreach ($g in @($n.Guests)) { try { Read-NetStream $g.Tcp $g.Stream $g.In $g.Decoder $g } catch { Remove-NetGuest $g (Get-NetErrorText $_) } }
         if ($script:NetLive) {
