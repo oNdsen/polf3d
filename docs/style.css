@@ -46,8 +46,62 @@ img.wide.arsenal{margin-top:70px;border-top:1px solid #ffffff30;padding-top:40px
 .stats.on-dark>div{border-color:#ffffff30}
 .stats.on-dark strong{color:var(--acid)}
 .stats.on-dark p{color:#c2c8d3}
-.credit{flex-basis:100%;margin:0;padding-top:18px;border-top:1px solid #ffffff25;text-align:center}
-.credit a{text-decoration:underline;text-underline-offset:3px;color:white}
+.credit{display:none}
+/* ---- the footer: the links, then the copyright area with both names ---- */
+footer{display:block;padding-top:34px;padding-bottom:40px}
+footer .footer-main{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap}
+footer .footer-links{display:flex;gap:22px;font-size:13px;flex-wrap:wrap}
+footer .footer-links a{color:#e0e6ff}
+footer .footer-links a:hover{color:white}
+footer .copyright{display:block;margin-top:30px;padding:26px 0 0;border-top:1px solid #ffffff25;text-align:center}
+footer .copyright p{margin:0}
+footer .copyright-main{font:500 14px/1.6 var(--mono);color:#e0e6ff;letter-spacing:.2px}
+footer .copyright-main .shell{color:var(--acid);font-size:14px;margin-right:6px}
+footer .copyright-note{font-size:12px;line-height:1.7;color:#b8c6ff;margin-top:8px!important}
+footer a.owner{color:white;font-weight:700;text-decoration:none}
+footer a.owner:hover{color:var(--acid)}
+footer a.friend{color:white;font-weight:600;text-decoration:none}
+footer a.friend:hover{color:var(--acid)}
+@media(max-width:720px){footer .footer-main{flex-direction:column;align-items:flex-start}footer .copyright{text-align:left}footer .copyright-main{font-size:13px}}
 footer{flex-wrap:wrap}
 @media(max-width:1000px){.shots{gap:28px 20px}.console-grid,.policy-grid{gap:32px}.trio{gap:24px}nav{gap:20px}}
 @media(max-width:720px){.split-heading{display:block}.split-heading>p{margin-top:24px}.shots.three,.console-grid,.policy-grid,.trio{grid-template-columns:1fr}.shots{margin-top:30px}.chips{margin-top:32px}.policy>div{grid-template-columns:1fr;gap:6px}.power-tabs{overflow-x:auto}.power-tabs button{flex:0 0 auto;padding:16px 11px}.ps{font-size:12px;padding:16px}img.wide{margin-top:30px}.console-grid,.policy-grid{margin-top:30px}}
+.light kbd{border-color:#11151c60;padding:0 5px}
+/* ---- ten floors in two rows, and the terms that open an explanation ---- */
+.shots.five{grid-template-columns:repeat(5,1fr);gap:28px 18px}
+.shots.five figcaption{font-size:13px;line-height:1.55}
+.shots.five figcaption b{font-size:11px}
+.chips li{border:0;padding:0}
+.chips button{font:400 12px var(--mono);border:1px solid #ffffff60;padding:8px 12px;color:#e6ecff;background:transparent;cursor:pointer}
+.chips button::after{content:"+";margin-left:9px;color:var(--acid)}
+.chips button:hover,.chips button:focus-visible{background:#ffffff1c;border-color:white;color:white}
+.chips.on-light button{border-color:#11151c50;color:#3a4048}
+.chips.on-light button::after{color:var(--blue)}
+.chips.on-light button:hover,.chips.on-light button:focus-visible{background:#11151c0d;border-color:var(--ink);color:var(--ink)}
+@media(max-width:1000px){.shots.five{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:720px){.shots.five{grid-template-columns:repeat(2,1fr);gap:22px 14px}.shots.five figcaption{font-size:12px}}
+/* ---- the dialogs: windows of the game, like the one at the top of the page ---- */
+dialog.window{padding:0;border:1px solid #101827;background:var(--ink);color:white;width:min(820px,calc(100% - 40px));max-height:92vh;overflow:auto;box-shadow:12px 14px 0 var(--blue)}
+dialog.window::backdrop{background:#050b21e6;backdrop-filter:blur(5px)}
+dialog.window .window-bar{position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:9px 10px 9px 16px;background:#0b0f15;color:#c0c9db;border-bottom:1px solid #ffffff14;font:400 12px var(--mono)}
+dialog.window .window-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+dialog.window .window-bar button{flex:none;background:transparent;border:1px solid transparent;color:#c0c9db;font:400 16px var(--mono);line-height:1;padding:6px 9px;cursor:pointer}
+dialog.window .window-bar button:hover,dialog.window .window-bar button:focus-visible{color:var(--ink);background:var(--acid)}
+dialog.window .window-body{padding:26px 28px 28px}
+dialog.window .eyebrow{font:500 12px var(--mono);letter-spacing:1.3px;color:var(--acid);margin:0 0 12px}
+dialog.window h2{font:800 clamp(30px,4.2vw,46px)/.95 var(--display);text-transform:uppercase;letter-spacing:-.3px;margin:0 0 22px;color:white}
+dialog.window .shot{background:#0a1020;border:1px solid #ffffff12}
+dialog.window .shot img{display:block;width:100%;height:auto;max-height:54vh;object-fit:contain;image-rendering:pixelated}
+dialog.window .info-text{font:400 16px/1.75 'DM Sans',Arial,sans-serif;color:#c2c8d3;margin:22px 0 0;max-width:640px}
+dialog.window .info-text code{font:500 .92em var(--mono);color:white}
+dialog.window .info-where{display:flex;gap:12px;font:400 12px/1.8 var(--mono);color:#939fac;margin:16px 0 0}
+dialog.window .info-where::before{content:">_";color:var(--acid);flex:none}
+dialog.window .info-where:empty{display:none}
+dialog.window.viewer{width:min(1180px,calc(100% - 40px))}
+dialog.window.viewer .window-body{padding:16px}
+dialog.window.viewer .shot img{max-height:72vh}
+dialog.window.viewer .info-where{margin:14px 4px 2px}
+img.zoomable{cursor:zoom-in;transition:filter .15s}
+img.zoomable:hover{filter:brightness(1.08)}
+img.zoomable:focus-visible{outline:3px solid #ffb8df;outline-offset:4px}
+@media(max-width:720px){dialog.window .window-body{padding:18px}dialog.window{box-shadow:6px 7px 0 var(--blue)}}

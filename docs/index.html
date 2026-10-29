@@ -10,7 +10,7 @@
 <meta property="og:description" content="A complete 90s-style shooter, written in PowerShell. Ten floors, a real console, co-op for four. Free and open source.">
 <meta property="og:image" content="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/banner.png">
 <link rel="icon" href="favicon.svg">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=1.4.0d">
 </head>
 <body>
 <header class="nav wrap">
@@ -69,8 +69,8 @@
       </div>
       <div class="modes">
         <article><span>01</span><div><h3>Clock in. Fight your way out.</h3><p>From Shellstein Dungeon to Ring 0. Ten floors of patrols, traps, secrets, and deeply unhelpful office equipment.</p></div></article>
-        <article><span>02</span><div><h3>Make it a team incident.</h3><p>Bring up to three friends over the network. Clear the campaign together, or settle things in deathmatch.</p></div></article>
-        <article><span>03</span><div><h3>Tomorrow, another dungeon.</h3><p>A daily generated dungeon with verifiable runs. Or step into the arena and see how many waves you survive.</p></div></article>
+        <article><span>02</span><div><h3>Make it a team incident.</h3><p>Bring up to three friends. Press <kbd>J</kbd> and the game finds the others on your network. Clear the campaign together, or settle things in deathmatch.</p></div></article>
+        <article><span>03</span><div><h3>Tomorrow, another dungeon.</h3><p>A daily generated dungeon with verifiable runs, and your best run racing you as a ghost. Or step into the arena and see how many waves you survive.</p></div></article>
       </div>
     </div>
   </div>
@@ -85,16 +85,20 @@
       </div>
       <p>Every floor has its own walls, its own music and its own way of making your day worse. Find the keys, find the lift, and read the report it hands you on the way up.</p>
     </div>
-    <div class="shots three">
+    <div class="shots five">
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/hub.png" alt="The hub hall on floor 1 with patrols and banners" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 01 / SHELLSTEIN DUNGEON</b>The hub hall. Patrols, banners, and the &gt;_ coat of arms.</figcaption></figure>
+      <figure><img src="assets/floor-2.png" alt="Guards in the barracks" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 02 / THE BARRACKS</b>Patrols that walk in opposite directions, and dormitories where some really are asleep.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/catacombs.png" alt="Mutants between the pillars of the catacombs" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 03 / THE CATACOMBS</b>Mutants between the pillars. They never shout an alarm.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/lab.png" alt="An elite patrol in the ring corridor of Lab Zero" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 04 / LAB ZERO</b>An elite patrol in the ring corridor.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/citadel.png" alt="The great hall of the citadel" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 05 / THE CITADEL</b>The great hall, and everyone in it.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/datacentre.png" alt="A cold aisle of the data centre" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 06 / THE DATA CENTRE</b>Cold aisles. A sniper at the far end of every one.</figcaption></figure>
+      <figure><img src="assets/floor-7.png" alt="Between the shelves of the archive" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 07 / THE ARCHIVE</b>Two halls of shelves to get lost in, with things waiting between them.</figcaption></figure>
+      <figure><img src="assets/floor-8.png" alt="On the production line of the foundry" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 08 / THE FOUNDRY</b>A conveyor, three crushers, three levers - and something big in the assembly hall.</figcaption></figure>
+      <figure><img src="assets/floor-9.png" alt="Offices on the executive floor" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 09 / THE EXECUTIVE FLOOR</b>Carpet and plants. The board meets behind the silver door.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/ring0.png" alt="The dark core of Ring 0 with a blue glow" width="960" height="720" loading="lazy"><figcaption><b>FLOOR 10 / RING 0</b>Dark, and something in there is glowing blue.</figcaption></figure>
     </div>
-    <ul class="chips" aria-label="What the floors are made of">
-      <li>Gold and silver keys</li><li>Wall levers</li><li>Secret push-walls</li><li>Cracked walls</li><li>Windows to shoot through</li><li>Spikes and crushers</li><li>Teleporter pads</li><li>Dark rooms and a flashlight</li><li>Lockdowns</li><li>Power failures</li><li>Patch Tuesday</li><li>A hidden lift switch</li>
+    <ul class="chips" data-group="THE BUILDING" aria-label="What the floors are made of - choose one to read about it">
+      <li><button type="button" data-info="keys">Gold and silver keys</button></li><li><button type="button" data-info="levers">Wall levers</button></li><li><button type="button" data-info="pushwalls">Secret push-walls</button></li><li><button type="button" data-info="cracked">Cracked walls</button></li><li><button type="button" data-info="windows">Windows to shoot through</button></li><li><button type="button" data-info="traps">Spikes and crushers</button></li><li><button type="button" data-info="teleporters">Teleporter pads</button></li><li><button type="button" data-info="dark">Dark rooms and a flashlight</button></li><li><button type="button" data-info="lockdown">Lockdowns</button></li><li><button type="button" data-info="powerfail">Power failures</button></li><li><button type="button" data-info="patch">Patch Tuesday</button></li><li><button type="button" data-info="liftswitch">A hidden lift switch</button></li>
     </ul>
   </div>
 </section>
@@ -230,14 +234,14 @@ Get-Enemy -Kind turret | Set-Turret -Owner Me</code></pre>
     </div>
     <div class="shots three on-light">
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/tutorial.png" alt="The onboarding floor with a hint at the top of the view" width="960" height="720" loading="lazy"><figcaption><b>THE ONBOARDING / [ N ]</b>Ten rooms, one mechanism each. The floor explains itself.</figcaption></figure>
-      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/dungeon.png" alt="The plan of a generated dungeon" width="960" height="720" loading="lazy"><figcaption><b>THE DAILY DUNGEON / [ G ]</b>Built from today's date, so everybody gets the same one. One life. Every run can be verified.</figcaption></figure>
+      <figure><img src="assets/ghost.png" alt="The ghost race: a see-through runner in gold, the best run so far, in a dungeon corridor" width="960" height="720" loading="lazy"><figcaption><b>THE DAILY DUNGEON / [ G ]</b>Built from today's date, so everybody gets the same one. Your best run races you as a ghost, and every run can be verified.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/arena.png" alt="The arena: a wave of enemies comes through the gates" width="960" height="720" loading="lazy"><figcaption><b>THE ARENA / [ H ]</b>One hall, four gates, wave after wave. Every fifth wave brings a boss.</figcaption></figure>
-      <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/players.png" alt="The player list of a network game, an admin panel on the host" width="960" height="720" loading="lazy"><figcaption><b>CO-OP AND DEATHMATCH</b>Up to four over the network. The host is the admin: kick, ban, forgive.</figcaption></figure>
+      <figure><img src="assets/browser.png" alt="The server browser lists the games on the local network with name, mode, players and version" width="960" height="720" loading="lazy"><figcaption><b>CO-OP AND DEATHMATCH / [ J ]</b>Up to four. The server browser finds the games on your network, or hosts one. The host is the admin: kick, ban, forgive.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/terminal.png" alt="The game rendered as half-block characters in a terminal" width="960" height="720" loading="lazy"><figcaption><b>TERMINAL MODE / -Terminal</b>The same game as coloured characters. Yes, it works over SSH.</figcaption></figure>
       <figure><img src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/tests.png" alt="The report at the end of a floor, in the style of a Pester test run" width="960" height="720" loading="lazy"><figcaption><b>EVERY FLOOR IS A TEST SUITE</b>Ten tests per floor, reported Pester style. A hundred to pass in all.</figcaption></figure>
     </div>
-    <ul class="chips on-light" aria-label="What else is in the box">
-      <li>Saved games and autosave</li><li>Speedrun clock</li><li>Demos that can be verified</li><li>Demos exported as GIFs</li><li>Modules to install in the lift</li><li>Mods in ten lines of data</li><li>A point-and-click level editor</li><li>Game pad support</li><li>Updates itself</li>
+    <ul class="chips on-light" data-group="MORE WAYS TO PLAY" aria-label="What else is in the box - choose one to read about it">
+      <li><button type="button" data-info="saves">Saved games and autosave</button></li><li><button type="button" data-info="speedrun">Speedrun clock</button></li><li><button type="button" data-info="verify">Demos that can be verified</button></li><li><button type="button" data-info="ghost">Ghost races, with your best or a friend's run</button></li><li><button type="button" data-info="gif">Demos exported as GIFs</button></li><li><button type="button" data-info="modules">Modules to install in the lift</button></li><li><button type="button" data-info="mods">Mods in ten lines of data</button></li><li><button type="button" data-info="editor">A point-and-click level editor</button></li><li><button type="button" data-info="gamepad">Game pad support</button></li><li><button type="button" data-info="update">Updates itself</button></li>
     </ul>
   </div>
 </section>
@@ -299,24 +303,48 @@ cd polf3d
 </main>
 
 <footer class="wrap">
-  <a class="brand" href="#"><span class="shell">&gt;_</span> POLF<span class="brand-3d">3D</span></a>
-  <p>A gloriously unnecessary game by <a target="_blank" rel="noopener" href="https://github.com/oNdsen">oNdsen</a>.</p>
-  <div>
-    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d">Source ↗</a>
-    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/releases">Releases ↗</a>
-    <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/blob/main/LICENSE">MIT license</a>
+  <div class="footer-main">
+    <a class="brand" href="#"><span class="shell">&gt;_</span> POLF<span class="brand-3d">3D</span></a>
+    <nav class="footer-links" aria-label="Project links">
+      <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d">Source ↗</a>
+      <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/releases">Releases ↗</a>
+      <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/blob/main/CHANGELOG.md">Changelog ↗</a>
+      <a target="_blank" rel="noopener" href="https://github.com/oNdsen/polf3d/blob/main/LICENSE">MIT license ↗</a>
+    </nav>
   </div>
-  <p class="credit">This page was designed and built by <a target="_blank" rel="noopener" href="https://github.com/The-Running-Dev">Ben Richards</a>. Thank you, Ben, for the work and for the push.</p>
+  <div class="copyright">
+    <p class="copyright-main"><span class="shell">&gt;_</span> &copy; 2026 POLF 3D &middot; a gloriously unnecessary game by <a class="owner" target="_blank" rel="noopener" href="https://github.com/oNdsen">oNdsen</a></p>
+    <p class="copyright-note">Free and open source under the MIT license. No ads, no account.</p>
+    <p class="copyright-note">The idea for this website and its first version came from <a class="friend" target="_blank" rel="noopener" href="https://github.com/The-Running-Dev">Ben Richards</a>. Thank you, Ben.</p>
+  </div>
 </footer>
 
-<dialog id="gameplay-dialog" aria-labelledby="demo-title">
-  <div class="dialog-head">
-    <h2 id="demo-title">POWERSHELL. IN MOTION.</h2>
-    <button id="close-demo" aria-label="Close gameplay demo">✕</button>
+<dialog id="gameplay-dialog" class="window" aria-labelledby="demo-title">
+  <div class="window-bar"><span>&gt;_ &nbsp; Start-Polf3D.ps1 -ExportGif demos/attract.json</span><button id="close-demo" aria-label="Close gameplay demo">✕</button></div>
+  <div class="window-body">
+    <p class="eyebrow">ATTRACT DEMO / PLAYED BY A BOT</p>
+    <h2 id="demo-title">PowerShell. In motion.</h2>
+    <div class="shot"><img data-src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/gameplay.gif" alt="POLF 3D gameplay demo through the hub hall" width="640" height="480"></div>
+    <p class="info-where">Recorded by a little bot, exported by the game itself.</p>
   </div>
-  <img data-src="https://raw.githubusercontent.com/oNdsen/polf3d/main/media/gameplay.gif" alt="POLF 3D gameplay demo through the hub hall" width="640" height="480">
-  <p>An attract demo, played by a little bot and exported by the game itself.</p>
 </dialog>
-<script src="script.js"></script>
+<dialog id="info-dialog" class="window" aria-labelledby="info-title">
+  <div class="window-bar"><span id="info-bar">&gt;_ &nbsp; Get-Help</span><button id="close-info" aria-label="Close">✕</button></div>
+  <div class="window-body">
+    <p class="eyebrow" id="info-eyebrow"></p>
+    <h2 id="info-title"></h2>
+    <div class="shot"><img id="info-image" alt=""></div>
+    <p id="info-text" class="info-text"></p>
+    <p id="info-where" class="info-where"></p>
+  </div>
+</dialog>
+<dialog id="image-dialog" class="window viewer" aria-label="The picture, larger">
+  <div class="window-bar"><span id="image-bar">&gt;_ &nbsp; Invoke-Item</span><button id="close-image" aria-label="Close">✕</button></div>
+  <div class="window-body">
+    <div class="shot"><img id="image-full" alt=""></div>
+    <p id="image-caption" class="info-where"></p>
+  </div>
+</dialog>
+<script src="script.js?v=1.4.0d"></script>
 </body>
 </html>
