@@ -263,7 +263,62 @@ function Update-ConsoleData {
 }
 
 # Runs one line in the sandbox. Returns @{ Output = objects; Errors = strings }.
+# Constrained language still lets a few .NET types through that reach the file system - [xml] can load and save any
+# file the player may touch. So every line is read before it runs: types only from a short list of harmless ones, no
+# -as or -is with a type given as text, and none of the ways that turn text into code (which would get past this check).
+$script:SandboxTypes = [System.Collections.Generic.HashSet[string]]::new([string[]]@(
+        'int', 'int32', 'int64', 'long', 'uint32', 'double', 'single', 'float', 'decimal', 'byte', 'bool', 'boolean', 'string', 'char',
+        'array', 'object', 'hashtable', 'collections.hashtable', 'ordered', 'pscustomobject', 'psobject', 'math', 'datetime', 'timespan',
+        'void', 'switch', 'regex', 'text.regularexpressions.regex',
+        'parameter', 'cmdletbinding', 'alias', 'validateset', 'validaterange', 'validatenotnull', 'validatenotnullorempty', 'allownull', 'outputtype'),
+    [System.StringComparer]::OrdinalIgnoreCase)
+$script:SandboxBlockedMembers = 'InvokeScript', 'NewScriptBlock', 'ExpandString', 'Create', 'GetCommand', 'InvokeCommand', 'GetType', 'InvokeMember', 'CreateInstance', 'GetMethod', 'GetMethods'
+$script:SandboxBlockedVariables = 'ExecutionContext', 'Host', 'PSCmdlet'
+
+# $null if the line may run, otherwise why not.
+function Test-SandboxScript([string]$Text) {
+    $tokens = $null; $parseErrors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($Text, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors) { return $null }                                   # PowerShell itself says what is wrong with it
+    $script:SandboxRefusal = $null
+    $null = $ast.FindAll({
+            param($node)
+            if ($script:SandboxRefusal) { return $false }
+            $typeName = if ($node -is [System.Management.Automation.Language.TypeExpressionAst] -or $node -is [System.Management.Automation.Language.TypeConstraintAst] -or
+                $node -is [System.Management.Automation.Language.AttributeAst]) { $node.TypeName } else { $null }
+            if ($typeName) {
+                $name = $typeName.FullName -replace '(\[\])+$' -replace '^System\.', ''
+                if ($typeName -is [System.Management.Automation.Language.GenericTypeName] -or -not $script:SandboxTypes.Contains($name)) {
+                    $script:SandboxRefusal = "[$($typeName.FullName)] is not available down here."
+                }
+            }
+            elseif ($node -is [System.Management.Automation.Language.BinaryExpressionAst] -and
+                $node.Operator -in 'As', 'Is', 'IsNot' -and $node.Right -isnot [System.Management.Automation.Language.TypeExpressionAst]) {
+                $script:SandboxRefusal = "-$($node.Operator.ToString().ToLower()) takes a type in brackets here, like [int]."
+            }
+            elseif ($node -is [System.Management.Automation.Language.VariableExpressionAst] -and $node.VariablePath.UserPath -in $script:SandboxBlockedVariables) {
+                $script:SandboxRefusal = "`$$($node.VariablePath.UserPath) is not available down here."
+            }
+            elseif ($node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and
+                $node.Member -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $node.Member.Value -in $script:SandboxBlockedMembers) {
+                $script:SandboxRefusal = ".$($node.Member.Value)() is not available down here."
+            }
+            elseif ($node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and $node.Member -isnot [System.Management.Automation.Language.StringConstantExpressionAst]) {
+                $script:SandboxRefusal = 'A method has to be called by its name here.'
+            }
+            elseif ($node -is [System.Management.Automation.Language.InvokeMemberExpressionAst] -and $node.Member.Value -in 'ForEach', 'Where' -and
+                $node.Arguments.Count -and $node.Arguments[0] -isnot [System.Management.Automation.Language.ScriptBlockExpressionAst]) {
+                $script:SandboxRefusal = ".$($node.Member.Value)() takes a script block here, like .$($node.Member.Value)({ `$_ })."          # by name it would call any method
+            }
+            $false
+        }, $true)
+    $refusal = $script:SandboxRefusal; $script:SandboxRefusal = $null
+    $refusal
+}
+
 function Invoke-SandboxScript([string]$Text) {
+    $refusal = Test-SandboxScript $Text
+    if ($refusal) { return @{ Output = @(); Errors = @("Access is denied: $refusal") } }
     $ps = [powershell]::Create(); $ps.Runspace = $script:Con.Runspace
     try {
         $null = $ps.AddScript($Text)
