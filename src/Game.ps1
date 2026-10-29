@@ -96,6 +96,9 @@ function Show-LoadStep([string]$Text, [double]$Weight = 0) {
 }
 
 function Write-LoadScreen {
+    # closed while it is still loading: there is nothing to clean up yet that the end of the process does not take care
+    # of, and without this the game loaded on and ran without a window (the console is hidden too)
+    if ($script:LoadPlan -and $script:Form -and $script:Form.IsDisposed) { [System.Environment]::Exit(0) }
     if (-not $script:Form -or $script:Form.IsDisposed -or $script:TerminalMode -or -not $script:BackG) { return }
     $script:LoadDrawn = $script:Clock.Elapsed.TotalSeconds
     Show-Shade 'FF0A1020'
@@ -471,7 +474,7 @@ function Show-DoneScreen {
 # Main loop
 # ---------------------------------------------------------------------------------------------
 function Start-GameLoop {
-    $script:Running = $true
+    $script:Running = -not ($script:Form -and $script:Form.IsDisposed)        # closed in the last moment of loading: no game
     $script:MouseLook = $false
     Update-Settings
     $script:WeaponKey = -1
